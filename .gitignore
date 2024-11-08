@@ -1,0 +1,8 @@
+.Rproj.user
+.Rhistory
+.Rdata
+.httr-oauth
+.DS_Store
+.quarto
+/Watershed Delineation/Working/*
+/Watershed Delineation/Working2/*
