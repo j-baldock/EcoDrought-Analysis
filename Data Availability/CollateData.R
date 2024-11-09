@@ -14,6 +14,10 @@ library(dataRetrieval)
 library(nhdplusTools)
 library(ggpubr)
 library(fasstr)
+library(dygraphs)
+# library(xts)
+library(ggforce)
+library(smwrBase)
 
 
 ####--------------------------------------------###
@@ -270,7 +274,6 @@ unique(dat$site_name)
 write_csv(dat, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_Raw.csv")
 dat <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_Raw.csv")
 
-
 unique(dat$designation)
 unique(dat$region)
 unique(dat$basin)
@@ -300,15 +303,15 @@ unique(dat_superg_nwis$designation)
 #   ungroup() %>% filter(!is.na(site_id))
 # 
 # # plot data
-# dat_superg_nwis_7 %>% filter(designation == "big") %>% ggplot() + geom_line(aes(x = date, y = log(flow_mean_7))) + facet_wrap(~site_name)
-# dat_superg_nwis_7 %>% filter(designation == "medium") %>% ggplot() + geom_line(aes(x = date, y = log(flow_mean_7))) + facet_wrap(~site_name)
+dat_superg_nwis %>% filter(designation == "big") %>% ggplot() + geom_line(aes(x = date, y = log(flow_mean))) + facet_wrap(~site_name)
+dat_superg_nwis %>% filter(designation == "medium") %>% ggplot() + geom_line(aes(x = date, y = log(flow_mean))) + facet_wrap(~site_name)
 # 
 # dat_superg_nwis_7 %>% filter(designation == "big") %>% ggplot() + geom_line(aes(x = date, y = (tempc_mean_7))) + facet_wrap(~site_name)
 # dat_superg_nwis_7 %>% filter(designation == "medium") %>% ggplot() + geom_line(aes(x = date, y = (tempc_mean_7))) + facet_wrap(~site_name)
 
 
 ####--------------------------------------------###
-#### Daily/weekly summary ####
+#### Calculate daily means ####
 ####--------------------------------------------###
 
 # daily flow/temp summaries
@@ -321,13 +324,21 @@ dat_daily <- dat %>% mutate(date = as_date(datetime)) %>%
   arrange(region, basin, site_name, date) %>%
   ungroup()
 
-# cbind datasets
+# cbind EcoD and NWIS datasets
 dat_daily <- bind_rows(dat_daily %>% select(-flow_min, -flow_max, -tempc_min, -tempc_max), 
                        dat_superg_nwis %>% select(-tempc_max, -tempc_min),
                        dat_superg_nwis %>% filter(site_id == "SRL") %>% mutate(subbasin = "Duck Creek") %>% select(-tempc_max, -tempc_min))
 
 # add missing dates
-dat_daily <- fill_missing_dates(dat_daily, dates = date, groups = site_name, pad_ends = FALSE)
+dat_daily <- fill_missing_dates(dat_daily, dates = date, groups = site_name)
+
+# explore daily times series data
+dat_daily %>% filter(site_name == "CoalCreekLower") %>% select(date, flow_mean) %>% dygraph() %>% dyRangeSelector()
+
+
+####--------------------------------------------###
+#### Interpolate missing data ####
+####--------------------------------------------###
 
 # explore data gaps
 mysites <- unique(dat_daily$site_name)
@@ -335,50 +346,53 @@ mynas <- list()
 for (i in 1:length(mysites)) {
   mydisch <- unlist(dat_daily$flow_mean[dat_daily$site_name == mysites[i]])
   runsna <- rle(is.na(mydisch))
-  mynas[[i]] <- runsna$lengths[runsna$values == TRUE]
+  mynas[[i]] <- tibble(site_name = mysites[i], run = runsna$lengths[runsna$values == TRUE])
 }
+mynas <- do.call(rbind, mynas)
+mynas %>% ggplot() + geom_histogram(aes(x = run))
+mynas %>% filter(run < 100) %>% ggplot() + geom_histogram(aes(x = run))
+mynas %>% filter(run < 100) %>% ggplot() + geom_histogram(aes(x = run)) + facet_wrap_paginate(~site_name, nrow = 4, ncol = 4, page = 1)
+mynas %>% filter(run < 100) %>% ggplot() + geom_histogram(aes(x = run)) + facet_wrap_paginate(~site_name, nrow = 4, ncol = 4, page = 2)
+mynas %>% filter(run < 100) %>% ggplot() + geom_histogram(aes(x = run)) + facet_wrap_paginate(~site_name, nrow = 4, ncol = 4, page = 3)
+mynas %>% filter(run < 100) %>% ggplot() + geom_histogram(aes(x = run)) + facet_wrap_paginate(~site_name, nrow = 4, ncol = 4, page = 4)
+
+
+# fill short gaps (<=14 days...2x smoothing period) using time series interpolation
+datalist <- list()
+for (i in 1:length(mysites)) { datalist[[i]] <- dat_daily %>% filter(site_name == mysites[i]) %>% mutate(flow_mean_filled = fillMissing(flow_mean, max.fill = 14, span = 100)) }
+# bind and check 1:1
+dat_daily_fill <- do.call(rbind, datalist)
+dat_daily_fill %>% ggplot() + geom_point(aes(x = flow_mean, y = flow_mean_filled)) + facet_wrap(~site_name, scales = "free")
+# explore individual sites
+dat_daily_fill %>% filter(site_name == "LangfordCreekLower") %>% select(date, flow_mean, flow_mean_filled) %>% dygraph() %>% dyRangeSelector() %>% 
+  dySeries("flow_mean", strokeWidth = 5, color = "black") %>% dySeries("flow_mean_filled", strokeWidth = 1, color = "red")
 
 
 
+####--------------------------------------------###
+#### Calculate 7-day means ####
+####--------------------------------------------###
 
-
-
-# calculate 7-day rolling mean flow
-dat_daily2 <- dat_daily %>%
+dat_daily_fill <- dat_daily_fill %>%
   group_by(site_name) %>%
   mutate(flow_mean_7 = rollapply(flow_mean, FUN = mean, width = 7, align = "center", fill = NA),
+         flow_mean_filled_7 = rollapply(flow_mean_filled, FUN = mean, width = 7, align = "center", fill = NA),
          tempc_mean_7 = rollapply(tempc_mean, FUN = mean, width = 7, align = "center", fill = NA)) %>%
   ungroup() %>% filter(!is.na(site_id))
 
+dat_daily_fill %>% filter(site_name == "Rock Creek") %>% select(date, flow_mean_filled, flow_mean_filled_7) %>% dygraph() %>% dyRangeSelector() %>% 
+  dySeries("flow_mean_filled", strokeWidth = 5, color = "black") %>% dySeries("flow_mean_filled_7", strokeWidth = 1, color = "red")
 
-
-unique(dat_daily$basin)
-unique(dat_daily$subbasin)
-unique(dat_daily$region)
-unique(dat_daily$disch_reli)
-unique(dat_daily$temp_reli)
-
-
-mydisch <- unlist(dat_daily$flow_mean)
-runsna <- rle(is.na(mydisch))
-
-hist(runsna$lengths[runsna$lengths < 100])
-hist(runsna$lengths[runsna$lengths < 50])
-hist(runsna$lengths[runsna$lengths < 10])
-
-mysites <- unique(dat_daily$site_name)
-mynas <- list()
-for (i in 1:length(mysites)) {
-  mydisch <- unlist(dat_daily$flow_mean[dat_daily$site_name == sites[i]])
-  runsna <- rle(is.na(mydisch))
-  mynas[[i]] <- runsna$lengths
-}
-
-
+unique(dat_daily_fill$basin)
+unique(dat_daily_fill$subbasin)
+unique(dat_daily_fill$region)
+unique(dat_daily_fill$disch_reli)
+unique(dat_daily_fill$temp_reli)
 
 # write out
-write_csv(dat_daily, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv")
+write_csv(dat_daily_fill, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv")
 dat_daily <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv")
+
 
 
 ####--------------------------------------------###
