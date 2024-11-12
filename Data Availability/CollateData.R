@@ -368,30 +368,67 @@ dat_daily_fill %>% filter(site_name == "LangfordCreekLower") %>% select(date, fl
   dySeries("flow_mean", strokeWidth = 5, color = "black") %>% dySeries("flow_mean_filled", strokeWidth = 1, color = "red")
 
 
+####--------------------------------------------###
+#### Calculate yield ####
+####--------------------------------------------###
+
+# convert cfs and basin area to metric
+dat_daily_fill <- dat_daily_fill %>% mutate(flow_mean_cms = flow_mean*0.02831683199881, 
+                                            flow_mean_filled_cms = flow_mean_filled*0.02831683199881, 
+                                            area_sqkm = area_sqmi*2.58999)
+
+# sites
+sites <- unique(dat_daily_fill$site_name)
+
+# site-specific basin area in square km
+basinarea <- dat_daily_fill %>% filter(!is.na(site_id)) %>% group_by(site_name) %>% summarize(area_sqkm = unique(area_sqkm))
+
+# calculate yield
+yield_list <- list()
+for (i in 1:length(sites)) {
+  d <- dat_daily_fill %>% filter(site_name == sites[i])
+  ba <- unlist(basinarea %>% filter(site_name == sites[i]) %>% select(area_sqkm))
+  yield_list[[i]] <-  add_daily_yield(data = d, values = flow_mean_cms, basin_area = as.numeric(ba)) %>% left_join(add_daily_yield(data = d, values = flow_mean_filled_cms, basin_area = as.numeric(ba)) %>% rename(Yield_filled_mm = Yield_mm))
+}
+dat_daily_fill_wyield <- do.call(rbind, yield_list)
+
 
 ####--------------------------------------------###
 #### Calculate 7-day means ####
 ####--------------------------------------------###
 
-dat_daily_fill <- dat_daily_fill %>%
+dat_daily_fill_wyield <- dat_daily_fill_wyield %>%
   group_by(site_name) %>%
   mutate(flow_mean_7 = rollapply(flow_mean, FUN = mean, width = 7, align = "center", fill = NA),
          flow_mean_filled_7 = rollapply(flow_mean_filled, FUN = mean, width = 7, align = "center", fill = NA),
-         tempc_mean_7 = rollapply(tempc_mean, FUN = mean, width = 7, align = "center", fill = NA)) %>%
+         tempc_mean_7 = rollapply(tempc_mean, FUN = mean, width = 7, align = "center", fill = NA),
+         Yield_mm_7 = rollapply(Yield_mm, FUN = mean, width = 7, align = "center", fill = NA),
+         Yield_filled_mm_7 = rollapply(Yield_filled_mm, FUN = mean, width = 7, align = "center", fill = NA)) %>%
   ungroup() %>% filter(!is.na(site_id))
 
-dat_daily_fill %>% filter(site_name == "Rock Creek") %>% select(date, flow_mean_filled, flow_mean_filled_7) %>% dygraph() %>% dyRangeSelector() %>% 
+# view flow
+dat_daily_fill_wyield %>% filter(site_name == "Avery Brook") %>% select(date, flow_mean_filled, flow_mean_filled_7) %>% dygraph() %>% dyRangeSelector() %>% 
   dySeries("flow_mean_filled", strokeWidth = 5, color = "black") %>% dySeries("flow_mean_filled_7", strokeWidth = 1, color = "red")
 
-unique(dat_daily_fill$basin)
-unique(dat_daily_fill$subbasin)
-unique(dat_daily_fill$region)
-unique(dat_daily_fill$disch_reli)
-unique(dat_daily_fill$temp_reli)
+# view yield
+dat_daily_fill_wyield %>% filter(site_name == "Avery Brook") %>% select(date, Yield_filled_mm, Yield_filled_mm_7) %>% dygraph() %>% dyRangeSelector() %>% 
+  dySeries("Yield_filled_mm", strokeWidth = 5, color = "black") %>% dySeries("Yield_filled_mm_7", strokeWidth = 1, color = "red")
+
+
+unique(dat_daily_fill_wyield$basin)
+unique(dat_daily_fill_wyield$subbasin)
+unique(dat_daily_fill_wyield$region)
+unique(dat_daily_fill_wyield$disch_reli)
+unique(dat_daily_fill_wyield$temp_reli)
 
 # write out
-write_csv(dat_daily_fill, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv")
+write_csv(dat_daily_fill_wyield, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv")
 dat_daily <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv")
+
+
+dat_daily %>% filter(subbasin == "Big Creek") %>% ggplot() + geom_line(aes(x = date, y = log(flow_mean))) + facet_wrap(~site_name)
+dat_daily %>% filter(site_name == "LangfordCreekLower") %>% select(date, flow_mean) %>% dygraph() %>% dyRangeSelector() 
+dat_daily %>% filter(site_name == "McGeeCreekLower") %>% select(date, flow_mean) %>% dygraph() %>% dyRangeSelector() 
 
 
 
