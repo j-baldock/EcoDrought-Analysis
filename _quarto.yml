@@ -17,7 +17,7 @@ book:
   date: today
   chapters:
     - index.qmd
-    - test.qmd
+    - testfolder/test.qmd
 
 format:
   html:

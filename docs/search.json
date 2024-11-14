@@ -10,8 +10,8 @@
     ]
   },
   {
-    "objectID": "test.html",
-    "href": "test.html",
+    "objectID": "testfolder/test.html",
+    "href": "testfolder/test.html",
     "title": "2  TEST",
     "section": "",
     "text": "This is a test page\n\n\nCode\n1 + 1\n\n\n[1] 2\n\n\nYou can add options to executable code like this\n\n\n[1] 4\n\n\nThe echo: false option disables the printing of code (only output is displayed).",
