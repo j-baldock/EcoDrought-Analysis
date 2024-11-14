@@ -1,14 +1,23 @@
 # Introduction
 
-Guide to building a book in Quarto and publishing on github.io for Conte ecohydrology crew.
-  
-***  
+This book provides a visual story of the USGS Eco-Drought Capstone Project. Our goals are to (1) quantify fine-scale spatial heterogeneity in flow regimes in headwater stream networks, (2) demonstrate the limitations of existing tools that model flow in headwater streams, and (3) assess the subsequent effects of streamflow heterogeneity on fish population dynamics and vulnerability to climatic variation, particularly drought.
 
-<button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" >Session Information</button><div id="collapseOne" class="accordion-collapse collapse"><div>
+Project team: Jeff Baldock, Jenn Fair, Ben Letcher, Robert Al-Chokhachy, Clint Muhlfeld, and Jason Dunham
+
+------------------------------------------------------------------------
+
+<button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+
+Session Information
+
+</button>
+
+:::: {#collapseOne .accordion-collapse .collapse}
+<div>
 
 ```{r}
 sessionInfo()
 ```
 
-</div></div>  
-
+</div>
+::::
