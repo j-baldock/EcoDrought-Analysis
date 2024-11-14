@@ -1,0 +1,14 @@
+# Introduction
+
+Guide to building a book in Quarto and publishing on github.io for Conte ecohydrology crew.
+  
+***  
+
+<button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" >Session Information</button><div id="collapseOne" class="accordion-collapse collapse"><div>
+
+```{r}
+sessionInfo()
+```
+
+</div></div>  
+
