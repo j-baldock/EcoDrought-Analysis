@@ -15,7 +15,6 @@ library(nhdplusTools)
 library(ggpubr)
 library(fasstr)
 library(dygraphs)
-# library(xts)
 library(ggforce)
 library(smwrBase)
 
@@ -512,92 +511,97 @@ dev.off()
 
 
 
-####--------------------------------------------###
-#### Donner-Blitzen River ####
-#### Note: very limited data availability. Really only June-October for ~4 years for little g sites (continuous data for Big G site). 
-#### Unclear whether period of record captures annual high/low flows...thus, not really helpful?
-####--------------------------------------------###
-
-# get site information
-sites <- c("10396000", # Donner Blitzen near Frenchglen
-           "424551118503200", # Fish Creek at DB confluence
-           "424547118503500", # DB above Fish Creek
-           "424325118495900", # DB near Burnt Car Spring
-           "424003118453700", # Little Blitzen River
-           "423830118453200", # Indian Creek
-           "423815118453900") # DB above Indian Creek
-siteinfo_db <- tibble(readNWISsite(sites)[,c(2:3,7,8,20,30)]) # get site info
-names(siteinfo_db) <- c("station_no", "site_name", "lat", "long", "elev_ft", "area_sqmi") # rename columns
-siteinfo_db <- siteinfo_db %>% mutate(site_name = c("Donner Blitzen Lower", "Donner Blitzen above Indian", "Indian Creek", "Little Blitzen", "Donner Blitzen near Burnt Car Spring", "Donner Blitzen above Fish", "Fish Creek"),
-                                      site_id = c("DB0", "DBI", "INC", "LBL", "DBS", "DBF", "FSC"),
-                                      designation = c("big", rep("little", 6)),
-                                      basin = "Donner Blitzen",
-                                      region = "Oreg") %>% select(names(siteinfo_wb))
-mapview(st_as_sf(siteinfo_db, coords = c("long", "lat"), crs = 4326))
-
-# extract daily mean discharge and temp data from USGS NWIS website
-dat_db <- tibble(readNWISdv(siteNumbers = sites, parameterCd = c("00060", "00010"), statCd = c("00001", "00002", "00003"), startDate = "2018-01-01", endDate = "2024-01-01"))[,c(2,3,4,6,8,10)]
-# hourly data takes forever to download. Note: data is really only available June - October
-# dat_db <- readNWISdata(sites = sites, parameterCd = c("00010", "00060"), service = "uv", startDate = "2018-01-01", endDate = "2023-01-01")
-
-# plot daily data...note very limited availability
-dat_db %>% ggplot(aes(x = Date, y = X_00060_00003)) + geom_line() + facet_wrap(~site_no)
-dat_db %>% ggplot(aes(x = Date, y = X_00010_00003)) + geom_line() + facet_wrap(~site_no)
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-####--------------------------------------------###
-#### Explore ####
-####--------------------------------------------###
-
-
-
-
-unique(matdat_daily$site_name)
-
-# 1 site
-madat_weekly %>% filter(site_name == "West Brook Lower") %>% ggplot(aes(x = date, y = log(flow_mean_7))) + geom_line()
-
-# all sites
-madat_weekly %>% filter(year(date) == 2020) %>%
-  ggplot(aes(x = date, y = log(flow_mean_7 + 0.001), group = site_name, col = site_name)) + geom_line()
-
-madat_daily %>% filter(year(date) == 2020) %>%
-  ggplot(aes(x = date, y = (flow_mean), group = site_name, col = site_name)) + geom_line()
-
-
-
-
-sevendaymin <- madat_weekly %>% 
-  filter(year(date) == 2020) %>%
-  group_by(site_name) %>% 
-  filter(flow_mean_7 == min(flow_mean_7, na.rm = T)) %>% 
-  summarize(flow_mean_7 = mean(flow_mean_7),
-            date = mean(date),
-            designation = unique(designation))
-range()
-boxplot(sevendaymin$date)
-points(jitter(sevendaymin$date))
-
-sevendaymin %>% ggplot(aes(x = designation, y = date)) + geom_violin() + geom_jitter()
+# 
+# ####--------------------------------------------###
+# #### Donner-Blitzen River ####
+# #### Note: very limited data availability. Really only June-October for ~4 years for little g sites (continuous data for Big G site). 
+# #### Unclear whether period of record captures annual high/low flows...thus, not really helpful?
+# ####--------------------------------------------###
+# 
+# # get site information
+# sites <- c("10396000", # Donner Blitzen near Frenchglen
+#            "424551118503200", # Fish Creek at DB confluence
+#            "424547118503500", # DB above Fish Creek
+#            "424325118495900", # DB near Burnt Car Spring
+#            "424003118453700", # Little Blitzen River
+#            "423830118453200", # Indian Creek
+#            "423815118453900") # DB above Indian Creek
+# siteinfo_db <- tibble(readNWISsite(sites)[,c(2:3,7,8,20,30)]) # get site info
+# names(siteinfo_db) <- c("station_no", "site_name", "lat", "long", "elev_ft", "area_sqmi") # rename columns
+# siteinfo_db <- siteinfo_db %>% mutate(site_name = c("Donner Blitzen Lower", "Donner Blitzen above Indian", "Indian Creek", "Little Blitzen", "Donner Blitzen near Burnt Car Spring", "Donner Blitzen above Fish", "Fish Creek"),
+#                                       site_id = c("DB0", "DBI", "INC", "LBL", "DBS", "DBF", "FSC"),
+#                                       designation = c("big", rep("little", 6)),
+#                                       basin = "Donner Blitzen",
+#                                       region = "Oreg") %>% select(names(siteinfo_wb))
+# mapview(st_as_sf(siteinfo_db, coords = c("long", "lat"), crs = 4326))
+# 
+# # extract daily mean discharge and temp data from USGS NWIS website
+# dat_db <- tibble(readNWISdv(siteNumbers = sites, parameterCd = c("00060", "00010"), statCd = c("00001", "00002", "00003"), startDate = "2018-01-01", endDate = "2024-01-01"))[,c(2,3,4,6,8,10)]
+# # hourly data takes forever to download. Note: data is really only available June - October
+# # dat_db <- readNWISdata(sites = sites, parameterCd = c("00010", "00060"), service = "uv", startDate = "2018-01-01", endDate = "2023-01-01")
+# 
+# # plot daily data...note very limited availability
+# dat_db %>% ggplot(aes(x = Date, y = X_00060_00003)) + geom_line() + facet_wrap(~site_no)
+# dat_db %>% ggplot(aes(x = Date, y = X_00010_00003)) + geom_line() + facet_wrap(~site_no)
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# ####--------------------------------------------###
+# #### Explore ####
+# ####--------------------------------------------###
+# 
+# 
+# 
+# 
+# unique(matdat_daily$site_name)
+# 
+# # 1 site
+# madat_weekly %>% filter(site_name == "West Brook Lower") %>% ggplot(aes(x = date, y = log(flow_mean_7))) + geom_line()
+# 
+# # all sites
+# madat_weekly %>% filter(year(date) == 2020) %>%
+#   ggplot(aes(x = date, y = log(flow_mean_7 + 0.001), group = site_name, col = site_name)) + geom_line()
+# 
+# madat_daily %>% filter(year(date) == 2020) %>%
+#   ggplot(aes(x = date, y = (flow_mean), group = site_name, col = site_name)) + geom_line()
+# 
+# 
+# 
+# 
+# sevendaymin <- madat_weekly %>% 
+#   filter(year(date) == 2020) %>%
+#   group_by(site_name) %>% 
+#   filter(flow_mean_7 == min(flow_mean_7, na.rm = T)) %>% 
+#   summarize(flow_mean_7 = mean(flow_mean_7),
+#             date = mean(date),
+#             designation = unique(designation))
+# range()
+# boxplot(sevendaymin$date)
+# points(jitter(sevendaymin$date))
+# 
+# sevendaymin %>% ggplot(aes(x = designation, y = date)) + geom_violin() + geom_jitter()

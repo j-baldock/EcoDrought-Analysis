@@ -17,7 +17,7 @@ book:
   date: today
   chapters:
     - index.qmd
-    - testfolder/test.qmd
+    - Data Availability/CollateData.qmd
 
 format:
   html:
