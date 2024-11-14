@@ -27,10 +27,6 @@ format:
     code-tools: true
     code-overflow: wrap
     number-depth: 4
-    
-    include-in-header:
-      - file: github-corner.html
-    code-link: true
       
   pdf:
     documentclass: scrreprt
