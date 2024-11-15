@@ -7,14 +7,9 @@ editor: visual
 Purpose: Collate EcoDrought streamflow and temperature data, povided by EcoD PIs/partners and NWIS
 
 Notes:
-- need to figure out how to embed shiny/interactive plots. Tried 'shinylive' but this does not work, and appears to be a known issue (instability) with the latest Quarto release (v1.6.32)
-  - here is the shinylive demo <https://github.com/coatless-quarto/r-shinylive-demo>
-  - see <https://github.com/coatless-quarto/r-shinylive-demo/issues/14> which suggests downgrading
-  
-* unordered list
-    + sub-item 1
-    + sub-item 2
-        - sub-sub-item 1
+* need to figure out how to embed shiny/interactive plots. Tried 'shinylive' but this does not work, and appears to be a known issue (instability) with the latest Quarto release (v1.6.32)
+    + here is the shinylive demo <https://github.com/coatless-quarto/r-shinylive-demo>
+    + see <https://github.com/coatless-quarto/r-shinylive-demo/issues/14> which suggests downgrading
 
 
 ### Load libraries
@@ -33,7 +28,18 @@ library(smwrBase)
 library(shiny)
 library(rmarkdown)
 library(shiny)
+library(htmlwidgets)
 ```
+
+
+```{r}
+#| layout: [[1,1], [1]]
+library(dygraphs)
+dygraph(fdeaths, "Female Deaths")
+dygraph(mdeaths, "Male Deaths")
+dygraph(ldeaths, "All Deaths")
+```
+
 
 ## Gather site information
 ```{r}
@@ -337,6 +343,7 @@ shinyApp(ui = ui, server = server)
 ```
 
 ```{r}
+library(dygraphs)
 dat_daily %>% filter(site_name == "CoalCreekLower") %>% select(date, flow_mean) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Mean daily flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 
@@ -419,6 +426,7 @@ shinyApp(ui = ui, server = server)
 ```
 
 ```{r}
+library(dygraphs)
 dat_daily_fill %>% filter(site_name == "CoalCreekLower") %>% select(date, flow_mean, flow_mean_filled) %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_mean", strokeWidth = 5, color = "black") %>% dySeries("flow_mean_filled", strokeWidth = 1, color = "red") %>% dyAxis("y", label = "Mean daily flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 
