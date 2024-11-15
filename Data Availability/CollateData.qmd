@@ -11,6 +11,11 @@ Notes:
   - here is the shinylive demo <https://github.com/coatless-quarto/r-shinylive-demo>
   - see <https://github.com/coatless-quarto/r-shinylive-demo/issues/14> which suggests downgrading
   
+* unordered list
+    + sub-item 1
+    + sub-item 2
+        - sub-sub-item 1
+
 
 ### Load libraries
 ```{r}
