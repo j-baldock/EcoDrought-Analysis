@@ -6,6 +6,9 @@ editor: visual
 
 Purpose: Explore (long-term) data and (recent) climatic context of EcoD years
 
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(dpi = 300)
+```
 
 ### Load libraries
 ```{r}
