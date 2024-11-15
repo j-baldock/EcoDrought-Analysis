@@ -7,7 +7,8 @@ editor: visual
 Purpose: Explore (long-term) data and (recent) climatic context of EcoD years
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(dpi = 300)
+# knitr::opts_chunk$set(dpi = 300)
+knitr::opts_chunk$set(fig.retina = 2)
 ```
 
 ### Load libraries
@@ -253,7 +254,7 @@ dsci_monthly %>% ggplot() +
 
 ## SPI
 Calculate standardized precipiation index (SPI) for EcoDrought basins at multiple time scales (1-24 months). View time series data. 
-```{r, fig.height = 8, fig.width = 9}
+```{r, fig.height = 8, fig.width = 9, message = FALSE}
 # combine and calculate monthly totals
 climdf_monthly <- do.call(rbind, climlist) %>% left_join(siteinfo_big) %>% mutate(year = year(date), month = month(date)) %>%
   group_by(station_no, site_name, site_id, basin, region, lat, long, elev_ft, area_sqmi, designation, year, month) %>%
@@ -290,7 +291,7 @@ spi_monthly %>% ggplot() +
   geom_line(aes(x = date, y = spi_12), color = mycols[2]) +
   geom_line(aes(x = date, y = spi_24), color = mycols[3]) +
   facet_wrap(~ basin) + 
-  xlab("") + ylab("Standardized precipitation index (SPI): 1-, 6-, and 12-month") + theme_bw() + 
+  xlab("") + ylab("Standardized precipitation index (SPI): 1-, 6-, 12-, and 24-month") + theme_bw() + 
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 # dev.off()
 ```
