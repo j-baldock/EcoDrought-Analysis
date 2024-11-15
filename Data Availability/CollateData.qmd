@@ -2,10 +2,12 @@
 title: "Collate Data"
 format: html
 editor: visual
-runtime: shiny
 ---
 
 Purpose: Collate EcoDrought streamflow and temperature data, povided by EcoD PIs/partners and NWIS
+
+Notes:
+- need to figure out how to embed shiny/interactive plots. Tried 'shinylive' but this does not work
 
 ### Load libraries
 ```{r}
@@ -20,6 +22,8 @@ library(fasstr)
 library(dygraphs)
 library(ggforce)
 library(smwrBase)
+library(shiny)
+library(rmarkdown)
 library(shiny)
 ```
 
@@ -298,8 +302,9 @@ dat_daily <- fill_missing_dates(dat_daily, dates = date, groups = site_name)
 ```
 
 View daily mean time series data
-```{r, cache = FALSE}
+```{r, cache=FALSE}
 #| fig-cap: "Mean daily stream flow (cfs) by site"
+library(shiny)
 ui <- shiny::fluidPage(
   shiny::selectInput(inputId = "mysite", label = "site_name", choices = unique(dat_daily$site_name)),
   dygraphs::dygraphOutput("plotDy")
@@ -364,9 +369,10 @@ dat_daily_fill <- do.call(rbind, datalist)
 
 
 Explore interpolated/filled time series relative to original (daily) data
-```{r, cache = FALSE}
+```{r, cache=FALSE}
 # explore individual sites
 #| fig-cap: "Mean daily observed and interpolated stream flow (cfs) by site"
+library(shiny)
 ui <- shiny::fluidPage(
   shiny::selectInput(inputId = "mysite", label = "site_name", choices = unique(dat_daily_fill$site_name)),
   dygraphs::dygraphOutput("plotDy")
