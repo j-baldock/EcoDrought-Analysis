@@ -32,15 +32,6 @@ library(htmlwidgets)
 ```
 
 
-```{r}
-#| layout: [[1,1], [1]]
-library(dygraphs)
-dygraph(fdeaths, "Female Deaths")
-dygraph(mdeaths, "Male Deaths")
-dygraph(ldeaths, "All Deaths")
-```
-
-
 ## Gather site information
 ```{r}
 # West Brook
