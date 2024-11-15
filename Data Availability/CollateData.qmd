@@ -4,6 +4,10 @@ format: html
 editor: visual
 ---
 
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(dpi = 300)
+```
+
 Purpose: Collate EcoDrought streamflow and temperature data, povided by EcoD PIs/partners and NWIS
 
 Notes: 
