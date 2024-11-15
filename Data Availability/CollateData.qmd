@@ -187,7 +187,7 @@ dat_shen <- bind_rows(dat_shen, dat_shen_uva)
 flatfiles <- list.files("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw data/Flathead/Export2/EMA/Continuous Data")
 flatlist <- list()
 for (i in 1:length(flatfiles)) { 
-  print(flatfiles[i])
+  #print(flatfiles[i])
   flatlist[[i]] <- read_csv(paste("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw data/Flathead/Export2/EMA/Continuous Data/", flatfiles[i], sep = "")) %>%
     mutate(DateTime = mdy_hm(DateTime, tz = "MST"),
            site_name = gsub("EMA.csv", "", flatfiles[i]))
@@ -205,7 +205,7 @@ dat_flat <- bind_rows(flatlist) %>% select(DateTime, GageHeightFT, DischargeCFS,
 gyafiles <- list.files("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw data/Al-Chokhachy/Al-Chokhachy data files")
 gyalist <- list()
 for (i in 1:length(gyafiles)) { 
-  print(gyafiles[i])
+  #print(gyafiles[i])
   gyalist[[i]] <- read_csv(paste("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw data/Al-Chokhachy/Al-Chokhachy data files/", gyafiles[i], sep = "")) %>%
     mutate(date = mdy(date), DateTime = ymd_hms(paste(date, time, sep = " "), tz = "MST"), discharge = as.numeric(discharge))
 }
