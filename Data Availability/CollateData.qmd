@@ -2,6 +2,7 @@
 title: "Collate Data"
 format: html
 editor: visual
+runtime: shiny
 ---
 
 Purpose: Collate EcoDrought streamflow and temperature data, povided by EcoD PIs/partners and NWIS
