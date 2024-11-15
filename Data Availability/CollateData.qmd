@@ -7,12 +7,15 @@ editor: visual
 Purpose: Collate EcoDrought streamflow and temperature data, povided by EcoD PIs/partners and NWIS
 
 Notes:
-* need to figure out how to embed shiny/interactive plots. Tried 'shinylive' but this does not work, and appears to be a known issue (instability) with the latest Quarto release (v1.6.32)
-    + here is the shinylive demo <https://github.com/coatless-quarto/r-shinylive-demo>
-    + see <https://github.com/coatless-quarto/r-shinylive-demo/issues/14> which suggests downgrading
 
+-   need to figure out how to embed shiny/interactive plots. Tried 'shinylive' but this does not work, and appears to be a known issue (instability) with the latest Quarto release (v1.6.32)
+
+    -   here is the shinylive demo <https://github.com/coatless-quarto/r-shinylive-demo>
+
+    -   see <https://github.com/coatless-quarto/r-shinylive-demo/issues/14> which suggests downgrading
 
 ### Load libraries
+
 ```{r}
 library(tidyverse)
 library(mapview)
@@ -31,8 +34,8 @@ library(shiny)
 library(htmlwidgets)
 ```
 
-
 ## Gather site information
+
 ```{r}
 # West Brook
 siteinfo_wb <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw data/Mass/MA_site_info.csv") %>%
@@ -142,22 +145,26 @@ siteinfo$area_sqmi[siteinfo$site_id == "NFF"] <- 1556
 ```
 
 Write and re-load site information
+
 ```{r}
 write_csv(siteinfo, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv")
 siteinfo <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv")
 ```
 
 View unique basin names
+
 ```{r}
 unique(siteinfo$basin)
 ```
 
 View unique site names
+
 ```{r}
 unique(siteinfo$site_name)
 ```
 
 Map sites
+
 ```{r}
 # convert to spatial object and view on map
 #| fig-cap: "Map of EcoDrought project locations"
@@ -165,8 +172,8 @@ siteinfo_sp <- st_as_sf(siteinfo, coords = c("long", "lat"), crs = 4326)
 mapview(siteinfo_sp, zcol = "designation")
 ```
 
-
 ## Load EcoD data
+
 ```{r}
 # West Brook
 dat_wb <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw data/Mass/EcoDrought Continuous_MA.csv") %>%
@@ -237,6 +244,7 @@ dat_gya <- bind_rows(gyalist) %>% select(DateTime, depth, discharge, temperature
 ```
 
 Bind EcoD hourly flow/temp data with siteinfo and write to file
+
 ```{r}
 # bind together
 dat <- bind_rows(dat_wb, dat_shen, dat_flat, dat_gya)
@@ -246,27 +254,31 @@ dat <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoD
 ```
 
 Check unique designations
+
 ```{r}
 unique(dat$designation)
 ```
 
 Check unique regions
+
 ```{r}
 unique(dat$region)
 ```
 
 Check unique basins
+
 ```{r}
 unique(dat$basin)
 ```
 
 Check unique subbasins
+
 ```{r}
 unique(dat$subbasin)
 ```
 
-
 ## Load NWIS data
+
 ```{r}
 # extract daily mean discharge and temp data from USGS NWIS website
 dat_superg_nwis <- tibble(readNWISdv(siteNumbers = sites, parameterCd = c("00010", "00060"), startDate = "1980-01-01", endDate = Sys.Date(), statCd = c("00003", "00001", "00002")))[,-c(1,5,7,9,11)]
@@ -284,8 +296,8 @@ dat_superg_nwis %>% filter(designation == "big") %>% ggplot() + geom_line(aes(x 
 dat_superg_nwis %>% filter(designation == "medium") %>% ggplot() + geom_line(aes(x = date, y = log(flow_mean))) + facet_wrap(~site_name)
 ```
 
-
 ## Bind data and calc. daily means
+
 ```{r}
 # daily flow/temp summaries
 dat_daily <- dat %>% mutate(date = as_date(datetime)) %>% 
@@ -306,8 +318,8 @@ dat_daily <- bind_rows(dat_daily %>% select(-flow_min, -flow_max, -tempc_min, -t
 dat_daily <- fill_missing_dates(dat_daily, dates = date, groups = site_name)
 ```
 
-View daily mean time series data
-For exampple: site_name = CoalCreekLower. Would like to replace this with a shiny/interactive app
+View daily mean time series data For exampple: site_name = CoalCreekLower. Would like to replace this with a shiny/interactive app
+
 ```{r eval = FALSE, echo = FALSE, include = FALSE}
 #| fig-cap: "Mean daily stream flow (cfs) by site"
 #| standalone: true
@@ -338,11 +350,10 @@ library(dygraphs)
 dat_daily %>% filter(site_name == "CoalCreekLower") %>% select(date, flow_mean) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Mean daily flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 
-
-
 ## Interpolate missing data
 
-Small periods of missing data (<24 hours) become a problem when aggregating at the daily and weekly time scales. *Note that currently this discovers and fills missing data at the daily time scale, but should be changed to interpolate at the original timescale of the raw data (e.g., hourly).
+Small periods of missing data (\<24 hours) become a problem when aggregating at the daily and weekly time scales. \*Note that currently this discovers and fills missing data at the daily time scale, but should be changed to interpolate at the original timescale of the raw data (e.g., hourly).
+
 ```{r}
 # explore data gaps
 mysites <- unique(dat_daily$site_name)
@@ -360,24 +371,28 @@ mynas <- do.call(rbind, mynas)
 ```
 
 Most gaps are relatively short
+
 ```{r}
 #| fig-cap: "Distributiion of lengths of missing data (days)"
 mynas %>% ggplot() + geom_histogram(aes(x = run)) + xlab("Days") + ylab("Fresquency")
 ```
 
 Zoomed in...
+
 ```{r}
 #| fig-cap: "Distributiion of lengths of missing data (days)"
 mynas %>% filter(run < 30) %>% ggplot() + geom_histogram(aes(x = run))  + xlab("Days") + ylab("Fresquency")
 ```
 
 Considering just the short gaps, which are likely a function of logger malfunction or Aquarius export issues, which sites are problematic? Answer: Flathead
+
 ```{r}
 #| fig-cap: "Frequency of short (<40 days) data gaps by site"
 mynas %>% filter(run < 30) %>% ggplot() + geom_bar(aes(site_name))+ theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
 
-Fill short gaps (<=14 days...2x smoothing period) using time series interpolation
+Fill short gaps (\<=14 days...2x smoothing period) using time series interpolation
+
 ```{r}
 # fill short gaps (<=14 days...2x smoothing period) using time series interpolation
 datalist <- list()
@@ -387,9 +402,8 @@ dat_daily_fill <- do.call(rbind, datalist)
 # dat_daily_fill %>% ggplot() + geom_point(aes(x = flow_mean, y = flow_mean_filled)) + facet_wrap(~site_name, scales = "free")
 ```
 
+Explore interpolated/filled time series relative to original (daily) data Again, CoalCreekLower as an example. Would like to replace with shiny/interactive app
 
-Explore interpolated/filled time series relative to original (daily) data
-Again, CoalCreekLower as an example. Would like to replace with shiny/interactive app
 ```{r eval = FALSE, echo = FALSE, include = FALSE}
 # explore individual sites
 #| fig-cap: "Mean daily observed and interpolated stream flow (cfs) by site"
@@ -421,8 +435,8 @@ library(dygraphs)
 dat_daily_fill %>% filter(site_name == "CoalCreekLower") %>% select(date, flow_mean, flow_mean_filled) %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_mean", strokeWidth = 5, color = "black") %>% dySeries("flow_mean_filled", strokeWidth = 1, color = "red") %>% dyAxis("y", label = "Mean daily flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 
-
 ## Calculate yield
+
 ```{r}
 # convert cfs and basin area to metric
 dat_daily_fill <- dat_daily_fill %>% mutate(flow_mean_cms = flow_mean*0.02831683199881, 
@@ -445,8 +459,8 @@ for (i in 1:length(sites)) {
 dat_daily_fill_wyield <- do.call(rbind, yield_list)
 ```
 
-
 ## Calculate 7-day means
+
 ```{r}
 dat_daily_fill_wyield <- dat_daily_fill_wyield %>%
   group_by(site_name) %>%
@@ -472,16 +486,16 @@ dat_daily_fill_wyield <- dat_daily_fill_wyield %>%
 # unique(dat_daily_fill_wyield$temp_reli)
 ```
 
-
 ## Write out and read data
+
 ```{r}
 # write out
 write_csv(dat_daily_fill_wyield, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv")
 dat_daily <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv")
 ```
 
-
 ## View data availability
+
 ```{r}
 # summarize data availability
 dat_summ <- dat_daily %>% filter(site_id != "MRN") %>%
@@ -541,6 +555,7 @@ myplot
 ## Compare co-located gages
 
 Compare streamflow data from co-located EcoDrought and NWIS gages
+
 ```{r, fig.height = 6, fig.width = 6}
 #| fig-cap: "Streamflow measured at little g gages (EcoDrought) as a function of streamflow measured at medium g gages (NWIS), on a log-scale. Red line denotes 1:1"
 # WEST BROOK
@@ -561,4 +576,3 @@ p3 <- dat_daily %>% filter(site_name == "BigCreekMiddle") %>% select(date, flow_
 ggarrange(p1, p2, p3, ncol = 2, nrow = 2, labels = c("West Brook 0", "Avery Brook", "Big Creek (Flathead)"))
 # dev.off()
 ```
-
