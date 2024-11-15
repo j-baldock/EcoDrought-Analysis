@@ -6,13 +6,12 @@ editor: visual
 
 Purpose: Collate EcoDrought streamflow and temperature data, povided by EcoD PIs/partners and NWIS
 
-Notes:
+Notes: 
 
--   need to figure out how to embed shiny/interactive plots. Tried 'shinylive' but this does not work, and appears to be a known issue (instability) with the latest Quarto release (v1.6.32)
+* need to figure out how to embed shiny/interactive plots. Tried 'shinylive' but this does not work, and appears to be a known issue (instability) with the latest Quarto release (v1.6.32)
+    + here is the shinylive demo <https://github.com/coatless-quarto/r-shinylive-demo>
+    + see <https://github.com/coatless-quarto/r-shinylive-demo/issues/14> which suggests downgrading
 
-    -   here is the shinylive demo <https://github.com/coatless-quarto/r-shinylive-demo>
-
-    -   see <https://github.com/coatless-quarto/r-shinylive-demo/issues/14> which suggests downgrading
 
 ### Load libraries
 
