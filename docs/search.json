@@ -14,7 +14,7 @@
     "href": "Data Availability/CollateData.html",
     "title": "2  Collate Data",
     "section": "",
-    "text": "2.0.1 Load libraries\nPurpose: Collate EcoDrought streamflow and temperature data, povided by EcoD PIs/partners and NWIS\nNotes: * need to figure out how to embed shiny/interactive plots. Tried ‘shinylive’ but this does not work, and appears to be a known issue (instability) with the latest Quarto release (v1.6.32) + here is the shinylive demo https://github.com/coatless-quarto/r-shinylive-demo + see https://github.com/coatless-quarto/r-shinylive-demo/issues/14 which suggests downgrading\nCode\nlibrary(tidyverse)\nlibrary(mapview)\nlibrary(sf)\nlibrary(zoo)\nlibrary(dataRetrieval)\nlibrary(nhdplusTools)\nlibrary(ggpubr)\nlibrary(fasstr)\nlibrary(dygraphs)\nlibrary(ggforce)\nlibrary(smwrBase)\nlibrary(shiny)\nlibrary(rmarkdown)\nlibrary(shiny)\nlibrary(htmlwidgets)",
+    "text": "2.0.1 Load libraries\nPurpose: Collate EcoDrought streamflow and temperature data, povided by EcoD PIs/partners and NWIS\nNotes:\nCode\nlibrary(tidyverse)\nlibrary(mapview)\nlibrary(sf)\nlibrary(zoo)\nlibrary(dataRetrieval)\nlibrary(nhdplusTools)\nlibrary(ggpubr)\nlibrary(fasstr)\nlibrary(dygraphs)\nlibrary(ggforce)\nlibrary(smwrBase)\nlibrary(shiny)\nlibrary(rmarkdown)\nlibrary(shiny)\nlibrary(htmlwidgets)",
     "crumbs": [
       "<span class='chapter-number'>2</span>  <span class='chapter-title'>Collate Data</span>"
     ]
