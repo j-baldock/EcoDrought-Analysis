@@ -5,7 +5,8 @@ editor: visual
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(dpi = 300)
+# knitr::opts_chunk$set(dpi = 300)
+knitr::opts_chunk$set(fig.retina = 2)
 ```
 
 Purpose: Collate EcoDrought streamflow and temperature data, povided by EcoD PIs/partners and NWIS
