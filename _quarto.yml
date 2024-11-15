@@ -19,6 +19,7 @@ book:
     - index.qmd
     - Data Availability/CollateData.qmd
     - Explore Data/ExploreData.qmd
+    - Big G Little g/GgStoryPlots.qmd
 
 format:
   html:

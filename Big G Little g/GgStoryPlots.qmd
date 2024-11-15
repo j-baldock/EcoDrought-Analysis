@@ -361,7 +361,7 @@ bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears,
 
 
 ## Create map objects
-```{r}
+```{r, include=FALSE}
 #* WEST BROOK ####
 mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Mass_Watersheds.shp")
 mysheds <- mysheds[mysheds$site_id == "WBR",]
@@ -397,9 +397,10 @@ p1_WB <- ggplot() +
   geom_sf(data = mybigg, size = 4) + geom_sf(data = mybigg, color = "white", size = 2.5) +
   labs(color = "") +
   theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none")
-```
 
-```{r}
+rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg", "mybigg")
+
+
 #* STAUNTON RIVER ####
 mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Shen_Watersheds.shp")
 mysheds <- mysheds[mysheds$site_id == "SR_10FL",]
@@ -431,9 +432,10 @@ p1_ST <- ggplot() +
   geom_sf(data = mybigg, size = 4) + geom_sf(data = mybigg, color = "white", size = 2.5) +
   labs(color = "") +
   theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none")
-```
 
-```{r}
+rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg", "mybigg")
+
+
 #* PAINE RUN ####
 mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Shen_Watersheds.shp")
 mysheds <- mysheds[mysheds$site_id == "PA_10FL",]
@@ -464,9 +466,10 @@ p1_PA <- ggplot() +
   geom_sf(data = mybigg, size = 4) + geom_sf(data = mybigg, color = "white", size = 2.5) +
   labs(color = "") +
   theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none")
-```
 
-```{r}
+rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg", "mybigg")
+
+
 #* FLATHEAD - Big Creek ####
 mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Flat_Watersheds.shp")
 mysheds <- mysheds[mysheds$site_id == "BIG_001",]
@@ -517,9 +520,10 @@ p1_FLBC <- ggplot() +
   labs(color = "") +
   # scale_x_continuous(limits = c(-114.525,-114), expand = c(0,0)) + scale_y_continuous(limits = c(48.475,48.75), expand = c(0,0)) +
   theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none")
-```
 
-```{r}
+rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg", "mybigg")
+
+
 #* SNAKE ####
 mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Snake_Watersheds.shp")
 mysheds <- mysheds[mysheds$site_id == "SP11",]
@@ -567,5 +571,32 @@ p1_SC <- ggplot() +
   geom_sf(data = mybigg, size = 4) + geom_sf(data = mybigg, color = "white", size = 2.5) +
   labs(color = "") +
   theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none")
+
+rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg", "mybigg")
 ```
+
+### EcoDrought Basin Maps {.tabset .tabset-pills}
+
+#### West Brook
+```{r}
+p1_WB
+```
+#### Staunton River
+```{r}
+p1_ST
+```
+#### Paine Run
+```{r}
+p1_PA
+```
+#### Big Creek
+```{r}
+p1_FLBC
+```
+#### Spread Creek
+```{r}
+p1_SC
+```
+### {-}
+
 
