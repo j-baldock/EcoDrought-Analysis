@@ -5,8 +5,7 @@ editor: visual
 ---
 
 ```{r setup, include = FALSE}
-# knitr::opts_chunk$set(dpi = 300)
-knitr::opts_chunk$set(fig.retina = 2)
+#knitr::opts_chunk$set(fig.retina = 2)
 ```
 
 Purpose: Collate EcoDrought streamflow and temperature data, povided by EcoD PIs/partners and NWIS
@@ -19,9 +18,7 @@ Notes:
 * need to address missing data issue in the Flathead...interpolate at hourly timescale?
 
 
-### Load libraries
-
-```{r}
+```{r, include = FALSE}
 library(tidyverse)
 library(mapview)
 library(sf)
@@ -379,14 +376,14 @@ Most gaps are relatively short
 
 ```{r}
 #| fig-cap: "Distributiion of lengths of missing data (days)"
-mynas %>% ggplot() + geom_histogram(aes(x = run)) + xlab("Days") + ylab("Fresquency")
+mynas %>% ggplot() + geom_histogram(aes(x = run)) + xlab("Days") + ylab("Frequency")
 ```
 
 Zoomed in...
 
 ```{r}
 #| fig-cap: "Distributiion of lengths of missing data (days)"
-mynas %>% filter(run < 30) %>% ggplot() + geom_histogram(aes(x = run))  + xlab("Days") + ylab("Fresquency")
+mynas %>% filter(run < 30) %>% ggplot() + geom_histogram(aes(x = run))  + xlab("Days") + ylab("Frequency")
 ```
 
 Considering just the short gaps, which are likely a function of logger malfunction or Aquarius export issues, which sites are problematic? Answer: Flathead
