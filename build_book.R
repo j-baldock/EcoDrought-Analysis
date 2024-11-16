@@ -4,7 +4,15 @@ library(knitr)
 # Render all
 quarto::quarto_render(output_format = "html")
 
-# Render 'chapt_name' chpater only
-quarto::quarto_render("chapt_name.qmd", 
+# Render single chapter only
+quarto::quarto_render("Data Availability/CollateData.qmd", 
                       #cache_refresh = TRUE, # default is FALSE
                       output_format = "html")
+
+quarto::quarto_render("Explore Data/ExploreData.qmd", 
+                      #cache_refresh = TRUE, # default is FALSE
+                      output_format = "html")
+
+quarto::quarto_render("Big G Little g/GgStoryPlots.qmd", 
+                      #cache_refresh = TRUE, # default is FALSE
+                      output_format = "html", cache = FALSE)
