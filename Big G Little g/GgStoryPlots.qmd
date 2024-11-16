@@ -6,6 +6,10 @@ editor: visual
 
 Purpose: build visual story plots for each basin and climate year
 
+Notes: 
+
+* For Shields and Snake, yield from NWIS gages (medium g) is way greater than yield from little g...need to check raw flow data and basin sizes used to calculate yield. Does NWIS basin size match delineated basin size? wtf... 
+
 ```{r, include = FALSE}
 library(tidyverse)
 library(zoo)
@@ -43,50 +47,92 @@ dat <- add_date_variables(dat, dates = date, water_year_start = 4)
 complete <- dat %>% group_by(site_name, designation, WaterYear) %>% summarize(completeness = sum(!is.na(Yield_filled_mm_7))/365)
 dat <- dat %>% left_join(complete)
 str(dat)
-# 
-# # view sites and data
-# mybasins <- unique(dat$basin)
-# dat %>% filter(CalendarYear >= 2018) %>% ggplot() + geom_line(aes(x = date, y = log(flow_mean_7))) + facet_wrap(~site_name, scales = "free_y")
 ```
 
 
 View little and medium g time series data (yield), by basin and site
-```{r, results='asis'}
+```{r}
 mybasins <- unique(dat$basin)[-c(4)]
 myplots <- list()
 for (i in 1:length(mybasins)) {
   myplots[[i]] <- dat %>% filter(designation %in% c("little", "medium"), basin == mybasins[i]) %>% ggplot() + geom_line(aes(x = date, y = log(Yield_filled_mm_7))) + facet_wrap(~site_name)
 }
-
-# Print a tab and a plot for each n
-# Important to set "results = 'asis'" in chunk options
-for (i in 1:length(mybasins)) {
-  cat(paste0(mybasins[i]))
-  print(myplots[[i]])
-}
 ```
+::: panel-tabset
+#### Flathead
+```{r, echo=FALSE}
+myplots[[1]]
+```
+#### West Brook
+```{r, echo=FALSE}
+myplots[[2]]
+```
+#### Paine Run
+```{r, echo=FALSE}
+myplots[[3]]
+```
+#### Staunton River
+```{r, echo=FALSE}
+myplots[[4]]
+```
+#### Duck Creek
+```{r, echo=FALSE}
+myplots[[5]]
+```
+#### Shields River
+```{r, echo=FALSE}
+myplots[[6]]
+```
+#### Snake River
+```{r, echo=FALSE}
+myplots[[7]]
+```
+:::
 
-View little and medium g time series data (yield), by basin, interactive using DyGraph
-```{r, results='asis'}
+
+View little and medium g time series data (yield), by basin. Interactive using DyGraph, use the handles below the x-axis to change the time frame.
+```{r}
 mybasins <- unique(dat$basin)[-c(4)]
 myplots <- list()
 for (i in 1:length(mybasins)) {
-  myplots[[i]] <- dat %>% filter(designation %in% c("little", "medium"), basin == mybasins[i]) %>% mutate(logYield = log(Yield_filled_mm_7)) %>% select(date, site_name, logYield) %>% spread(key = site_name, value = logYield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") 
-}
-
-# Print a tab and a plot for each n
-# Important to set "results = 'asis'" in chunk options
-for (i in 1:length(mybasins)) {
-  cat(paste0(mybasins[i]))
-  print(myplots[[i]])
+  myplots[[i]] <- dat %>% filter(designation %in% c("little", "medium"), basin == mybasins[i]) %>% mutate(logYield = log(Yield_filled_mm_7)) %>% select(date, site_name, logYield) %>% spread(key = site_name, value = logYield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyLegend(show = "never")
 }
 ```
+::: panel-tabset
+#### Flathead
+```{r, echo=FALSE}
+myplots[[1]]
+```
+#### West Brook
+```{r, echo=FALSE}
+myplots[[2]]
+```
+#### Paine Run
+```{r, echo=FALSE}
+myplots[[3]]
+```
+#### Staunton River
+```{r, echo=FALSE}
+myplots[[4]]
+```
+#### Duck Creek
+```{r, echo=FALSE}
+myplots[[5]]
+```
+#### Shields River
+```{r, echo=FALSE}
+myplots[[6]]
+```
+#### Snake River
+```{r, echo=FALSE}
+myplots[[7]]
+```
+:::
 
 
 ## Create plotting functions
-Write functions to generate flow story plots
+Write functions to generate residual time series/scatter plot
 ```{r}
-# residual scatter plot function
 residualplots <- function(mybasin, CY, little, big) {
   # essential elements
   dat_basin <- dat %>% filter(basin == mybasin)
@@ -144,8 +190,10 @@ residualplots <- function(mybasin, CY, little, big) {
     theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()))
   dev.off()
 }
+```
 
-# big plot function
+Write function to generate flow story plot
+```{r}
 bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears, mymap) {
   #### essential elements
   dat_basin <- dat %>% filter(basin == mybasin)
@@ -165,7 +213,7 @@ bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears,
   
   #### MAP
   p1 <- mymap
-  print("p1")
+  # print("p1")
   
   #### HYDROGRAPHS IN YIELD
   p2 <- ggplot() + 
@@ -173,7 +221,7 @@ bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears,
     geom_line(data = dat_basin_cy_clean %>% filter(site_name == big), aes(x = date, y = log(Yield_filled_mm_7+0.01)), color = "black", size = 1.25) +
     xlab("Date") + ylab("ln(Yield, mm)") + theme_bw() + 
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
-  print("p2")
+  # print("p2")
   
   
   #### TOTAL ANNUAL YIELD
@@ -189,7 +237,7 @@ bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears,
     geom_point(data = yeartotals %>% filter(WaterYear == CY), aes(x = WaterYear, y = totalyield)) +
     xlab("Climate year") + ylab("Total annual yield (mm)") + theme_bw() + 
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
-  print("p3")
+  # print("p3")
   
   
   #### EXCEEDANCE PROBABILITY - SUPER G PERIOD OF RECORD
@@ -209,7 +257,7 @@ bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears,
     xlab("Exceedance probability") + ylab("ln(Yield, mm)") + labs(color = "Climate year") + theme_bw() + 
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = c(0.15,0.23), 
           legend.text = element_text(size = 9), legend.title = element_text(size = 9), legend.key.height = unit(0.4, "cm"))
-  print("p4")
+  # print("p4")
   
   
   #### CUMULATIVE YIELD RESIDUALS
@@ -222,7 +270,7 @@ bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears,
     geom_hline(aes(yintercept = 0), linetype = "dashed") +
     xlab("Date") + ylab("ln(Yield) cumulative residuals ") + 
     theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
-  print("p5")
+  # print("p5")
   
   
   #### EXCEEDANCE PROBABILITY - BIG G/LITTLE G CURRENT YEAR
@@ -239,7 +287,7 @@ bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears,
     geom_line(data = exceedance %>% filter(site_name == big), aes(x = exceedance, y = Yield_filled_mm_7_log), color = "black", size = 1.25) +
     xlab("Exceedance probability") + ylab("ln(Yield, mm)") + labs(color = "Little g") + theme_bw() + 
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
-  print("p6")
+  # print("p6")
   
   
   #### EXCEEDANCE PROBABILITY MONTHLY
@@ -261,7 +309,7 @@ bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears,
     facet_wrap(~ factor(MonthName), nrow = 2) + 
     xlab("Exceedance probability") + ylab("ln(Yield, mm)") + labs(color = "Little g") + theme_bw() + 
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
-  print("p7")
+  # print("p7")
   
   
   #### ANNUAL BIG-LITTLE DIFFERENCE
@@ -287,7 +335,7 @@ bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears,
     ylim(0,1) + geom_hline(yintercept = 0.05, linetype = "dashed") +
     xlab("") + ylab("Kolmogorov-Smirnov test p-value") + scale_x_continuous(labels = "Annual", breaks = 0) +
     theme_bw() + theme(axis.title.x = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
-  print("p8")
+  # print("p8")
   
   
   #### MONTHLY BIG-LITTLE DIFFERENCE
@@ -341,7 +389,7 @@ bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears,
     xlab("") + ylab("") + 
     labs(color = "") + theme_bw() + 
     theme(axis.title.x = element_blank(), axis.text.y = element_blank(), panel.grid.minor = element_blank())
-  print("p9")
+  # print("p9")
   
   
   #### BIG PLOT
@@ -350,18 +398,18 @@ bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears,
                     ggarrange(p5, p6),
                     p7, 
                     ggarrange(p8, p9, widths = c(0.13, 0.85)), nrow = 5, heights = c(1.2,0.9,0.9,1.2,0.9))
-  print("big plot!")
+  # print("big plot!")
   # write out
-  jpeg(paste("Big G Little g/Compare Distributions/BigGLittleG_BigPlot_", mybasin, "_", mysubbasin, "_", CY, ".jpg", sep = ""), height = 18, width = 10, units = "in", res = 500)
+  # jpeg(paste("Big G Little g/Compare Distributions/BigGLittleG_BigPlot_", mybasin, "_", mysubbasin, "_", CY, ".jpg", sep = ""), height = 18, width = 10, units = "in", res = 500)
   # annotate_figure(bigp, fig.lab = "The West Brook, CY 2021", fig.lab.pos = "top.right", fig.lab.size = 24)
   print(annotate_figure(bigp, top = text_grob(paste(mybasin, ", CY ", CY, sep = ""), x = 0.75, y = -0.5, just = "centre", size = 24)))
-  dev.off()
+  # dev.off()
 }
 ```
 
 
 ## Create map objects
-```{r, include=FALSE}
+```{r, echo=FALSE}
 #* WEST BROOK ####
 mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Mass_Watersheds.shp")
 mysheds <- mysheds[mysheds$site_id == "WBR",]
@@ -492,7 +540,6 @@ lakes <- st_intersection(lakes, st_as_sf(mysheds))
 # lakes <- lakes %>% filter(gnis_name %in% c("Moose Lake", "Mud Lake", "Cyclone Lake", "Winona Lake", "Logging Lake", "Quartz Lake",
 #                                   "Rogers Lake", "Trout Lake", "Middle Quartz Lake", "Lower Quartz Lake", "Kintla Lake", "Bowman Lake"))
 lakes <- lakes %>% filter(gnis_name %in% c("Moose Lake", "Mud Lake"))
-mapview(lakes)
 
 # points
 # mylevels <- c("BigCreekLower", "LangfordCreekLower", "LangfordCreekUpper", "BigCreekMiddle", "BigCreekUpper", "HallowattCreekLower", "SkookoleelCreek", "NicolaCreek", "WernerCreek", 
@@ -544,7 +591,6 @@ lakes <- get_waterbodies(AOI = siteinfo_sp %>% filter(site_name == "Spread Creek
 lakes <- st_transform(lakes, crs(mysheds))
 lakes <- st_intersection(lakes, st_as_sf(mysheds))
 lakes <- lakes %>% filter(gnis_name %in% c("Leidy Lake"))
-mapview(lakes)
 
 # points
 mylevels <- c("Rock Creek", "SF Spread Creek Lower NWIS", "Grouse Creek", "SF Spread Creek Upper", "Leidy Creek Mouth NWIS", "Leidy Creek Upper", "NF Spread Creek Lower", "NF Spread Creek Upper", "Grizzly Creek")
@@ -575,28 +621,181 @@ p1_SC <- ggplot() +
 rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg", "mybigg")
 ```
 
-### EcoDrought Basin Maps {.tabset .tabset-pills}
-
+::: panel-tabset
 #### West Brook
-```{r}
+```{r, echo=FALSE}
 p1_WB
 ```
 #### Staunton River
-```{r}
+```{r, echo=FALSE}
 p1_ST
 ```
 #### Paine Run
-```{r}
+```{r, echo=FALSE}
 p1_PA
 ```
 #### Big Creek
-```{r}
+```{r, echo=FALSE}
 p1_FLBC
 ```
 #### Spread Creek
-```{r}
+```{r, echo=FALSE}
 p1_SC
 ```
-### {-}
+:::
+
+
+## Flow story plots
+Generate streamflow story plots by basin and climate year
+
+### West Brook 
+::: panel-tabset
+#### 2021
+```{r, echo=FALSE, fig.height=18, fig.width=10}
+bigplotfun(mybasin = "West Brook",
+           CY = 2021,
+           little = c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook"),
+           big = "West Brook NWIS",
+           super = "South River Conway NWIS",
+           mymap = p1_WB,
+           supergyears = c(1981:2024))
+```
+#### 2022
+```{r, echo=FALSE, fig.height=18, fig.width=10}
+bigplotfun(mybasin = "West Brook",
+           CY = 2022,
+           little = c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook"),
+           big = "West Brook NWIS",
+           super = "South River Conway NWIS",
+           mymap = p1_WB,
+           supergyears = c(1981:2024))
+```
+:::
+
+### Staunton River
+::: panel-tabset
+#### 2021
+```{r, echo=FALSE, fig.height=18, fig.width=10}
+bigplotfun(mybasin = "Staunton River",
+           CY = 2021,
+           little = c("Staunton River 09", "Staunton River 07", "Staunton River 06", "Staunton River 03", "Staunton River 02"),
+           big = "Staunton River 10",
+           super = "Staunton River 10",
+           mymap = p1_ST,
+           supergyears = c(1994:2023))
+```
+#### 2022
+```{r, echo=FALSE, fig.height=18, fig.width=10}
+bigplotfun(mybasin = "Staunton River",
+           CY = 2022,
+           little = c("Staunton River 09", "Staunton River 07", "Staunton River 06", "Staunton River 03", "Staunton River 02"),
+           big = "Staunton River 10",
+           super = "Staunton River 10",
+           mymap = p1_ST,
+           supergyears = c(1994:2023))
+```
+#### 2023
+```{r, echo=FALSE, fig.height=18, fig.width=10}
+bigplotfun(mybasin = "Staunton River",
+           CY = 2023,
+           little = c("Staunton River 09", "Staunton River 07", "Staunton River 06", "Staunton River 03", "Staunton River 02"),
+           big = "Staunton River 10",
+           super = "Staunton River 10",
+           mymap = p1_ST,
+           supergyears = c(1994:2023))
+```
+:::
+
+### Paine Run
+::: panel-tabset
+#### 2021
+```{r, echo=FALSE, fig.height=18, fig.width=10}
+bigplotfun(mybasin = "Paine Run",
+           CY = 2021,
+           little = c("Paine Run 08", "Paine Run 07", "Paine Run 06", "Paine Run 02", "Paine Run 01"),
+           big = "Paine Run 10",
+           super = "Paine Run 10",
+           mymap = p1_PA,
+           supergyears = c(1994:2023))
+```
+#### 2022
+```{r, echo=FALSE, fig.height=18, fig.width=10}
+bigplotfun(mybasin = "Paine Run",
+           CY = 2022,
+           little = c("Paine Run 08", "Paine Run 07", "Paine Run 06", "Paine Run 02", "Paine Run 01"),
+           big = "Paine Run 10",
+           super = "Paine Run 10",
+           mymap = p1_PA,
+           supergyears = c(1994:2023))
+```
+:::
+
+### Coal Creek, Flathead
+::: panel-tabset
+#### 2019
+```{r, echo=FALSE, fig.height=18, fig.width=10}
+bigplotfun(mybasin = "Flathead",
+           mysubbasin = "Big Creek",
+           CY = 2019,
+           little = c("BigCreekMiddle", "BigCreekUpper", "HallowattCreekLower", "WernerCreek", "Hallowat Creek NWIS", "NicolaCreek"),
+           big = "BigCreekLower",
+           super = "North Fork Flathead River NWIS",
+           mymap = p1_FLBC,
+           supergyears = c(1981:2023))
+```
+#### 2020
+```{r, echo=FALSE, fig.height=18, fig.width=10}
+bigplotfun(mybasin = "Flathead",
+           mysubbasin = "Big Creek",
+           CY = 2020,
+           little = c("BigCreekMiddle", "BigCreekUpper", "HallowattCreekLower", "WernerCreek", "Hallowat Creek NWIS", "NicolaCreek"),
+           big = "BigCreekLower",
+           super = "North Fork Flathead River NWIS",
+           mymap = p1_FLBC,
+           supergyears = c(1981:2023))
+```
+#### 2021
+```{r, echo=FALSE, fig.height=18, fig.width=10}
+bigplotfun(mybasin = "Flathead",
+           mysubbasin = "Big Creek",
+           CY = 2021,
+           little = c("BigCreekMiddle", "BigCreekUpper", "HallowattCreekLower", "WernerCreek", "Hallowat Creek NWIS", "NicolaCreek"),
+           big = "BigCreekLower",
+           super = "North Fork Flathead River NWIS",
+           mymap = p1_FLBC,
+           supergyears = c(1981:2023))
+```
+:::
+
+
+### Spread Creek, Snake
+WARNING!!! Yield at NWIS gages are an order of magnitude greater than at little g gages...something is wrong!
+
+::: panel-tabset
+#### 2022
+```{r, echo=FALSE, fig.height=18, fig.width=10}
+bigplotfun(mybasin = "Snake River",
+           mysubbasin = NA,
+           CY = 2022,
+           little = c("Rock Creek", "SF Spread Creek Lower NWIS", "Grouse Creek", "SF Spread Creek Upper", "Leidy Creek Mouth NWIS", "Leidy Creek Upper", "NF Spread Creek Lower", "NF Spread Creek Upper", "Grizzly Creek"),
+           big = "Spread Creek Dam",
+           super = "Pacific Creek at Moran NWIS",
+           mymap = p1_SC,
+           supergyears = c(1981:2023))
+```
+#### 2023
+```{r, echo=FALSE, fig.height=18, fig.width=10}
+bigplotfun(mybasin = "Snake River",
+           mysubbasin = NA,
+           CY = 2023,
+           little = c("Rock Creek", "SF Spread Creek Lower NWIS", "Grouse Creek", "SF Spread Creek Upper", "Leidy Creek Mouth NWIS", "Leidy Creek Upper", "NF Spread Creek Lower", "NF Spread Creek Upper", "Grizzly Creek"),
+           big = "Spread Creek Dam",
+           super = "Pacific Creek at Moran NWIS",
+           mymap = p1_SC,
+           supergyears = c(1981:2023))
+```
+
+
+
 
 
