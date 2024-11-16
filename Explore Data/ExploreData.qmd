@@ -8,11 +8,10 @@ Purpose: Explore (long-term) data and (recent) climatic context of EcoD years
 
 ```{r setup, include = FALSE}
 # knitr::opts_chunk$set(dpi = 300)
-knitr::opts_chunk$set(fig.retina = 2)
+#knitr::opts_chunk$set(fig.retina = 2)
 ```
 
-### Load libraries
-```{r}
+```{r, include = FALSE}
 library(tidyverse)
 library(daymetr)
 library(zoo)
