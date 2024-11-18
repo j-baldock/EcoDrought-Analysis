@@ -24,6 +24,7 @@ library(nhdplusTools)
 library(terra)
 library(dygraphs)
 library(ggforce)
+library(ggspatial)
 ```
 
 ## Site info and daily data
@@ -52,80 +53,104 @@ str(dat)
 
 View little and medium g time series data (yield), by basin and site
 ```{r}
-mybasins <- unique(dat$basin)[-c(4)]
+mysubbasins <- unique(dat$subbasin)[-c(4,7,13)]
 myplots <- list()
-for (i in 1:length(mybasins)) {
-  myplots[[i]] <- dat %>% filter(designation %in% c("little", "medium"), basin == mybasins[i]) %>% ggplot() + geom_line(aes(x = date, y = log(Yield_filled_mm_7))) + facet_wrap(~site_name)
+for (i in 1:length(mysubbasins)) {
+  myplots[[i]] <- dat %>% filter(designation %in% c("little", "medium"), subbasin == mysubbasins[i]) %>% ggplot() + geom_line(aes(x = date, y = log(Yield_filled_mm_7))) + facet_wrap(~site_name)
 }
 ```
 ::: panel-tabset
-#### Flathead
+#### Big Creek
 ```{r, echo=FALSE}
 myplots[[1]]
 ```
-#### West Brook
+#### Coal Creek
 ```{r, echo=FALSE}
 myplots[[2]]
 ```
-#### Paine Run
+#### McGee Creek
 ```{r, echo=FALSE}
 myplots[[3]]
 ```
-#### Staunton River
+#### West Brook
 ```{r, echo=FALSE}
 myplots[[4]]
 ```
-#### Duck Creek
+#### Paine Run
 ```{r, echo=FALSE}
 myplots[[5]]
 ```
-#### Shields River
+#### Staunton River
 ```{r, echo=FALSE}
 myplots[[6]]
 ```
-#### Snake River
+#### Duck Creek
 ```{r, echo=FALSE}
 myplots[[7]]
+```
+#### Shields River
+```{r, echo=FALSE}
+myplots[[8]]
+```
+#### Snake River
+```{r, echo=FALSE}
+myplots[[9]]
+```
+#### Donner Blitzen
+```{r, echo=FALSE}
+myplots[[10]]
 ```
 :::
 
 
-View little and medium g time series data (yield), by basin. Interactive using DyGraph, use the handles below the x-axis to change the time frame.
+View little and medium g time series data (yield), by basin. Use the handles below the x-axis to change the time frame.
 ```{r}
-mybasins <- unique(dat$basin)[-c(4)]
+mysubbasins <- unique(dat$subbasin)[-c(4,7,13)]
 myplots <- list()
-for (i in 1:length(mybasins)) {
-  myplots[[i]] <- dat %>% filter(designation %in% c("little", "medium"), basin == mybasins[i]) %>% mutate(logYield = log(Yield_filled_mm_7)) %>% select(date, site_name, logYield) %>% spread(key = site_name, value = logYield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyLegend(show = "never")
+for (i in 1:length(mysubbasins)) {
+  myplots[[i]] <- dat %>% filter(designation %in% c("little", "medium"), subbasin == mysubbasins[i]) %>% mutate(logYield = log(Yield_filled_mm_7)) %>% select(date, site_name, logYield) %>% spread(key = site_name, value = logYield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)")
 }
 ```
 ::: panel-tabset
-#### Flathead
+#### Big Creek
 ```{r, echo=FALSE}
 myplots[[1]]
 ```
-#### West Brook
+#### Coal Creek
 ```{r, echo=FALSE}
 myplots[[2]]
 ```
-#### Paine Run
+#### McGee Creek
 ```{r, echo=FALSE}
 myplots[[3]]
 ```
-#### Staunton River
+#### West Brook
 ```{r, echo=FALSE}
 myplots[[4]]
 ```
-#### Duck Creek
+#### Paine Run
 ```{r, echo=FALSE}
 myplots[[5]]
 ```
-#### Shields River
+#### Staunton River
 ```{r, echo=FALSE}
 myplots[[6]]
 ```
-#### Snake River
+#### Duck Creek
 ```{r, echo=FALSE}
 myplots[[7]]
+```
+#### Shields River
+```{r, echo=FALSE}
+myplots[[8]]
+```
+#### Snake River
+```{r, echo=FALSE}
+myplots[[9]]
+```
+#### Donner Blitzen
+```{r, echo=FALSE}
+myplots[[10]]
 ```
 :::
 
@@ -198,7 +223,18 @@ bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears,
   #### essential elements
   dat_basin <- dat %>% filter(basin == mybasin)
   months <- c("Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar")
+  fudge <- 0.01 # add small value to deal with 0 flow on log scale
   
+  # get among-year yield min/max for y-axis limits
+  dat_basin_sub <- dat %>% 
+    filter(site_name %in% c(little, big), !is.na(Yield_filled_mm_7)) %>% 
+    mutate(Yield_filled_mm_7_log = log(Yield_filled_mm_7+fudge)) %>%
+    group_by(site_name, WaterYear) %>% 
+    arrange(desc(Yield_filled_mm_7_log), .by_group = TRUE) %>% 
+    mutate(exceedance = 100/length(Yield_filled_mm_7_log)*1:length(Yield_filled_mm_7_log)) %>%
+    ungroup()
+  yield_lim <- range(dat_basin_sub$Yield_filled_mm_7_log)
+
   # clean data...drop all dates that have missing data at any site
   dat_basin_cy_clean <- dat %>% 
     filter(site_name %in% c(little, big, super), WaterYear == CY) %>% 
@@ -217,9 +253,10 @@ bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears,
   
   #### HYDROGRAPHS IN YIELD
   p2 <- ggplot() + 
-    geom_line(data = dat_basin_cy_clean %>% filter(site_name %in% little) %>% mutate(site_name = factor(site_name, levels = little)), aes(x = date, y = log(Yield_filled_mm_7+0.01), group = site_name, color = site_name)) +
-    geom_line(data = dat_basin_cy_clean %>% filter(site_name == big), aes(x = date, y = log(Yield_filled_mm_7+0.01)), color = "black", size = 1.25) +
-    xlab("Date") + ylab("ln(Yield, mm)") + theme_bw() + 
+    geom_line(data = dat_basin_cy_clean %>% filter(site_name %in% little) %>% mutate(site_name = factor(site_name, levels = little)), aes(x = date, y = log(Yield_filled_mm_7+fudge), group = site_name, color = site_name)) +
+    geom_line(data = dat_basin_cy_clean %>% filter(site_name == big), aes(x = date, y = log(Yield_filled_mm_7+fudge)), color = "black", size = 1.25) +
+    xlab("Date") + ylab("ln(Yield, mm)") + theme_bw() + ylim(yield_lim) + 
+    scale_x_date(limits = as.Date(c(paste(CY-1, '-04-01', sep = ""), paste(CY, '-04-01', sep = "")))) +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
   # print("p2")
   
@@ -261,23 +298,30 @@ bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears,
   
   
   #### CUMULATIVE YIELD RESIDUALS
+  # get range of residuals among years
+  dat_basin_res <- dat %>% filter(site_name %in% little) %>% select(site_name, date, WaterYear, Yield_filled_mm_7) %>%
+    left_join(dat %>% filter(site_name == big) %>% rename(bigyield = Yield_filled_mm_7) %>% select(date, WaterYear, bigyield)) %>% 
+    mutate(delta_yield = log(Yield_filled_mm_7+fudge) - log(bigyield+fudge), site_name = factor(site_name, levels = little)) %>% 
+    group_by(site_name, WaterYear) %>% mutate(cum_resid = cumsum(coalesce(delta_yield, 0)) + delta_yield*0) 
+  res_lim <- range(dat_basin_res$cum_resid, na.rm = TRUE)
   p5 <- dat_basin_cy_clean %>% filter(site_name %in% little) %>% 
     left_join(dat_basin_cy_clean %>% filter(site_name == big) %>% rename(bigyield = Yield_filled_mm_7) %>% select(-site_name)) %>% 
-    mutate(delta_yield = log(Yield_filled_mm_7+0.01) - log(bigyield+0.01), site_name = factor(site_name, levels = little)) %>% 
+    mutate(delta_yield = log(Yield_filled_mm_7+fudge) - log(bigyield+fudge), site_name = factor(site_name, levels = little)) %>% 
     group_by(site_name) %>% mutate(cum_resid = cumsum(coalesce(delta_yield, 0)) + delta_yield*0) %>%
     ggplot() + 
     geom_line(aes(x = date, y = cum_resid, group = site_name, color = site_name)) + 
     geom_hline(aes(yintercept = 0), linetype = "dashed") +
-    xlab("Date") + ylab("ln(Yield) cumulative residuals ") + 
+    xlab("Date") + ylab("ln(Yield) cumulative residuals ") + ylim(res_lim) +
+    scale_x_date(limits = as.Date(c(paste(CY-1, '-04-01', sep = ""), paste(CY, '-04-01', sep = "")))) +
     theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
   # print("p5")
-  
+
   
   #### EXCEEDANCE PROBABILITY - BIG G/LITTLE G CURRENT YEAR
   exceedance <- dat_basin_cy_clean %>% 
     filter(site_name %in% c(little, big)) %>%
     filter(!is.na(Yield_filled_mm_7)) %>% 
-    mutate(Yield_filled_mm_7_log = log(Yield_filled_mm_7+0.01)) %>%
+    mutate(Yield_filled_mm_7_log = log(Yield_filled_mm_7+fudge)) %>%
     group_by(site_name) %>% 
     arrange(desc(Yield_filled_mm_7_log), .by_group = TRUE) %>% 
     mutate(exceedance = 100/length(Yield_filled_mm_7_log)*1:length(Yield_filled_mm_7_log)) %>%
@@ -285,7 +329,7 @@ bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears,
   p6 <- ggplot() + 
     geom_line(data = exceedance %>% filter(site_name %in% little) %>% mutate(site_name = factor(site_name, levels = little)), aes(x = exceedance, y = Yield_filled_mm_7_log, group = site_name, color = site_name)) +
     geom_line(data = exceedance %>% filter(site_name == big), aes(x = exceedance, y = Yield_filled_mm_7_log), color = "black", size = 1.25) +
-    xlab("Exceedance probability") + ylab("ln(Yield, mm)") + labs(color = "Little g") + theme_bw() + 
+    xlab("Exceedance probability") + ylab("ln(Yield, mm)") + labs(color = "Little g") + theme_bw() + ylim(yield_lim) + 
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
   # print("p6")
   
@@ -295,7 +339,7 @@ bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears,
     filter(site_name %in% c(little, big)) %>%
     filter(!is.na(Yield_filled_mm_7)) %>% 
     left_join(dat_basin %>% select(date, site_name, MonthName, Month)) %>%
-    mutate(Yield_filled_mm_7_log = log(Yield_filled_mm_7+0.01),
+    mutate(Yield_filled_mm_7_log = log(Yield_filled_mm_7+fudge),
            site_name = factor(site_name, levels = c(little, big)),
            MonthName = factor(MonthName, levels = months)) %>%
     group_by(site_name, Month) %>% 
@@ -307,7 +351,7 @@ bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears,
     geom_line(data = exceedance_monthly2 %>% filter(site_name %in% little), aes(x = exceedance, y = Yield_filled_mm_7_log, group = site_name, color = site_name)) +
     geom_line(data = exceedance_monthly2 %>% filter(site_name == big), aes(x = exceedance, y = Yield_filled_mm_7_log), color = "black", size = 1.25) +
     facet_wrap(~ factor(MonthName), nrow = 2) + 
-    xlab("Exceedance probability") + ylab("ln(Yield, mm)") + labs(color = "Little g") + theme_bw() + 
+    xlab("Exceedance probability") + ylab("ln(Yield, mm)") + labs(color = "Little g") + theme_bw() +  ylim(yield_lim) + 
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
   # print("p7")
   
@@ -443,7 +487,7 @@ p1_WB <- ggplot() +
   geom_sf(data = mylittleg, aes(color = site_name), size = 3) +
   geom_sf(data = mylittleg, shape = 1, size = 3) +
   geom_sf(data = mybigg, size = 4) + geom_sf(data = mybigg, color = "white", size = 2.5) +
-  labs(color = "") +
+  labs(color = "") + annotation_scale() +
   theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none")
 
 rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg", "mybigg")
@@ -478,7 +522,7 @@ p1_ST <- ggplot() +
   geom_sf(data = mylittleg, aes(color = site_name), size = 3) +
   geom_sf(data = mylittleg, shape = 1, size = 3) +
   geom_sf(data = mybigg, size = 4) + geom_sf(data = mybigg, color = "white", size = 2.5) +
-  labs(color = "") +
+  labs(color = "") + annotation_scale() +
   theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none")
 
 rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg", "mybigg")
@@ -512,7 +556,7 @@ p1_PA <- ggplot() +
   geom_sf(data = mylittleg, aes(color = site_name), size = 3) +
   geom_sf(data = mylittleg, shape = 1, size = 3) +
   geom_sf(data = mybigg, size = 4) + geom_sf(data = mybigg, color = "white", size = 2.5) +
-  labs(color = "") +
+  labs(color = "") + annotation_scale(location = "tl") +
   theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none")
 
 rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg", "mybigg")
@@ -564,7 +608,7 @@ p1_FLBC <- ggplot() +
   geom_sf(data = mylittleg, aes(color = site_name), size = 3) +
   geom_sf(data = mylittleg, shape = 1, size = 3) +
   geom_sf(data = mybigg, size = 4) + geom_sf(data = mybigg, color = "white", size = 2.5) +
-  labs(color = "") +
+  labs(color = "") + annotation_scale() +
   # scale_x_continuous(limits = c(-114.525,-114), expand = c(0,0)) + scale_y_continuous(limits = c(48.475,48.75), expand = c(0,0)) +
   theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none")
 
@@ -615,7 +659,46 @@ p1_SC <- ggplot() +
   geom_sf(data = mylittleg, aes(color = site_name), size = 3) +
   geom_sf(data = mylittleg, shape = 1, size = 3) +
   geom_sf(data = mybigg, size = 4) + geom_sf(data = mybigg, color = "white", size = 2.5) +
-  labs(color = "") +
+  labs(color = "") + annotation_scale() +
+  theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none")
+
+rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg", "mybigg")
+
+
+#* DONNER-BLITZEN ####
+mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Oreg_Watersheds.shp")
+mysheds <- mysheds[mysheds$site_id == "DBF",]
+mynet <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/Oreg_Streams.shp")
+crs(mynet) <- crs(mysheds)
+mynet <- crop(mynet, mysheds)
+
+# hillshade
+myrast <- rast("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Spatial data/Elevation/DonnerBlitzen_DEM_10m_nc.tif")
+myrast <- mask(crop(myrast, mysheds), mysheds)
+slo <- terrain(myrast, "slope", unit = "radians") 
+asp <- terrain(myrast, "aspect", unit = "radians")
+hill <- shade(slope = slo, aspect = asp, angle = 40, direction = 270)
+hilldf <- as.data.frame(hill, xy = TRUE)
+
+# points
+mylevels <- c("Donner Blitzen ab Fish NWIS", "Fish Creek", "Donner Blitzen nr Burnt Car NWIS", "Donner Blitzen ab Indian NWIS")
+mylittleg <- siteinfo_sp %>% filter(site_name %in% mylevels) %>% mutate(site_name = factor(site_name, levels = mylevels))
+# edit geometry to reduce overlap
+st_geometry(mylittleg)[mylittleg$site_name == "Donner Blitzen ab Fish NWIS"] <- st_point(c(-118.84315, 42.75476))
+st_geometry(mylittleg)[mylittleg$site_name == "Fish Creek"] <- st_point(c(-118.83173, 42.75911))
+mybigg <- siteinfo_sp %>% filter(site_name == "Donner Blitzen River nr Frenchglen NWIS")
+
+# create map
+# mapview(mynet$UT_flowlines) + mapview((lakes)) + mapview(siteinfo_sp %>% filter(basin == "West Brook"))
+p1_DB <- ggplot() +
+  geom_raster(data = hilldf, aes(x = x, y = y, fill = hillshade), show.legend = FALSE) +
+  scale_fill_distiller(palette = "Greys") +
+  geom_sf(data = st_as_sf(mysheds), color = "black", fill = NA, linewidth = 0.4) + 
+  geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 1) +
+  geom_sf(data = mylittleg, aes(color = site_name), size = 3) +
+  geom_sf(data = mylittleg, shape = 1, size = 3) +
+  geom_sf(data = mybigg, size = 4) + geom_sf(data = mybigg, color = "white", size = 2.5) +
+  labs(color = "") + annotation_scale() +
   theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none")
 
 rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg", "mybigg")
@@ -641,6 +724,10 @@ p1_FLBC
 #### Spread Creek
 ```{r, echo=FALSE}
 p1_SC
+```
+#### Donner-Blitzen
+```{r, echo=FALSE}
+p1_DB
 ```
 :::
 
@@ -767,10 +854,8 @@ bigplotfun(mybasin = "Flathead",
 ```
 :::
 
-
 ### Spread Creek, Snake
 WARNING!!! Yield at NWIS gages are an order of magnitude greater than at little g gages...something is wrong!
-
 ::: panel-tabset
 #### 2022
 ```{r, echo=FALSE, fig.height=18, fig.width=10}
@@ -795,7 +880,53 @@ bigplotfun(mybasin = "Snake River",
            supergyears = c(1981:2023))
 ```
 
-
+### Donner-Blitzen
+::: panel-tabset
+#### 2020
+```{r, echo=FALSE, fig.height=18, fig.width=10}
+bigplotfun(mybasin = "Donner Blitzen",
+           mysubbasin = "Donner Blitzen",
+           CY = 2020,
+           little = c("Donner Blitzen ab Fish NWIS", "Fish Creek", "Donner Blitzen nr Burnt Car NWIS", "Donner Blitzen ab Indian NWIS"),
+           big = "Donner Blitzen River nr Frenchglen NWIS",
+           super = "Donner Blitzen River nr Frenchglen NWIS",
+           mymap = p1_DB,
+           supergyears = c(1981:2023))
+```
+#### 2021
+```{r, echo=FALSE, fig.height=18, fig.width=10}
+bigplotfun(mybasin = "Donner Blitzen",
+           mysubbasin = "Donner Blitzen",
+           CY = 2021,
+           little = c("Donner Blitzen ab Fish NWIS", "Fish Creek", "Donner Blitzen nr Burnt Car NWIS", "Donner Blitzen ab Indian NWIS"),
+           big = "Donner Blitzen River nr Frenchglen NWIS",
+           super = "Donner Blitzen River nr Frenchglen NWIS",
+           mymap = p1_DB,
+           supergyears = c(1981:2023))
+```
+#### 2022
+```{r, echo=FALSE, fig.height=18, fig.width=10}
+bigplotfun(mybasin = "Donner Blitzen",
+           mysubbasin = "Donner Blitzen",
+           CY = 2022,
+           little = c("Donner Blitzen ab Fish NWIS", "Fish Creek", "Donner Blitzen nr Burnt Car NWIS", "Donner Blitzen ab Indian NWIS"),
+           big = "Donner Blitzen River nr Frenchglen NWIS",
+           super = "Donner Blitzen River nr Frenchglen NWIS",
+           mymap = p1_DB,
+           supergyears = c(1981:2023))
+```
+#### 2023
+```{r, echo=FALSE, fig.height=18, fig.width=10}
+bigplotfun(mybasin = "Donner Blitzen",
+           mysubbasin = "Donner Blitzen",
+           CY = 2023,
+           little = c("Donner Blitzen ab Fish NWIS", "Fish Creek", "Donner Blitzen nr Burnt Car NWIS", "Donner Blitzen ab Indian NWIS"),
+           big = "Donner Blitzen River nr Frenchglen NWIS",
+           super = "Donner Blitzen River nr Frenchglen NWIS",
+           mymap = p1_DB,
+           supergyears = c(1981:2023))
+```
+:::
 
 
 
