@@ -137,8 +137,7 @@ arealist <- list()
 for (i in 1:length(areafiles)) { arealist[[i]] <- read_csv(paste("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Area and Elevation/", areafiles[i], sep = ""))}
 areaelev <- do.call(rbind, arealist)
 # how well do provided and delineation area/elevation match?
-# test <- siteinfo %>% left_join(areaelev, by = "site_id")
-# test %>% ggplot() + geom_point(aes(x = area_sqmi.x, y = area_sqmi.y)) + geom_abline(intercept = 0, slope = 1) + facet_wrap(~basin, scales = "free")
+# siteinfo %>% left_join(areaelev, by = "site_id") %>% ggplot() + geom_point(aes(x = area_sqmi.x, y = area_sqmi.y)) + geom_abline(intercept = 0, slope = 1) + facet_wrap(~basin, scales = "free")
 # test %>% ggplot() + geom_point(aes(x = elev_ft.x, y = elev_ft.y)) + geom_abline(intercept = 0, slope = 1) + facet_wrap(~basin, scales = "free")
 # add delineated variables
 siteinfo <- siteinfo %>% select(-c(area_sqmi, elev_ft)) %>% left_join(areaelev)
@@ -286,6 +285,16 @@ unique(dat$subbasin)
 dat_superg_nwis <- tibble(readNWISdv(siteNumbers = sites, parameterCd = c("00010", "00060"), startDate = "1980-01-01", endDate = Sys.Date(), statCd = c("00003", "00001", "00002")))[,-c(1,5,7,9,11)]
 names(dat_superg_nwis) <- c("station_no", "date", "tempc_max", "tempc_min", "tempc_mean", "flow_mean")
 dat_superg_nwis <- dat_superg_nwis %>% left_join(siteinfo)
+
+# Manually grab Donner Blitzen above Indian Creek at the original timescale
+# daily mean flow dropped from above query, perhaps b/c in 2020 flow measurements were made every minute
+dbabind <- tibble(readNWISdata(sites = "423815118453900", service = "uv", startDate = "1980-01-01", endDate = Sys.Date()))[,c(2,3,6)] 
+dbabind_daily <- dbabind %>% group_by(site_no, date(dateTime)) %>% summarize(nobs = n(), flow_mean = mean(X_00060_00000)) %>% filter(nobs %in% c(96, 1440)) %>% select(c(1,2,4))
+names(dbabind_daily) <- c("station_no", "date", "flow_mean") 
+dbabind_daily <- dat_superg_nwis %>% filter(station_no == "423815118453900") %>% select(-flow_mean) %>% left_join(dbabind_daily)
+
+# bind DBabInd to reset of data
+dat_superg_nwis <- rbind(dat_superg_nwis %>% filter(station_no != "423815118453900"), dbabind_daily)
 ```
 
 ```{r, fig.height=8, fig.width=10}
@@ -320,8 +329,7 @@ dat_daily <- bind_rows(dat_daily %>% select(-flow_min, -flow_max, -tempc_min, -t
 dat_daily <- fill_missing_dates(dat_daily, dates = date, groups = site_name)
 ```
 
-View daily mean time series data For exampple: site_name = CoalCreekLower. Would like to replace this with a shiny/interactive app
-
+View daily mean time series data, for exampple, site_name = CoalCreekLower. Notice the many shorts gaps in the daily data.
 ```{r eval = FALSE, echo = FALSE, include = FALSE}
 #| fig-cap: "Mean daily stream flow (cfs) by site"
 #| standalone: true
@@ -355,7 +363,6 @@ dat_daily %>% filter(site_name == "CoalCreekLower") %>% select(date, flow_mean) 
 ## Interpolate missing data
 
 Small periods of missing data (\<24 hours) become a problem when aggregating at the daily and weekly time scales. \*Note that currently this discovers and fills missing data at the daily time scale, but should be changed to interpolate at the original timescale of the raw data (e.g., hourly).
-
 ```{r}
 # explore data gaps
 mysites <- unique(dat_daily$site_name)
@@ -373,28 +380,24 @@ mynas <- do.call(rbind, mynas)
 ```
 
 Most gaps are relatively short
-
 ```{r}
 #| fig-cap: "Distributiion of lengths of missing data (days)"
 mynas %>% ggplot() + geom_histogram(aes(x = run)) + xlab("Days") + ylab("Frequency")
 ```
 
 Zoomed in...
-
 ```{r}
 #| fig-cap: "Distributiion of lengths of missing data (days)"
 mynas %>% filter(run < 30) %>% ggplot() + geom_histogram(aes(x = run))  + xlab("Days") + ylab("Frequency")
 ```
 
 Considering just the short gaps, which are likely a function of logger malfunction or Aquarius export issues, which sites are problematic? Answer: Flathead
-
 ```{r}
 #| fig-cap: "Frequency of short (<40 days) data gaps by site"
 mynas %>% filter(run < 30) %>% ggplot() + geom_bar(aes(site_name))+ theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
 
-Fill short gaps (\<=14 days...2x smoothing period) using time series interpolation
-
+Fill short gaps (<=14 days...2x smoothing period) using time series interpolation
 ```{r}
 # fill short gaps (<=14 days...2x smoothing period) using time series interpolation
 datalist <- list()
@@ -405,7 +408,6 @@ dat_daily_fill <- do.call(rbind, datalist)
 ```
 
 Explore interpolated/filled time series relative to original (daily) data Again, CoalCreekLower as an example. Would like to replace with shiny/interactive app
-
 ```{r eval = FALSE, echo = FALSE, include = FALSE}
 # explore individual sites
 #| fig-cap: "Mean daily observed and interpolated stream flow (cfs) by site"
@@ -438,7 +440,6 @@ dat_daily_fill %>% filter(site_name == "CoalCreekLower") %>% select(date, flow_m
 ```
 
 ## Calculate yield
-
 ```{r}
 # convert cfs and basin area to metric
 dat_daily_fill <- dat_daily_fill %>% mutate(flow_mean_cms = flow_mean*0.02831683199881, 
@@ -487,6 +488,58 @@ dat_daily_fill_wyield <- dat_daily_fill_wyield %>%
 # unique(dat_daily_fill_wyield$disch_reli)
 # unique(dat_daily_fill_wyield$temp_reli)
 ```
+
+View little and medium g time series data (7-day mean yield), by sub-basin. Use the handles below the x-axis to adjust the time frame.
+```{r}
+mysubbasins <- unique(dat_daily_fill_wyield$subbasin)[-c(4,7,13)]
+myplots <- list()
+for (i in 1:length(mysubbasins)) {
+  myplots[[i]] <- dat_daily_fill_wyield %>% filter(designation %in% c("little", "medium"), subbasin == mysubbasins[i]) %>% mutate(logYield = log(Yield_filled_mm_7)) %>% select(date, site_name, logYield) %>% spread(key = site_name, value = logYield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)")
+}
+```
+::: panel-tabset
+#### Big Creek
+```{r, echo=FALSE}
+myplots[[1]]
+```
+#### Coal Creek
+```{r, echo=FALSE}
+myplots[[2]]
+```
+#### McGee Creek
+```{r, echo=FALSE}
+myplots[[3]]
+```
+#### West Brook
+```{r, echo=FALSE}
+myplots[[4]]
+```
+#### Paine Run
+```{r, echo=FALSE}
+myplots[[5]]
+```
+#### Staunton River
+```{r, echo=FALSE}
+myplots[[6]]
+```
+#### Duck Creek
+```{r, echo=FALSE}
+myplots[[7]]
+```
+#### Shields River
+```{r, echo=FALSE}
+myplots[[8]]
+```
+#### Snake River
+```{r, echo=FALSE}
+myplots[[9]]
+```
+#### Donner Blitzen
+```{r, echo=FALSE}
+myplots[[10]]
+```
+:::
+
 
 ## Write out and read data
 
@@ -556,8 +609,8 @@ myplot
 
 ## Compare co-located gages
 
-Compare streamflow data from co-located EcoDrought and NWIS gages
-
+### Compare synchronous gages
+Compare streamflow data from co-located EcoDrought and NWIS gages with overlapping periods of record
 ```{r, fig.height = 6, fig.width = 6}
 #| fig-cap: "Streamflow measured at little g gages (EcoDrought) as a function of streamflow measured at medium g gages (NWIS), on a log-scale. Red line denotes 1:1"
 # WEST BROOK
@@ -578,3 +631,26 @@ p3 <- dat_daily %>% filter(site_name == "BigCreekMiddle") %>% select(date, flow_
 ggarrange(p1, p2, p3, ncol = 2, nrow = 2, labels = c("West Brook 0", "Avery Brook", "Big Creek (Flathead)"))
 # dev.off()
 ```
+
+### Compare asynchronous gages
+For Spread Creek and Shields River, compare data from co-located EcoDrought and NWIS gages, with NON-overlapping periods of record. Note that streamflow from NWIS gages is about ~1 order of magnitude greater than what is measured at EcoD gages.
+::: panel-tabset
+#### Leidy Creek
+```{r, echo=FALSE}
+dat_daily %>% filter(site_name %in% c("Leidy Creek Mouth", "Leidy Creek Mouth NWIS")) %>% mutate(logflow = log(flow_mean_filled_7)) %>% select(date, site_name, logflow) %>% spread(key = site_name, value = logflow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(7-day mean flow, cfs)")
+```
+#### SF Spread Creek Lower
+```{r, echo=FALSE}
+dat_daily %>% filter(site_name %in% c("SF Spread Creek Lower", "SF Spread Creek Lower NWIS")) %>% mutate(logflow = log(flow_mean_filled_7)) %>% select(date, site_name, logflow) %>% spread(key = site_name, value = logflow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(7-day mean flow, cfs)")
+```
+#### Dugout Creek
+```{r, echo=FALSE}
+dat_daily %>% filter(site_name %in% c("Dugout Creek", "Dugout Creek NWIS")) %>% mutate(logflow = log(flow_mean_filled_7)) %>% select(date, site_name, logflow) %>% spread(key = site_name, value = logflow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(7-day mean flow, cfs)")
+```
+#### Sheilds Valley Ranch
+```{r, echo=FALSE}
+dat_daily %>% filter(site_name %in% c("Shields River Valley Ranch", "Shields River ab Smith NWIS")) %>% mutate(logflow = log(flow_mean_filled_7)) %>% select(date, site_name, logflow) %>% spread(key = site_name, value = logflow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(7-day mean flow, cfs)")
+```
+:::
+
+
