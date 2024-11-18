@@ -253,7 +253,7 @@ dsci_monthly %>% ggplot() +
 
 ## SPI
 Calculate standardized precipiation index (SPI) for EcoDrought basins at multiple time scales (1-24 months). View time series data. 
-```{r, fig.height = 8, fig.width = 9, message = FALSE}
+```{r, error=FALSE, warning=FALSE, message=FALSE}
 # combine and calculate monthly totals
 climdf_monthly <- do.call(rbind, climlist) %>% left_join(siteinfo_big) %>% mutate(year = year(date), month = month(date)) %>%
   group_by(station_no, site_name, site_id, basin, region, lat, long, elev_ft, area_sqmi, designation, year, month) %>%
@@ -282,7 +282,10 @@ spi_monthly <- do.call(rbind, spi_list)
 # spi_monthly %>% filter(site_id == "SRL") %>% ggplot() + geom_line(aes(x = date, y = spi_6))
 # spi_monthly %>% filter(site_id == "SRL") %>% ggplot() + geom_line(aes(x = date, y = spi_12))
 # spi_monthly %>% filter(site_id == "SRL") %>% ggplot() + geom_line(aes(x = date, y = spi_24))
+```
 
+
+```{r, fig.height = 8, fig.width = 9}
 # jpeg("./Explore Data/Long Term Plots/ClimaticContext_SPI_1-6-12.jpg", height = 8, width = 9, units = "in", res = 500)
 spi_monthly %>% ggplot() + 
   geom_line(aes(x = date, y = spi_1), color = "grey50") + 
@@ -294,5 +297,4 @@ spi_monthly %>% ggplot() +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 # dev.off()
 ```
-
 
