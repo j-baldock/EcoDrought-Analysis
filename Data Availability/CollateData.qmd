@@ -634,6 +634,7 @@ ggarrange(p1, p2, p3, ncol = 2, nrow = 2, labels = c("West Brook 0", "Avery Broo
 
 ### Compare asynchronous gages
 For Spread Creek and Shields River, compare data from co-located EcoDrought and NWIS gages, with NON-overlapping periods of record. Note that streamflow from NWIS gages is about ~1 order of magnitude greater than what is measured at EcoD gages.
+
 ::: panel-tabset
 #### Leidy Creek
 ```{r, echo=FALSE}
