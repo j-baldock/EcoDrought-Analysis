@@ -638,19 +638,19 @@ For Spread Creek and Shields River, compare data from co-located EcoDrought and 
 ::: panel-tabset
 #### Leidy Creek
 ```{r, echo=FALSE}
-dat_daily %>% filter(site_name %in% c("Leidy Creek Mouth", "Leidy Creek Mouth NWIS")) %>% mutate(logflow = log(flow_mean_filled_7)) %>% select(date, site_name, logflow) %>% spread(key = site_name, value = logflow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(7-day mean flow, cfs)")
+print(dat_daily %>% filter(site_name %in% c("Leidy Creek Mouth", "Leidy Creek Mouth NWIS")) %>% mutate(logflow = log(flow_mean_filled_7)) %>% select(date, site_name, logflow) %>% spread(key = site_name, value = logflow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(7-day mean flow, cfs)"))
 ```
 #### SF Spread Creek Lower
 ```{r, echo=FALSE}
-dat_daily %>% filter(site_name %in% c("SF Spread Creek Lower", "SF Spread Creek Lower NWIS")) %>% mutate(logflow = log(flow_mean_filled_7)) %>% select(date, site_name, logflow) %>% spread(key = site_name, value = logflow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(7-day mean flow, cfs)")
+print(dat_daily %>% filter(site_name %in% c("SF Spread Creek Lower", "SF Spread Creek Lower NWIS")) %>% mutate(logflow = log(flow_mean_filled_7)) %>% select(date, site_name, logflow) %>% spread(key = site_name, value = logflow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(7-day mean flow, cfs)"))
 ```
 #### Dugout Creek
 ```{r, echo=FALSE}
-dat_daily %>% filter(site_name %in% c("Dugout Creek", "Dugout Creek NWIS")) %>% mutate(logflow = log(flow_mean_filled_7)) %>% select(date, site_name, logflow) %>% spread(key = site_name, value = logflow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(7-day mean flow, cfs)")
+print(dat_daily %>% filter(site_name %in% c("Dugout Creek", "Dugout Creek NWIS")) %>% mutate(logflow = log(flow_mean_filled_7)) %>% select(date, site_name, logflow) %>% spread(key = site_name, value = logflow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(7-day mean flow, cfs)"))
 ```
 #### Sheilds Valley Ranch
 ```{r, echo=FALSE}
-dat_daily %>% filter(site_name %in% c("Shields River Valley Ranch", "Shields River ab Smith NWIS")) %>% mutate(logflow = log(flow_mean_filled_7)) %>% select(date, site_name, logflow) %>% spread(key = site_name, value = logflow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(7-day mean flow, cfs)")
+print(dat_daily %>% filter(site_name %in% c("Shields River Valley Ranch", "Shields River ab Smith NWIS")) %>% mutate(logflow = log(flow_mean_filled_7)) %>% select(date, site_name, logflow) %>% spread(key = site_name, value = logflow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(7-day mean flow, cfs)"))
 ```
 :::
 
