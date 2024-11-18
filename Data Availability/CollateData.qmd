@@ -224,7 +224,7 @@ gyalist <- list()
 for (i in 1:length(gyafiles)) { 
   #print(gyafiles[i])
   gyalist[[i]] <- read_csv(paste("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw data/Al-Chokhachy/Al-Chokhachy data files/", gyafiles[i], sep = "")) %>%
-    mutate(date = mdy(date), DateTime = ymd_hms(paste(date, time, sep = " "), tz = "MST"), discharge = as.numeric(discharge))
+    mutate(date = mdy(date), DateTime = ymd_hms(paste(date, time, sep = " "), tz = "MST"), discharge = as.numeric(discharge)*35.314666212661)
 }
 dat_gya <- bind_rows(gyalist) %>% select(DateTime, depth, discharge, temperature, location) %>% 
   rename(datetime = DateTime, height = depth, flow = discharge, tempc = temperature, site_name = location) %>%
