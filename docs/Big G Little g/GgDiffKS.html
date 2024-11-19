@@ -231,15 +231,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#site-info-and-daily-data" id="toc-site-info-and-daily-data" class="nav-link active" data-scroll-target="#site-info-and-daily-data"><span class="header-section-number">5.1</span> Site info and daily data</a></li>
-  <li><a href="#separate-and-join-g-g" id="toc-separate-and-join-g-g" class="nav-link" data-scroll-target="#separate-and-join-g-g"><span class="header-section-number">5.2</span> Separate and join G-g</a></li>
-  <li><a href="#compute-gg-difference" id="toc-compute-gg-difference" class="nav-link" data-scroll-target="#compute-gg-difference"><span class="header-section-number">5.3</span> Compute Gg Difference</a></li>
-  <li><a href="#calculate-total-yield" id="toc-calculate-total-yield" class="nav-link" data-scroll-target="#calculate-total-yield"><span class="header-section-number">5.4</span> Calculate total yield</a></li>
-  <li><a href="#explore-gg-diff-by-water-availability" id="toc-explore-gg-diff-by-water-availability" class="nav-link" data-scroll-target="#explore-gg-diff-by-water-availability"><span class="header-section-number">5.5</span> Explore Gg diff by water availability</a>
+  <li><a href="#g-g-difference-ks" id="toc-g-g-difference-ks" class="nav-link active" data-scroll-target="#g-g-difference-ks"><span class="header-section-number">6</span> G-g Difference (KS)</a>
   <ul class="collapse">
-  <li><a href="#global-relationship" id="toc-global-relationship" class="nav-link" data-scroll-target="#global-relationship"><span class="header-section-number">5.5.1</span> Global relationship</a></li>
-  <li><a href="#basin-level-effects" id="toc-basin-level-effects" class="nav-link" data-scroll-target="#basin-level-effects"><span class="header-section-number">5.5.2</span> Basin-level effects</a></li>
-  <li><a href="#basin-and-site-effects" id="toc-basin-and-site-effects" class="nav-link" data-scroll-target="#basin-and-site-effects"><span class="header-section-number">5.5.3</span> Basin and site effects</a></li>
+  <li><a href="#site-info-and-daily-data" id="toc-site-info-and-daily-data" class="nav-link" data-scroll-target="#site-info-and-daily-data"><span class="header-section-number">6.1</span> Site info and daily data</a></li>
+  <li><a href="#separate-and-join-g-g" id="toc-separate-and-join-g-g" class="nav-link" data-scroll-target="#separate-and-join-g-g"><span class="header-section-number">6.2</span> Separate and join G-g</a></li>
+  <li><a href="#compute-gg-difference" id="toc-compute-gg-difference" class="nav-link" data-scroll-target="#compute-gg-difference"><span class="header-section-number">6.3</span> Compute Gg Difference</a></li>
+  <li><a href="#calculate-total-yield" id="toc-calculate-total-yield" class="nav-link" data-scroll-target="#calculate-total-yield"><span class="header-section-number">6.4</span> Calculate total yield</a></li>
+  <li><a href="#explore-gg-diff-by-water-availability" id="toc-explore-gg-diff-by-water-availability" class="nav-link" data-scroll-target="#explore-gg-diff-by-water-availability"><span class="header-section-number">6.5</span> Explore Gg diff by water availability</a>
+  <ul class="collapse">
+  <li><a href="#global-relationship" id="toc-global-relationship" class="nav-link" data-scroll-target="#global-relationship"><span class="header-section-number">6.5.1</span> Global relationship</a></li>
+  <li><a href="#basin-level-effects" id="toc-basin-level-effects" class="nav-link" data-scroll-target="#basin-level-effects"><span class="header-section-number">6.5.2</span> Basin-level effects</a></li>
+  <li><a href="#basin-and-site-effects" id="toc-basin-and-site-effects" class="nav-link" data-scroll-target="#basin-and-site-effects"><span class="header-section-number">6.5.3</span> Basin and site effects</a></li>
+  </ul></li>
   </ul></li>
   </ul>
 </nav>
@@ -266,9 +269,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
+<section id="g-g-difference-ks" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> G-g Difference (KS)</h1>
 <p>Purpose: Explore effects of monthly/annual water availability on Big-little difference using non-parametric Kolmogorov-Smirnov tests</p>
-<section id="site-info-and-daily-data" class="level2" data-number="5.1">
-<h2 data-number="5.1" class="anchored" data-anchor-id="site-info-and-daily-data"><span class="header-section-number">5.1</span> Site info and daily data</h2>
+<section id="site-info-and-daily-data" class="level2" data-number="6.1">
+<h2 data-number="6.1" class="anchored" data-anchor-id="site-info-and-daily-data"><span class="header-section-number">6.1</span> Site info and daily data</h2>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -292,8 +297,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </details>
 </div>
 </section>
-<section id="separate-and-join-g-g" class="level2" data-number="5.2">
-<h2 data-number="5.2" class="anchored" data-anchor-id="separate-and-join-g-g"><span class="header-section-number">5.2</span> Separate and join G-g</h2>
+<section id="separate-and-join-g-g" class="level2" data-number="6.2">
+<h2 data-number="6.2" class="anchored" data-anchor-id="separate-and-join-g-g"><span class="header-section-number">6.2</span> Separate and join G-g</h2>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -399,8 +404,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </section>
-<section id="compute-gg-difference" class="level2" data-number="5.3">
-<h2 data-number="5.3" class="anchored" data-anchor-id="compute-gg-difference"><span class="header-section-number">5.3</span> Compute Gg Difference</h2>
+<section id="compute-gg-difference" class="level2" data-number="6.3">
+<h2 data-number="6.3" class="anchored" data-anchor-id="compute-gg-difference"><span class="header-section-number">6.3</span> Compute Gg Difference</h2>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -480,8 +485,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </section>
-<section id="calculate-total-yield" class="level2" data-number="5.4">
-<h2 data-number="5.4" class="anchored" data-anchor-id="calculate-total-yield"><span class="header-section-number">5.4</span> Calculate total yield</h2>
+<section id="calculate-total-yield" class="level2" data-number="6.4">
+<h2 data-number="6.4" class="anchored" data-anchor-id="calculate-total-yield"><span class="header-section-number">6.4</span> Calculate total yield</h2>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -509,8 +514,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </details>
 </div>
 </section>
-<section id="explore-gg-diff-by-water-availability" class="level2" data-number="5.5">
-<h2 data-number="5.5" class="anchored" data-anchor-id="explore-gg-diff-by-water-availability"><span class="header-section-number">5.5</span> Explore Gg diff by water availability</h2>
+<section id="explore-gg-diff-by-water-availability" class="level2" data-number="6.5">
+<h2 data-number="6.5" class="anchored" data-anchor-id="explore-gg-diff-by-water-availability"><span class="header-section-number">6.5</span> Explore Gg diff by water availability</h2>
 <p>Hypothesis: during wetter periods (months/years) flow regimes become more similar among locations within stream networks (i.e., positive relationship between monthly/annual total yield and KS-test p-value)</p>
 <p>How might this vary among basins that differ in primary water source (rain vs.&nbsp;snow) and among sites within basins (due to surface vs.&nbsp;subsurface controls on flow)?</p>
 <div class="cell">
@@ -522,8 +527,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(siteinfo <span class="sc">%&gt;%</span> <span class="fu">select</span>(site_name, basin))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<section id="global-relationship" class="level3" data-number="5.5.1">
-<h3 data-number="5.5.1" class="anchored" data-anchor-id="global-relationship"><span class="header-section-number">5.5.1</span> Global relationship</h3>
+<section id="global-relationship" class="level3" data-number="6.5.1">
+<h3 data-number="6.5.1" class="anchored" data-anchor-id="global-relationship"><span class="header-section-number">6.5.1</span> Global relationship</h3>
 <p>Plot relationship between log(monthly total yield) and log(KS p-value) for all basins, sites, and months combined</p>
 <div class="cell">
 <details class="code-fold">
@@ -541,8 +546,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </section>
-<section id="basin-level-effects" class="level3" data-number="5.5.2">
-<h3 data-number="5.5.2" class="anchored" data-anchor-id="basin-level-effects"><span class="header-section-number">5.5.2</span> Basin-level effects</h3>
+<section id="basin-level-effects" class="level3" data-number="6.5.2">
+<h3 data-number="6.5.2" class="anchored" data-anchor-id="basin-level-effects"><span class="header-section-number">6.5.2</span> Basin-level effects</h3>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -560,8 +565,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </section>
-<section id="basin-and-site-effects" class="level3" data-number="5.5.3">
-<h3 data-number="5.5.3" class="anchored" data-anchor-id="basin-and-site-effects"><span class="header-section-number">5.5.3</span> Basin and site effects</h3>
+<section id="basin-and-site-effects" class="level3" data-number="6.5.3">
+<h3 data-number="6.5.3" class="anchored" data-anchor-id="basin-and-site-effects"><span class="header-section-number">6.5.3</span> Basin and site effects</h3>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -664,6 +669,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <!-- -->
 
+</section>
 </section>
 </section>
 
@@ -1297,218 +1303,219 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="an">format:</span><span class="co"> html</span></span>
 <span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="an">editor:</span><span class="co"> visual</span></span>
 <span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
-<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>Purpose: Explore effects of monthly/annual water availability on Big-little difference using non-parametric Kolmogorov-Smirnov tests</span>
-<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, include=FALSE}</span></span>
-<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a><span class="in">library(tidyverse)</span></span>
-<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a><span class="in">library(sf)</span></span>
-<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a><span class="in">library(mapview)</span></span>
-<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a><span class="in">library(fasstr)</span></span>
-<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a><span class="in">library(ggpubr)</span></span>
-<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a><span class="in">library(dygraphs)</span></span>
-<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a><span class="in">library(knitr)</span></span>
-<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a><span class="fu">## Site info and daily data</span></span>
-<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a><span class="co"># site information and locations</span></span>
-<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a>siteinfo <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv"</span>)</span>
-<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a>siteinfo_sp <span class="ot">&lt;-</span> <span class="fu">st_as_sf</span>(siteinfo, <span class="at">coords =</span> <span class="fu">c</span>(<span class="st">"long"</span>, <span class="st">"lat"</span>), <span class="at">crs =</span> <span class="dv">4326</span>)</span>
-<span id="cb15-26"><a href="#cb15-26" aria-hidden="true" tabindex="-1"></a><span class="fu">mapview</span>(siteinfo_sp, <span class="at">zcol =</span> <span class="st">"designation"</span>)</span>
-<span id="cb15-27"><a href="#cb15-27" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-28"><a href="#cb15-28" aria-hidden="true" tabindex="-1"></a><span class="co"># flow/yield (and temp) data </span></span>
-<span id="cb15-29"><a href="#cb15-29" aria-hidden="true" tabindex="-1"></a>dat <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb15-30"><a href="#cb15-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span>site_name <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"WoundedBuckCreek"</span>, <span class="st">"Brackett Creek"</span>))</span>
-<span id="cb15-31"><a href="#cb15-31" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-32"><a href="#cb15-32" aria-hidden="true" tabindex="-1"></a><span class="co"># add water/climate year variables</span></span>
-<span id="cb15-33"><a href="#cb15-33" aria-hidden="true" tabindex="-1"></a>dat <span class="ot">&lt;-</span> <span class="fu">add_date_variables</span>(dat, <span class="at">dates =</span> date, <span class="at">water_year_start =</span> <span class="dv">4</span>)</span>
-<span id="cb15-34"><a href="#cb15-34" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb15-35"><a href="#cb15-35" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-36"><a href="#cb15-36" aria-hidden="true" tabindex="-1"></a><span class="fu">## Separate and join G-g</span></span>
-<span id="cb15-39"><a href="#cb15-39" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb15-40"><a href="#cb15-40" aria-hidden="true" tabindex="-1"></a><span class="co"># pull out big G data</span></span>
-<span id="cb15-41"><a href="#cb15-41" aria-hidden="true" tabindex="-1"></a>dat_big <span class="ot">&lt;-</span> dat <span class="sc">%&gt;%</span> <span class="fu">filter</span>(site_name <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"West Brook NWIS"</span>, <span class="st">"Paine Run 10"</span>, <span class="st">"Piney River 10"</span>, <span class="st">"Staunton River 10"</span>, <span class="st">"Spread Creek Dam"</span>, <span class="st">"BigCreekLower"</span>, <span class="st">"Shields River ab Smith NWIS"</span>, <span class="st">"Donner Blitzen River nr Frenchglen NWIS"</span>)) </span>
-<span id="cb15-42"><a href="#cb15-42" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-43"><a href="#cb15-43" aria-hidden="true" tabindex="-1"></a><span class="co"># pull out little G data, assign big G site name</span></span>
-<span id="cb15-44"><a href="#cb15-44" aria-hidden="true" tabindex="-1"></a>dat_little <span class="ot">&lt;-</span> dat <span class="sc">%&gt;%</span> </span>
-<span id="cb15-45"><a href="#cb15-45" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(designation <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"little"</span>, <span class="st">"medium"</span>), <span class="sc">!</span>subbasin <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"Coal Creek"</span>, <span class="st">"McGee Creek"</span>, <span class="st">"Duck Creek"</span>, <span class="st">"Flathead"</span>),</span>
-<span id="cb15-46"><a href="#cb15-46" aria-hidden="true" tabindex="-1"></a>         <span class="sc">!</span>site_name <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"West Brook NWIS"</span>, <span class="st">"West Brook 0"</span>, <span class="st">"Paine Run 10"</span>, <span class="st">"Piney River 10"</span>, <span class="st">"Staunton River 10"</span>, <span class="st">"Spread Creek Dam"</span>, <span class="st">"Shields River ab Smith NWIS"</span>, <span class="st">"BigCreekLower"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb15-47"><a href="#cb15-47" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">site_name_big =</span> <span class="fu">ifelse</span>(subbasin <span class="sc">==</span> <span class="st">"Big Creek"</span>, <span class="st">"BigCreekLower"</span>,</span>
-<span id="cb15-48"><a href="#cb15-48" aria-hidden="true" tabindex="-1"></a>                                <span class="fu">ifelse</span>(subbasin <span class="sc">==</span> <span class="st">"West Brook"</span>, <span class="st">"West Brook NWIS"</span>, </span>
-<span id="cb15-49"><a href="#cb15-49" aria-hidden="true" tabindex="-1"></a>                                       <span class="fu">ifelse</span>(subbasin <span class="sc">==</span> <span class="st">"Paine Run"</span>, <span class="st">"Paine Run 10"</span>, </span>
-<span id="cb15-50"><a href="#cb15-50" aria-hidden="true" tabindex="-1"></a>                                              <span class="fu">ifelse</span>(subbasin <span class="sc">==</span> <span class="st">"Piney River"</span>, <span class="st">"Piney River 10"</span>,</span>
-<span id="cb15-51"><a href="#cb15-51" aria-hidden="true" tabindex="-1"></a>                                                     <span class="fu">ifelse</span>(subbasin <span class="sc">==</span> <span class="st">"Staunton River"</span>, <span class="st">"Staunton River 10"</span>,</span>
-<span id="cb15-52"><a href="#cb15-52" aria-hidden="true" tabindex="-1"></a>                                                            <span class="fu">ifelse</span>(subbasin <span class="sc">==</span> <span class="st">"Shields River"</span>, <span class="st">"Shields River ab Smith NWIS"</span>,</span>
-<span id="cb15-53"><a href="#cb15-53" aria-hidden="true" tabindex="-1"></a>                                                                   <span class="fu">ifelse</span>(subbasin <span class="sc">==</span> <span class="st">"Snake River"</span>, <span class="st">"Spread Creek Dam"</span>, <span class="st">"Donner Blitzen River nr Frenchglen NWIS"</span>))))))))</span>
-<span id="cb15-54"><a href="#cb15-54" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-55"><a href="#cb15-55" aria-hidden="true" tabindex="-1"></a><span class="co"># Join big-little discharge data</span></span>
-<span id="cb15-56"><a href="#cb15-56" aria-hidden="true" tabindex="-1"></a>dat_Gg <span class="ot">&lt;-</span> dat_little <span class="sc">%&gt;%</span></span>
-<span id="cb15-57"><a href="#cb15-57" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(site_name, site_name_big, basin, subbasin, date, Month, MonthName, WaterYear, Yield_filled_mm_7) <span class="sc">%&gt;%</span> <span class="fu">rename</span>(<span class="at">yield_little =</span> Yield_filled_mm_7) <span class="sc">%&gt;%</span></span>
-<span id="cb15-58"><a href="#cb15-58" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(dat_big <span class="sc">%&gt;%</span> <span class="fu">select</span>(site_name, date, Yield_filled_mm_7) <span class="sc">%&gt;%</span> <span class="fu">rename</span>(<span class="at">site_name_big =</span> site_name, <span class="at">yield_big =</span> Yield_filled_mm_7)) <span class="sc">%&gt;%</span></span>
-<span id="cb15-59"><a href="#cb15-59" aria-hidden="true" tabindex="-1"></a>  <span class="fu">drop_na</span>() <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">MonthName =</span> <span class="fu">as.character</span>(MonthName))</span>
-<span id="cb15-60"><a href="#cb15-60" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-61"><a href="#cb15-61" aria-hidden="true" tabindex="-1"></a><span class="co"># table</span></span>
-<span id="cb15-62"><a href="#cb15-62" aria-hidden="true" tabindex="-1"></a>dat_Gg <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(subbasin) <span class="sc">%&gt;%</span> <span class="fu">summarize</span>(<span class="at">site_name_big =</span> <span class="fu">unique</span>(site_name_big)) <span class="sc">%&gt;%</span> <span class="fu">kable</span>(<span class="at">caption =</span> <span class="st">"Big G gage names for each focal sub-basin."</span>)</span>
-<span id="cb15-63"><a href="#cb15-63" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb15-64"><a href="#cb15-64" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-65"><a href="#cb15-65" aria-hidden="true" tabindex="-1"></a>View unique little g site names</span>
-<span id="cb15-68"><a href="#cb15-68" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb15-69"><a href="#cb15-69" aria-hidden="true" tabindex="-1"></a><span class="fu">sort</span>(<span class="fu">unique</span>(dat_Gg<span class="sc">$</span>site_name))</span>
-<span id="cb15-70"><a href="#cb15-70" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb15-71"><a href="#cb15-71" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-72"><a href="#cb15-72" aria-hidden="true" tabindex="-1"></a><span class="fu">## Compute Gg Difference</span></span>
-<span id="cb15-75"><a href="#cb15-75" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb15-76"><a href="#cb15-76" aria-hidden="true" tabindex="-1"></a>mysites <span class="ot">&lt;-</span> <span class="fu">unique</span>(dat_Gg<span class="sc">$</span>site_name)</span>
-<span id="cb15-77"><a href="#cb15-77" aria-hidden="true" tabindex="-1"></a>kscompare_list <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
-<span id="cb15-78"><a href="#cb15-78" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(mysites)) {</span>
-<span id="cb15-79"><a href="#cb15-79" aria-hidden="true" tabindex="-1"></a>  d <span class="ot">&lt;-</span> dat_Gg <span class="sc">%&gt;%</span> <span class="fu">filter</span>(site_name <span class="sc">==</span> mysites[i])</span>
-<span id="cb15-80"><a href="#cb15-80" aria-hidden="true" tabindex="-1"></a>  yrs <span class="ot">&lt;-</span> <span class="fu">unique</span>(d<span class="sc">$</span>WaterYear)</span>
-<span id="cb15-81"><a href="#cb15-81" aria-hidden="true" tabindex="-1"></a>  kscompare_list_yr <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
-<span id="cb15-82"><a href="#cb15-82" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span>(j <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(yrs)) {</span>
-<span id="cb15-83"><a href="#cb15-83" aria-hidden="true" tabindex="-1"></a>    dy <span class="ot">&lt;-</span> d <span class="sc">%&gt;%</span> <span class="fu">filter</span>(WaterYear <span class="sc">==</span> yrs[j])</span>
-<span id="cb15-84"><a href="#cb15-84" aria-hidden="true" tabindex="-1"></a>    mypvals_monthly <span class="ot">&lt;-</span> <span class="fu">tibble</span>(<span class="at">site_name =</span> <span class="fu">rep</span>(<span class="cn">NA</span>, <span class="at">times =</span> <span class="dv">12</span>), </span>
-<span id="cb15-85"><a href="#cb15-85" aria-hidden="true" tabindex="-1"></a>                              <span class="at">site_name_big =</span> <span class="fu">rep</span>(<span class="cn">NA</span>, <span class="at">times =</span> <span class="dv">12</span>), </span>
-<span id="cb15-86"><a href="#cb15-86" aria-hidden="true" tabindex="-1"></a>                              <span class="at">WaterYear =</span> <span class="fu">rep</span>(<span class="cn">NA</span>, <span class="at">times =</span> <span class="dv">12</span>),</span>
-<span id="cb15-87"><a href="#cb15-87" aria-hidden="true" tabindex="-1"></a>                              <span class="at">Month =</span> <span class="fu">rep</span>(<span class="cn">NA</span>, <span class="at">times =</span> <span class="dv">12</span>),</span>
-<span id="cb15-88"><a href="#cb15-88" aria-hidden="true" tabindex="-1"></a>                              <span class="at">MonthName =</span> <span class="fu">rep</span>(<span class="cn">NA</span>, <span class="at">times =</span> <span class="dv">12</span>),</span>
-<span id="cb15-89"><a href="#cb15-89" aria-hidden="true" tabindex="-1"></a>                              <span class="at">days =</span> <span class="fu">rep</span>(<span class="cn">NA</span>, <span class="at">times =</span> <span class="dv">12</span>),</span>
-<span id="cb15-90"><a href="#cb15-90" aria-hidden="true" tabindex="-1"></a>                              <span class="at">stat =</span> <span class="fu">rep</span>(<span class="cn">NA</span>, <span class="at">times =</span> <span class="dv">12</span>),</span>
-<span id="cb15-91"><a href="#cb15-91" aria-hidden="true" tabindex="-1"></a>                              <span class="at">pval =</span> <span class="fu">rep</span>(<span class="cn">NA</span>, <span class="at">times =</span> <span class="dv">12</span>))</span>
-<span id="cb15-92"><a href="#cb15-92" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span>(k <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>) {</span>
-<span id="cb15-93"><a href="#cb15-93" aria-hidden="true" tabindex="-1"></a>      dym <span class="ot">&lt;-</span> dy <span class="sc">%&gt;%</span> <span class="fu">filter</span>(Month <span class="sc">==</span> k)</span>
-<span id="cb15-94"><a href="#cb15-94" aria-hidden="true" tabindex="-1"></a>      <span class="cf">if</span>(<span class="fu">dim</span>(dym)[<span class="dv">1</span>] <span class="sc">&lt;</span> <span class="dv">25</span>) <span class="cf">next</span></span>
-<span id="cb15-95"><a href="#cb15-95" aria-hidden="true" tabindex="-1"></a>      mytest <span class="ot">&lt;-</span> <span class="fu">ks.test</span>(dym<span class="sc">$</span>yield_little, dym<span class="sc">$</span>yield_big, <span class="at">exact =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb15-96"><a href="#cb15-96" aria-hidden="true" tabindex="-1"></a>      mypvals_monthly<span class="sc">$</span>site_name[k] <span class="ot">&lt;-</span> mysites[i]</span>
-<span id="cb15-97"><a href="#cb15-97" aria-hidden="true" tabindex="-1"></a>      mypvals_monthly<span class="sc">$</span>site_name_big[k] <span class="ot">&lt;-</span> <span class="fu">unique</span>(dym<span class="sc">$</span>site_name_big)</span>
-<span id="cb15-98"><a href="#cb15-98" aria-hidden="true" tabindex="-1"></a>      mypvals_monthly<span class="sc">$</span>WaterYear[k] <span class="ot">&lt;-</span> yrs[j]</span>
-<span id="cb15-99"><a href="#cb15-99" aria-hidden="true" tabindex="-1"></a>      mypvals_monthly<span class="sc">$</span>Month[k] <span class="ot">&lt;-</span> k</span>
-<span id="cb15-100"><a href="#cb15-100" aria-hidden="true" tabindex="-1"></a>      mypvals_monthly<span class="sc">$</span>MonthName[k] <span class="ot">&lt;-</span> <span class="fu">unique</span>(dym<span class="sc">$</span>MonthName)</span>
-<span id="cb15-101"><a href="#cb15-101" aria-hidden="true" tabindex="-1"></a>      mypvals_monthly<span class="sc">$</span>days[k] <span class="ot">&lt;-</span> <span class="fu">dim</span>(dym)[<span class="dv">1</span>]</span>
-<span id="cb15-102"><a href="#cb15-102" aria-hidden="true" tabindex="-1"></a>      mypvals_monthly<span class="sc">$</span>stat[k] <span class="ot">&lt;-</span> mytest<span class="sc">$</span>statistic</span>
-<span id="cb15-103"><a href="#cb15-103" aria-hidden="true" tabindex="-1"></a>      mypvals_monthly<span class="sc">$</span>pval[k] <span class="ot">&lt;-</span> mytest<span class="sc">$</span>p.value</span>
-<span id="cb15-104"><a href="#cb15-104" aria-hidden="true" tabindex="-1"></a>      }</span>
-<span id="cb15-105"><a href="#cb15-105" aria-hidden="true" tabindex="-1"></a>    kscompare_list_yr[[j]] <span class="ot">&lt;-</span> mypvals_monthly</span>
-<span id="cb15-106"><a href="#cb15-106" aria-hidden="true" tabindex="-1"></a>    }</span>
-<span id="cb15-107"><a href="#cb15-107" aria-hidden="true" tabindex="-1"></a>  kscompare_list[[i]] <span class="ot">&lt;-</span> <span class="fu">do.call</span>(rbind, kscompare_list_yr)</span>
-<span id="cb15-108"><a href="#cb15-108" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb15-109"><a href="#cb15-109" aria-hidden="true" tabindex="-1"></a>kscompare <span class="ot">&lt;-</span> <span class="fu">do.call</span>(rbind, kscompare_list) <span class="sc">%&gt;%</span> <span class="fu">drop_na</span>()</span>
-<span id="cb15-110"><a href="#cb15-110" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb15-111"><a href="#cb15-111" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-112"><a href="#cb15-112" aria-hidden="true" tabindex="-1"></a>View relationship between KS test statistic and p-value</span>
-<span id="cb15-115"><a href="#cb15-115" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb15-116"><a href="#cb15-116" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(pval <span class="sc">~</span> stat, kscompare, <span class="at">xlab =</span> <span class="st">"KS test statistic"</span>, <span class="at">ylab =</span> <span class="st">"p-value"</span>)</span>
-<span id="cb15-117"><a href="#cb15-117" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb15-118"><a href="#cb15-118" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-119"><a href="#cb15-119" aria-hidden="true" tabindex="-1"></a>View distribution of KS test statistics and p-values</span>
-<span id="cb15-122"><a href="#cb15-122" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb15-123"><a href="#cb15-123" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(kscompare<span class="sc">$</span>stat)</span>
-<span id="cb15-124"><a href="#cb15-124" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(kscompare<span class="sc">$</span>pval)</span>
-<span id="cb15-125"><a href="#cb15-125" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb15-126"><a href="#cb15-126" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-127"><a href="#cb15-127" aria-hidden="true" tabindex="-1"></a><span class="fu">## Calculate total yield</span></span>
-<span id="cb15-130"><a href="#cb15-130" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb15-131"><a href="#cb15-131" aria-hidden="true" tabindex="-1"></a><span class="co"># Get total annual and monthly Big G yield and join to KS diffs</span></span>
-<span id="cb15-132"><a href="#cb15-132" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-133"><a href="#cb15-133" aria-hidden="true" tabindex="-1"></a><span class="co"># get total annual yield by big G site</span></span>
-<span id="cb15-134"><a href="#cb15-134" aria-hidden="true" tabindex="-1"></a>totyield_annual <span class="ot">&lt;-</span> dat_big <span class="sc">%&gt;%</span> </span>
-<span id="cb15-135"><a href="#cb15-135" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(site_name, WaterYear, basin, subbasin) <span class="sc">%&gt;%</span> </span>
-<span id="cb15-136"><a href="#cb15-136" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">days =</span> <span class="fu">n</span>(), <span class="at">yield_annual =</span> <span class="fu">sum</span>(Yield_filled_mm, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb15-137"><a href="#cb15-137" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(yield_annual), days <span class="sc">&gt;=</span> <span class="dv">360</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb15-138"><a href="#cb15-138" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb15-139"><a href="#cb15-139" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">site_name_big =</span> site_name) <span class="sc">%&gt;%</span></span>
-<span id="cb15-140"><a href="#cb15-140" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(site_name_big, WaterYear, yield_annual) <span class="sc">%&gt;%</span></span>
-<span id="cb15-141"><a href="#cb15-141" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span>
-<span id="cb15-142"><a href="#cb15-142" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-143"><a href="#cb15-143" aria-hidden="true" tabindex="-1"></a><span class="co"># get total monthly yield by big G site</span></span>
-<span id="cb15-144"><a href="#cb15-144" aria-hidden="true" tabindex="-1"></a>totyield_monthly <span class="ot">&lt;-</span> dat_big <span class="sc">%&gt;%</span> </span>
-<span id="cb15-145"><a href="#cb15-145" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(site_name, WaterYear, basin, subbasin, Month) <span class="sc">%&gt;%</span> </span>
-<span id="cb15-146"><a href="#cb15-146" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">days =</span> <span class="fu">n</span>(), <span class="at">yield_monthly =</span> <span class="fu">sum</span>(Yield_filled_mm, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb15-147"><a href="#cb15-147" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(yield_monthly), days <span class="sc">&gt;=</span> <span class="dv">28</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb15-148"><a href="#cb15-148" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb15-149"><a href="#cb15-149" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">site_name_big =</span> site_name) <span class="sc">%&gt;%</span></span>
-<span id="cb15-150"><a href="#cb15-150" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(site_name_big, WaterYear, Month, yield_monthly) <span class="sc">%&gt;%</span></span>
-<span id="cb15-151"><a href="#cb15-151" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span>
-<span id="cb15-152"><a href="#cb15-152" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a><span class="fu"># G-g Difference (KS)</span></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>Purpose: Explore effects of monthly/annual water availability on Big-little difference using non-parametric Kolmogorov-Smirnov tests</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, include=FALSE}</span></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a><span class="in">library(tidyverse)</span></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a><span class="in">library(sf)</span></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a><span class="in">library(mapview)</span></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a><span class="in">library(fasstr)</span></span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a><span class="in">library(ggpubr)</span></span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a><span class="in">library(dygraphs)</span></span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a><span class="in">library(knitr)</span></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a><span class="fu">## Site info and daily data</span></span>
+<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a><span class="co"># site information and locations</span></span>
+<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a>siteinfo <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv"</span>)</span>
+<span id="cb15-26"><a href="#cb15-26" aria-hidden="true" tabindex="-1"></a>siteinfo_sp <span class="ot">&lt;-</span> <span class="fu">st_as_sf</span>(siteinfo, <span class="at">coords =</span> <span class="fu">c</span>(<span class="st">"long"</span>, <span class="st">"lat"</span>), <span class="at">crs =</span> <span class="dv">4326</span>)</span>
+<span id="cb15-27"><a href="#cb15-27" aria-hidden="true" tabindex="-1"></a><span class="fu">mapview</span>(siteinfo_sp, <span class="at">zcol =</span> <span class="st">"designation"</span>)</span>
+<span id="cb15-28"><a href="#cb15-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-29"><a href="#cb15-29" aria-hidden="true" tabindex="-1"></a><span class="co"># flow/yield (and temp) data </span></span>
+<span id="cb15-30"><a href="#cb15-30" aria-hidden="true" tabindex="-1"></a>dat <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb15-31"><a href="#cb15-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span>site_name <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"WoundedBuckCreek"</span>, <span class="st">"Brackett Creek"</span>))</span>
+<span id="cb15-32"><a href="#cb15-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-33"><a href="#cb15-33" aria-hidden="true" tabindex="-1"></a><span class="co"># add water/climate year variables</span></span>
+<span id="cb15-34"><a href="#cb15-34" aria-hidden="true" tabindex="-1"></a>dat <span class="ot">&lt;-</span> <span class="fu">add_date_variables</span>(dat, <span class="at">dates =</span> date, <span class="at">water_year_start =</span> <span class="dv">4</span>)</span>
+<span id="cb15-35"><a href="#cb15-35" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb15-36"><a href="#cb15-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-37"><a href="#cb15-37" aria-hidden="true" tabindex="-1"></a><span class="fu">## Separate and join G-g</span></span>
+<span id="cb15-40"><a href="#cb15-40" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb15-41"><a href="#cb15-41" aria-hidden="true" tabindex="-1"></a><span class="co"># pull out big G data</span></span>
+<span id="cb15-42"><a href="#cb15-42" aria-hidden="true" tabindex="-1"></a>dat_big <span class="ot">&lt;-</span> dat <span class="sc">%&gt;%</span> <span class="fu">filter</span>(site_name <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"West Brook NWIS"</span>, <span class="st">"Paine Run 10"</span>, <span class="st">"Piney River 10"</span>, <span class="st">"Staunton River 10"</span>, <span class="st">"Spread Creek Dam"</span>, <span class="st">"BigCreekLower"</span>, <span class="st">"Shields River ab Smith NWIS"</span>, <span class="st">"Donner Blitzen River nr Frenchglen NWIS"</span>)) </span>
+<span id="cb15-43"><a href="#cb15-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-44"><a href="#cb15-44" aria-hidden="true" tabindex="-1"></a><span class="co"># pull out little G data, assign big G site name</span></span>
+<span id="cb15-45"><a href="#cb15-45" aria-hidden="true" tabindex="-1"></a>dat_little <span class="ot">&lt;-</span> dat <span class="sc">%&gt;%</span> </span>
+<span id="cb15-46"><a href="#cb15-46" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(designation <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"little"</span>, <span class="st">"medium"</span>), <span class="sc">!</span>subbasin <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"Coal Creek"</span>, <span class="st">"McGee Creek"</span>, <span class="st">"Duck Creek"</span>, <span class="st">"Flathead"</span>),</span>
+<span id="cb15-47"><a href="#cb15-47" aria-hidden="true" tabindex="-1"></a>         <span class="sc">!</span>site_name <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"West Brook NWIS"</span>, <span class="st">"West Brook 0"</span>, <span class="st">"Paine Run 10"</span>, <span class="st">"Piney River 10"</span>, <span class="st">"Staunton River 10"</span>, <span class="st">"Spread Creek Dam"</span>, <span class="st">"Shields River ab Smith NWIS"</span>, <span class="st">"BigCreekLower"</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb15-48"><a href="#cb15-48" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">site_name_big =</span> <span class="fu">ifelse</span>(subbasin <span class="sc">==</span> <span class="st">"Big Creek"</span>, <span class="st">"BigCreekLower"</span>,</span>
+<span id="cb15-49"><a href="#cb15-49" aria-hidden="true" tabindex="-1"></a>                                <span class="fu">ifelse</span>(subbasin <span class="sc">==</span> <span class="st">"West Brook"</span>, <span class="st">"West Brook NWIS"</span>, </span>
+<span id="cb15-50"><a href="#cb15-50" aria-hidden="true" tabindex="-1"></a>                                       <span class="fu">ifelse</span>(subbasin <span class="sc">==</span> <span class="st">"Paine Run"</span>, <span class="st">"Paine Run 10"</span>, </span>
+<span id="cb15-51"><a href="#cb15-51" aria-hidden="true" tabindex="-1"></a>                                              <span class="fu">ifelse</span>(subbasin <span class="sc">==</span> <span class="st">"Piney River"</span>, <span class="st">"Piney River 10"</span>,</span>
+<span id="cb15-52"><a href="#cb15-52" aria-hidden="true" tabindex="-1"></a>                                                     <span class="fu">ifelse</span>(subbasin <span class="sc">==</span> <span class="st">"Staunton River"</span>, <span class="st">"Staunton River 10"</span>,</span>
+<span id="cb15-53"><a href="#cb15-53" aria-hidden="true" tabindex="-1"></a>                                                            <span class="fu">ifelse</span>(subbasin <span class="sc">==</span> <span class="st">"Shields River"</span>, <span class="st">"Shields River ab Smith NWIS"</span>,</span>
+<span id="cb15-54"><a href="#cb15-54" aria-hidden="true" tabindex="-1"></a>                                                                   <span class="fu">ifelse</span>(subbasin <span class="sc">==</span> <span class="st">"Snake River"</span>, <span class="st">"Spread Creek Dam"</span>, <span class="st">"Donner Blitzen River nr Frenchglen NWIS"</span>))))))))</span>
+<span id="cb15-55"><a href="#cb15-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-56"><a href="#cb15-56" aria-hidden="true" tabindex="-1"></a><span class="co"># Join big-little discharge data</span></span>
+<span id="cb15-57"><a href="#cb15-57" aria-hidden="true" tabindex="-1"></a>dat_Gg <span class="ot">&lt;-</span> dat_little <span class="sc">%&gt;%</span></span>
+<span id="cb15-58"><a href="#cb15-58" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(site_name, site_name_big, basin, subbasin, date, Month, MonthName, WaterYear, Yield_filled_mm_7) <span class="sc">%&gt;%</span> <span class="fu">rename</span>(<span class="at">yield_little =</span> Yield_filled_mm_7) <span class="sc">%&gt;%</span></span>
+<span id="cb15-59"><a href="#cb15-59" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(dat_big <span class="sc">%&gt;%</span> <span class="fu">select</span>(site_name, date, Yield_filled_mm_7) <span class="sc">%&gt;%</span> <span class="fu">rename</span>(<span class="at">site_name_big =</span> site_name, <span class="at">yield_big =</span> Yield_filled_mm_7)) <span class="sc">%&gt;%</span></span>
+<span id="cb15-60"><a href="#cb15-60" aria-hidden="true" tabindex="-1"></a>  <span class="fu">drop_na</span>() <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">MonthName =</span> <span class="fu">as.character</span>(MonthName))</span>
+<span id="cb15-61"><a href="#cb15-61" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-62"><a href="#cb15-62" aria-hidden="true" tabindex="-1"></a><span class="co"># table</span></span>
+<span id="cb15-63"><a href="#cb15-63" aria-hidden="true" tabindex="-1"></a>dat_Gg <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(subbasin) <span class="sc">%&gt;%</span> <span class="fu">summarize</span>(<span class="at">site_name_big =</span> <span class="fu">unique</span>(site_name_big)) <span class="sc">%&gt;%</span> <span class="fu">kable</span>(<span class="at">caption =</span> <span class="st">"Big G gage names for each focal sub-basin."</span>)</span>
+<span id="cb15-64"><a href="#cb15-64" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb15-65"><a href="#cb15-65" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-66"><a href="#cb15-66" aria-hidden="true" tabindex="-1"></a>View unique little g site names</span>
+<span id="cb15-69"><a href="#cb15-69" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb15-70"><a href="#cb15-70" aria-hidden="true" tabindex="-1"></a><span class="fu">sort</span>(<span class="fu">unique</span>(dat_Gg<span class="sc">$</span>site_name))</span>
+<span id="cb15-71"><a href="#cb15-71" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb15-72"><a href="#cb15-72" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-73"><a href="#cb15-73" aria-hidden="true" tabindex="-1"></a><span class="fu">## Compute Gg Difference</span></span>
+<span id="cb15-76"><a href="#cb15-76" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb15-77"><a href="#cb15-77" aria-hidden="true" tabindex="-1"></a>mysites <span class="ot">&lt;-</span> <span class="fu">unique</span>(dat_Gg<span class="sc">$</span>site_name)</span>
+<span id="cb15-78"><a href="#cb15-78" aria-hidden="true" tabindex="-1"></a>kscompare_list <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb15-79"><a href="#cb15-79" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(mysites)) {</span>
+<span id="cb15-80"><a href="#cb15-80" aria-hidden="true" tabindex="-1"></a>  d <span class="ot">&lt;-</span> dat_Gg <span class="sc">%&gt;%</span> <span class="fu">filter</span>(site_name <span class="sc">==</span> mysites[i])</span>
+<span id="cb15-81"><a href="#cb15-81" aria-hidden="true" tabindex="-1"></a>  yrs <span class="ot">&lt;-</span> <span class="fu">unique</span>(d<span class="sc">$</span>WaterYear)</span>
+<span id="cb15-82"><a href="#cb15-82" aria-hidden="true" tabindex="-1"></a>  kscompare_list_yr <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb15-83"><a href="#cb15-83" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span>(j <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(yrs)) {</span>
+<span id="cb15-84"><a href="#cb15-84" aria-hidden="true" tabindex="-1"></a>    dy <span class="ot">&lt;-</span> d <span class="sc">%&gt;%</span> <span class="fu">filter</span>(WaterYear <span class="sc">==</span> yrs[j])</span>
+<span id="cb15-85"><a href="#cb15-85" aria-hidden="true" tabindex="-1"></a>    mypvals_monthly <span class="ot">&lt;-</span> <span class="fu">tibble</span>(<span class="at">site_name =</span> <span class="fu">rep</span>(<span class="cn">NA</span>, <span class="at">times =</span> <span class="dv">12</span>), </span>
+<span id="cb15-86"><a href="#cb15-86" aria-hidden="true" tabindex="-1"></a>                              <span class="at">site_name_big =</span> <span class="fu">rep</span>(<span class="cn">NA</span>, <span class="at">times =</span> <span class="dv">12</span>), </span>
+<span id="cb15-87"><a href="#cb15-87" aria-hidden="true" tabindex="-1"></a>                              <span class="at">WaterYear =</span> <span class="fu">rep</span>(<span class="cn">NA</span>, <span class="at">times =</span> <span class="dv">12</span>),</span>
+<span id="cb15-88"><a href="#cb15-88" aria-hidden="true" tabindex="-1"></a>                              <span class="at">Month =</span> <span class="fu">rep</span>(<span class="cn">NA</span>, <span class="at">times =</span> <span class="dv">12</span>),</span>
+<span id="cb15-89"><a href="#cb15-89" aria-hidden="true" tabindex="-1"></a>                              <span class="at">MonthName =</span> <span class="fu">rep</span>(<span class="cn">NA</span>, <span class="at">times =</span> <span class="dv">12</span>),</span>
+<span id="cb15-90"><a href="#cb15-90" aria-hidden="true" tabindex="-1"></a>                              <span class="at">days =</span> <span class="fu">rep</span>(<span class="cn">NA</span>, <span class="at">times =</span> <span class="dv">12</span>),</span>
+<span id="cb15-91"><a href="#cb15-91" aria-hidden="true" tabindex="-1"></a>                              <span class="at">stat =</span> <span class="fu">rep</span>(<span class="cn">NA</span>, <span class="at">times =</span> <span class="dv">12</span>),</span>
+<span id="cb15-92"><a href="#cb15-92" aria-hidden="true" tabindex="-1"></a>                              <span class="at">pval =</span> <span class="fu">rep</span>(<span class="cn">NA</span>, <span class="at">times =</span> <span class="dv">12</span>))</span>
+<span id="cb15-93"><a href="#cb15-93" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span>(k <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>) {</span>
+<span id="cb15-94"><a href="#cb15-94" aria-hidden="true" tabindex="-1"></a>      dym <span class="ot">&lt;-</span> dy <span class="sc">%&gt;%</span> <span class="fu">filter</span>(Month <span class="sc">==</span> k)</span>
+<span id="cb15-95"><a href="#cb15-95" aria-hidden="true" tabindex="-1"></a>      <span class="cf">if</span>(<span class="fu">dim</span>(dym)[<span class="dv">1</span>] <span class="sc">&lt;</span> <span class="dv">25</span>) <span class="cf">next</span></span>
+<span id="cb15-96"><a href="#cb15-96" aria-hidden="true" tabindex="-1"></a>      mytest <span class="ot">&lt;-</span> <span class="fu">ks.test</span>(dym<span class="sc">$</span>yield_little, dym<span class="sc">$</span>yield_big, <span class="at">exact =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb15-97"><a href="#cb15-97" aria-hidden="true" tabindex="-1"></a>      mypvals_monthly<span class="sc">$</span>site_name[k] <span class="ot">&lt;-</span> mysites[i]</span>
+<span id="cb15-98"><a href="#cb15-98" aria-hidden="true" tabindex="-1"></a>      mypvals_monthly<span class="sc">$</span>site_name_big[k] <span class="ot">&lt;-</span> <span class="fu">unique</span>(dym<span class="sc">$</span>site_name_big)</span>
+<span id="cb15-99"><a href="#cb15-99" aria-hidden="true" tabindex="-1"></a>      mypvals_monthly<span class="sc">$</span>WaterYear[k] <span class="ot">&lt;-</span> yrs[j]</span>
+<span id="cb15-100"><a href="#cb15-100" aria-hidden="true" tabindex="-1"></a>      mypvals_monthly<span class="sc">$</span>Month[k] <span class="ot">&lt;-</span> k</span>
+<span id="cb15-101"><a href="#cb15-101" aria-hidden="true" tabindex="-1"></a>      mypvals_monthly<span class="sc">$</span>MonthName[k] <span class="ot">&lt;-</span> <span class="fu">unique</span>(dym<span class="sc">$</span>MonthName)</span>
+<span id="cb15-102"><a href="#cb15-102" aria-hidden="true" tabindex="-1"></a>      mypvals_monthly<span class="sc">$</span>days[k] <span class="ot">&lt;-</span> <span class="fu">dim</span>(dym)[<span class="dv">1</span>]</span>
+<span id="cb15-103"><a href="#cb15-103" aria-hidden="true" tabindex="-1"></a>      mypvals_monthly<span class="sc">$</span>stat[k] <span class="ot">&lt;-</span> mytest<span class="sc">$</span>statistic</span>
+<span id="cb15-104"><a href="#cb15-104" aria-hidden="true" tabindex="-1"></a>      mypvals_monthly<span class="sc">$</span>pval[k] <span class="ot">&lt;-</span> mytest<span class="sc">$</span>p.value</span>
+<span id="cb15-105"><a href="#cb15-105" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb15-106"><a href="#cb15-106" aria-hidden="true" tabindex="-1"></a>    kscompare_list_yr[[j]] <span class="ot">&lt;-</span> mypvals_monthly</span>
+<span id="cb15-107"><a href="#cb15-107" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb15-108"><a href="#cb15-108" aria-hidden="true" tabindex="-1"></a>  kscompare_list[[i]] <span class="ot">&lt;-</span> <span class="fu">do.call</span>(rbind, kscompare_list_yr)</span>
+<span id="cb15-109"><a href="#cb15-109" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb15-110"><a href="#cb15-110" aria-hidden="true" tabindex="-1"></a>kscompare <span class="ot">&lt;-</span> <span class="fu">do.call</span>(rbind, kscompare_list) <span class="sc">%&gt;%</span> <span class="fu">drop_na</span>()</span>
+<span id="cb15-111"><a href="#cb15-111" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb15-112"><a href="#cb15-112" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-113"><a href="#cb15-113" aria-hidden="true" tabindex="-1"></a>View relationship between KS test statistic and p-value</span>
+<span id="cb15-116"><a href="#cb15-116" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb15-117"><a href="#cb15-117" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(pval <span class="sc">~</span> stat, kscompare, <span class="at">xlab =</span> <span class="st">"KS test statistic"</span>, <span class="at">ylab =</span> <span class="st">"p-value"</span>)</span>
+<span id="cb15-118"><a href="#cb15-118" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb15-119"><a href="#cb15-119" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-120"><a href="#cb15-120" aria-hidden="true" tabindex="-1"></a>View distribution of KS test statistics and p-values</span>
+<span id="cb15-123"><a href="#cb15-123" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb15-124"><a href="#cb15-124" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(kscompare<span class="sc">$</span>stat)</span>
+<span id="cb15-125"><a href="#cb15-125" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(kscompare<span class="sc">$</span>pval)</span>
+<span id="cb15-126"><a href="#cb15-126" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb15-127"><a href="#cb15-127" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-128"><a href="#cb15-128" aria-hidden="true" tabindex="-1"></a><span class="fu">## Calculate total yield</span></span>
+<span id="cb15-131"><a href="#cb15-131" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb15-132"><a href="#cb15-132" aria-hidden="true" tabindex="-1"></a><span class="co"># Get total annual and monthly Big G yield and join to KS diffs</span></span>
+<span id="cb15-133"><a href="#cb15-133" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-134"><a href="#cb15-134" aria-hidden="true" tabindex="-1"></a><span class="co"># get total annual yield by big G site</span></span>
+<span id="cb15-135"><a href="#cb15-135" aria-hidden="true" tabindex="-1"></a>totyield_annual <span class="ot">&lt;-</span> dat_big <span class="sc">%&gt;%</span> </span>
+<span id="cb15-136"><a href="#cb15-136" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(site_name, WaterYear, basin, subbasin) <span class="sc">%&gt;%</span> </span>
+<span id="cb15-137"><a href="#cb15-137" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">days =</span> <span class="fu">n</span>(), <span class="at">yield_annual =</span> <span class="fu">sum</span>(Yield_filled_mm, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb15-138"><a href="#cb15-138" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(yield_annual), days <span class="sc">&gt;=</span> <span class="dv">360</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb15-139"><a href="#cb15-139" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb15-140"><a href="#cb15-140" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">site_name_big =</span> site_name) <span class="sc">%&gt;%</span></span>
+<span id="cb15-141"><a href="#cb15-141" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(site_name_big, WaterYear, yield_annual) <span class="sc">%&gt;%</span></span>
+<span id="cb15-142"><a href="#cb15-142" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span>
+<span id="cb15-143"><a href="#cb15-143" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-144"><a href="#cb15-144" aria-hidden="true" tabindex="-1"></a><span class="co"># get total monthly yield by big G site</span></span>
+<span id="cb15-145"><a href="#cb15-145" aria-hidden="true" tabindex="-1"></a>totyield_monthly <span class="ot">&lt;-</span> dat_big <span class="sc">%&gt;%</span> </span>
+<span id="cb15-146"><a href="#cb15-146" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(site_name, WaterYear, basin, subbasin, Month) <span class="sc">%&gt;%</span> </span>
+<span id="cb15-147"><a href="#cb15-147" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">days =</span> <span class="fu">n</span>(), <span class="at">yield_monthly =</span> <span class="fu">sum</span>(Yield_filled_mm, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb15-148"><a href="#cb15-148" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(yield_monthly), days <span class="sc">&gt;=</span> <span class="dv">28</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb15-149"><a href="#cb15-149" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb15-150"><a href="#cb15-150" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">site_name_big =</span> site_name) <span class="sc">%&gt;%</span></span>
+<span id="cb15-151"><a href="#cb15-151" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(site_name_big, WaterYear, Month, yield_monthly) <span class="sc">%&gt;%</span></span>
+<span id="cb15-152"><a href="#cb15-152" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span>
 <span id="cb15-153"><a href="#cb15-153" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-154"><a href="#cb15-154" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb15-155"><a href="#cb15-155" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-156"><a href="#cb15-156" aria-hidden="true" tabindex="-1"></a><span class="fu">## Explore Gg diff by water availability</span></span>
-<span id="cb15-157"><a href="#cb15-157" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-158"><a href="#cb15-158" aria-hidden="true" tabindex="-1"></a>Hypothesis: during wetter periods (months/years) flow regimes become more similar among locations within stream networks (i.e., positive relationship between monthly/annual total yield and KS-test p-value)</span>
-<span id="cb15-159"><a href="#cb15-159" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-160"><a href="#cb15-160" aria-hidden="true" tabindex="-1"></a>How might this vary among basins that differ in primary water source (rain vs. snow) and among sites within basins (due to surface vs. subsurface controls on flow)?</span>
-<span id="cb15-161"><a href="#cb15-161" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-164"><a href="#cb15-164" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb15-165"><a href="#cb15-165" aria-hidden="true" tabindex="-1"></a><span class="co"># join KS comparison df with annual/monthly water availability</span></span>
-<span id="cb15-166"><a href="#cb15-166" aria-hidden="true" tabindex="-1"></a>kscompare <span class="ot">&lt;-</span> kscompare <span class="sc">%&gt;%</span> <span class="fu">left_join</span>(totyield_annual) <span class="sc">%&gt;%</span> <span class="fu">left_join</span>(totyield_monthly) <span class="sc">%&gt;%</span></span>
-<span id="cb15-167"><a href="#cb15-167" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">MonthName =</span> <span class="fu">factor</span>(MonthName, <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"Apr"</span>, <span class="st">"May"</span>, <span class="st">"Jun"</span>, <span class="st">"Jul"</span>, <span class="st">"Aug"</span>, <span class="st">"Sep"</span>, <span class="st">"Oct"</span>, <span class="st">"Nov"</span>, <span class="st">"Dec"</span>, <span class="st">"Jan"</span>, <span class="st">"Feb"</span>, <span class="st">"Mar"</span>))) <span class="sc">%&gt;%</span></span>
-<span id="cb15-168"><a href="#cb15-168" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(siteinfo <span class="sc">%&gt;%</span> <span class="fu">select</span>(site_name, basin))</span>
-<span id="cb15-169"><a href="#cb15-169" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb15-170"><a href="#cb15-170" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-171"><a href="#cb15-171" aria-hidden="true" tabindex="-1"></a><span class="fu">### Global relationship</span></span>
-<span id="cb15-172"><a href="#cb15-172" aria-hidden="true" tabindex="-1"></a>Plot relationship between log(monthly total yield) and log(KS p-value) for all basins, sites, and months combined</span>
-<span id="cb15-175"><a href="#cb15-175" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb15-176"><a href="#cb15-176" aria-hidden="true" tabindex="-1"></a>kscompare <span class="sc">%&gt;%</span> <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">log</span>(yield_monthly), <span class="at">y =</span> <span class="fu">log</span>(pval))) <span class="sc">+</span> </span>
-<span id="cb15-177"><a href="#cb15-177" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="fu">aes</span>(<span class="at">group =</span> MonthName, <span class="at">color =</span> MonthName)) <span class="sc">+</span> </span>
-<span id="cb15-178"><a href="#cb15-178" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">"lm"</span>) <span class="sc">+</span> <span class="fu">geom_abline</span>(<span class="at">slope =</span> <span class="dv">0</span>, <span class="at">intercept =</span> <span class="fu">log</span>(<span class="fl">0.05</span>), <span class="at">linetype =</span> <span class="st">"dashed"</span>)</span>
-<span id="cb15-179"><a href="#cb15-179" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb15-180"><a href="#cb15-180" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-181"><a href="#cb15-181" aria-hidden="true" tabindex="-1"></a><span class="fu">### Basin-level effects</span></span>
-<span id="cb15-182"><a href="#cb15-182" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig.width=8, fig.height=7}</span></span>
-<span id="cb15-183"><a href="#cb15-183" aria-hidden="true" tabindex="-1"></a><span class="in"># Plot all sites, facet by basin</span></span>
-<span id="cb15-184"><a href="#cb15-184" aria-hidden="true" tabindex="-1"></a><span class="in">kscompare %&gt;% ggplot(aes(x = log(yield_monthly), y = log(pval))) + </span></span>
-<span id="cb15-185"><a href="#cb15-185" aria-hidden="true" tabindex="-1"></a><span class="in">  geom_point(aes(group = MonthName, color = MonthName)) + facet_wrap(~ basin) + </span></span>
-<span id="cb15-186"><a href="#cb15-186" aria-hidden="true" tabindex="-1"></a><span class="in">  geom_smooth(method = "lm") + geom_abline(slope = 0, intercept = log(0.05), linetype = "dashed")</span></span>
-<span id="cb15-187"><a href="#cb15-187" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb15-188"><a href="#cb15-188" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-189"><a href="#cb15-189" aria-hidden="true" tabindex="-1"></a><span class="fu">### Basin and site effects</span></span>
-<span id="cb15-192"><a href="#cb15-192" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb15-193"><a href="#cb15-193" aria-hidden="true" tabindex="-1"></a>mybasins <span class="ot">&lt;-</span> <span class="fu">unique</span>(kscompare<span class="sc">$</span>basin)</span>
-<span id="cb15-194"><a href="#cb15-194" aria-hidden="true" tabindex="-1"></a>myplots <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
-<span id="cb15-195"><a href="#cb15-195" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(mybasins)) {</span>
-<span id="cb15-196"><a href="#cb15-196" aria-hidden="true" tabindex="-1"></a>  myplots[[i]] <span class="ot">&lt;-</span> kscompare <span class="sc">%&gt;%</span> </span>
-<span id="cb15-197"><a href="#cb15-197" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(basin <span class="sc">==</span> mybasins[i]) <span class="sc">%&gt;%</span></span>
-<span id="cb15-198"><a href="#cb15-198" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">log</span>(yield_monthly), <span class="at">y =</span> <span class="fu">log</span>(pval))) <span class="sc">+</span> </span>
-<span id="cb15-199"><a href="#cb15-199" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="fu">aes</span>(<span class="at">group =</span> MonthName, <span class="at">color =</span> MonthName)) <span class="sc">+</span> </span>
-<span id="cb15-200"><a href="#cb15-200" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_wrap</span>(<span class="sc">~</span> site_name) <span class="sc">+</span> </span>
-<span id="cb15-201"><a href="#cb15-201" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">"lm"</span>) <span class="sc">+</span> </span>
-<span id="cb15-202"><a href="#cb15-202" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_abline</span>(<span class="at">slope =</span> <span class="dv">0</span>, <span class="at">intercept =</span> <span class="fu">log</span>(<span class="fl">0.05</span>), <span class="at">linetype =</span> <span class="st">"dashed"</span>)</span>
-<span id="cb15-203"><a href="#cb15-203" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb15-204"><a href="#cb15-204" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb15-205"><a href="#cb15-205" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-206"><a href="#cb15-206" aria-hidden="true" tabindex="-1"></a>::: panel-tabset</span>
-<span id="cb15-207"><a href="#cb15-207" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Big Creek</span></span>
-<span id="cb15-208"><a href="#cb15-208" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=FALSE, fig.height=8, fig.width=8}</span></span>
-<span id="cb15-209"><a href="#cb15-209" aria-hidden="true" tabindex="-1"></a><span class="in">myplots[[1]]</span></span>
-<span id="cb15-210"><a href="#cb15-210" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb15-211"><a href="#cb15-211" aria-hidden="true" tabindex="-1"></a><span class="fu">#### West Brook</span></span>
-<span id="cb15-212"><a href="#cb15-212" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=FALSE, fig.height=8, fig.width=8}</span></span>
-<span id="cb15-213"><a href="#cb15-213" aria-hidden="true" tabindex="-1"></a><span class="in">myplots[[2]]</span></span>
-<span id="cb15-214"><a href="#cb15-214" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb15-215"><a href="#cb15-215" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Paine Run</span></span>
-<span id="cb15-216"><a href="#cb15-216" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=FALSE, fig.height=8, fig.width=8}</span></span>
-<span id="cb15-217"><a href="#cb15-217" aria-hidden="true" tabindex="-1"></a><span class="in">myplots[[3]]</span></span>
-<span id="cb15-218"><a href="#cb15-218" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb15-219"><a href="#cb15-219" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Staunton River</span></span>
-<span id="cb15-220"><a href="#cb15-220" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=FALSE, fig.height=8, fig.width=8}</span></span>
-<span id="cb15-221"><a href="#cb15-221" aria-hidden="true" tabindex="-1"></a><span class="in">myplots[[4]]</span></span>
-<span id="cb15-222"><a href="#cb15-222" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb15-223"><a href="#cb15-223" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Shields River</span></span>
-<span id="cb15-224"><a href="#cb15-224" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=FALSE, fig.height=8, fig.width=8}</span></span>
-<span id="cb15-225"><a href="#cb15-225" aria-hidden="true" tabindex="-1"></a><span class="in">myplots[[5]]</span></span>
-<span id="cb15-226"><a href="#cb15-226" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb15-227"><a href="#cb15-227" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Snake River</span></span>
-<span id="cb15-228"><a href="#cb15-228" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=FALSE, fig.height=8, fig.width=8}</span></span>
-<span id="cb15-229"><a href="#cb15-229" aria-hidden="true" tabindex="-1"></a><span class="in">myplots[[6]]</span></span>
-<span id="cb15-230"><a href="#cb15-230" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb15-231"><a href="#cb15-231" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Donner Blitzen</span></span>
-<span id="cb15-232"><a href="#cb15-232" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=FALSE, fig.height=8, fig.width=8}</span></span>
-<span id="cb15-233"><a href="#cb15-233" aria-hidden="true" tabindex="-1"></a><span class="in">myplots[[7]]</span></span>
-<span id="cb15-234"><a href="#cb15-234" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb15-235"><a href="#cb15-235" aria-hidden="true" tabindex="-1"></a>:::</span>
-<span id="cb15-236"><a href="#cb15-236" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-154"><a href="#cb15-154" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-155"><a href="#cb15-155" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb15-156"><a href="#cb15-156" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-157"><a href="#cb15-157" aria-hidden="true" tabindex="-1"></a><span class="fu">## Explore Gg diff by water availability</span></span>
+<span id="cb15-158"><a href="#cb15-158" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-159"><a href="#cb15-159" aria-hidden="true" tabindex="-1"></a>Hypothesis: during wetter periods (months/years) flow regimes become more similar among locations within stream networks (i.e., positive relationship between monthly/annual total yield and KS-test p-value)</span>
+<span id="cb15-160"><a href="#cb15-160" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-161"><a href="#cb15-161" aria-hidden="true" tabindex="-1"></a>How might this vary among basins that differ in primary water source (rain vs. snow) and among sites within basins (due to surface vs. subsurface controls on flow)?</span>
+<span id="cb15-162"><a href="#cb15-162" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-165"><a href="#cb15-165" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb15-166"><a href="#cb15-166" aria-hidden="true" tabindex="-1"></a><span class="co"># join KS comparison df with annual/monthly water availability</span></span>
+<span id="cb15-167"><a href="#cb15-167" aria-hidden="true" tabindex="-1"></a>kscompare <span class="ot">&lt;-</span> kscompare <span class="sc">%&gt;%</span> <span class="fu">left_join</span>(totyield_annual) <span class="sc">%&gt;%</span> <span class="fu">left_join</span>(totyield_monthly) <span class="sc">%&gt;%</span></span>
+<span id="cb15-168"><a href="#cb15-168" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">MonthName =</span> <span class="fu">factor</span>(MonthName, <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"Apr"</span>, <span class="st">"May"</span>, <span class="st">"Jun"</span>, <span class="st">"Jul"</span>, <span class="st">"Aug"</span>, <span class="st">"Sep"</span>, <span class="st">"Oct"</span>, <span class="st">"Nov"</span>, <span class="st">"Dec"</span>, <span class="st">"Jan"</span>, <span class="st">"Feb"</span>, <span class="st">"Mar"</span>))) <span class="sc">%&gt;%</span></span>
+<span id="cb15-169"><a href="#cb15-169" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(siteinfo <span class="sc">%&gt;%</span> <span class="fu">select</span>(site_name, basin))</span>
+<span id="cb15-170"><a href="#cb15-170" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb15-171"><a href="#cb15-171" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-172"><a href="#cb15-172" aria-hidden="true" tabindex="-1"></a><span class="fu">### Global relationship</span></span>
+<span id="cb15-173"><a href="#cb15-173" aria-hidden="true" tabindex="-1"></a>Plot relationship between log(monthly total yield) and log(KS p-value) for all basins, sites, and months combined</span>
+<span id="cb15-176"><a href="#cb15-176" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb15-177"><a href="#cb15-177" aria-hidden="true" tabindex="-1"></a>kscompare <span class="sc">%&gt;%</span> <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">log</span>(yield_monthly), <span class="at">y =</span> <span class="fu">log</span>(pval))) <span class="sc">+</span> </span>
+<span id="cb15-178"><a href="#cb15-178" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="fu">aes</span>(<span class="at">group =</span> MonthName, <span class="at">color =</span> MonthName)) <span class="sc">+</span> </span>
+<span id="cb15-179"><a href="#cb15-179" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">"lm"</span>) <span class="sc">+</span> <span class="fu">geom_abline</span>(<span class="at">slope =</span> <span class="dv">0</span>, <span class="at">intercept =</span> <span class="fu">log</span>(<span class="fl">0.05</span>), <span class="at">linetype =</span> <span class="st">"dashed"</span>)</span>
+<span id="cb15-180"><a href="#cb15-180" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb15-181"><a href="#cb15-181" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-182"><a href="#cb15-182" aria-hidden="true" tabindex="-1"></a><span class="fu">### Basin-level effects</span></span>
+<span id="cb15-183"><a href="#cb15-183" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig.width=8, fig.height=7}</span></span>
+<span id="cb15-184"><a href="#cb15-184" aria-hidden="true" tabindex="-1"></a><span class="in"># Plot all sites, facet by basin</span></span>
+<span id="cb15-185"><a href="#cb15-185" aria-hidden="true" tabindex="-1"></a><span class="in">kscompare %&gt;% ggplot(aes(x = log(yield_monthly), y = log(pval))) + </span></span>
+<span id="cb15-186"><a href="#cb15-186" aria-hidden="true" tabindex="-1"></a><span class="in">  geom_point(aes(group = MonthName, color = MonthName)) + facet_wrap(~ basin) + </span></span>
+<span id="cb15-187"><a href="#cb15-187" aria-hidden="true" tabindex="-1"></a><span class="in">  geom_smooth(method = "lm") + geom_abline(slope = 0, intercept = log(0.05), linetype = "dashed")</span></span>
+<span id="cb15-188"><a href="#cb15-188" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb15-189"><a href="#cb15-189" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-190"><a href="#cb15-190" aria-hidden="true" tabindex="-1"></a><span class="fu">### Basin and site effects</span></span>
+<span id="cb15-193"><a href="#cb15-193" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb15-194"><a href="#cb15-194" aria-hidden="true" tabindex="-1"></a>mybasins <span class="ot">&lt;-</span> <span class="fu">unique</span>(kscompare<span class="sc">$</span>basin)</span>
+<span id="cb15-195"><a href="#cb15-195" aria-hidden="true" tabindex="-1"></a>myplots <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb15-196"><a href="#cb15-196" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(mybasins)) {</span>
+<span id="cb15-197"><a href="#cb15-197" aria-hidden="true" tabindex="-1"></a>  myplots[[i]] <span class="ot">&lt;-</span> kscompare <span class="sc">%&gt;%</span> </span>
+<span id="cb15-198"><a href="#cb15-198" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(basin <span class="sc">==</span> mybasins[i]) <span class="sc">%&gt;%</span></span>
+<span id="cb15-199"><a href="#cb15-199" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">log</span>(yield_monthly), <span class="at">y =</span> <span class="fu">log</span>(pval))) <span class="sc">+</span> </span>
+<span id="cb15-200"><a href="#cb15-200" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_point</span>(<span class="fu">aes</span>(<span class="at">group =</span> MonthName, <span class="at">color =</span> MonthName)) <span class="sc">+</span> </span>
+<span id="cb15-201"><a href="#cb15-201" aria-hidden="true" tabindex="-1"></a>    <span class="fu">facet_wrap</span>(<span class="sc">~</span> site_name) <span class="sc">+</span> </span>
+<span id="cb15-202"><a href="#cb15-202" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">"lm"</span>) <span class="sc">+</span> </span>
+<span id="cb15-203"><a href="#cb15-203" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_abline</span>(<span class="at">slope =</span> <span class="dv">0</span>, <span class="at">intercept =</span> <span class="fu">log</span>(<span class="fl">0.05</span>), <span class="at">linetype =</span> <span class="st">"dashed"</span>)</span>
+<span id="cb15-204"><a href="#cb15-204" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb15-205"><a href="#cb15-205" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb15-206"><a href="#cb15-206" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-207"><a href="#cb15-207" aria-hidden="true" tabindex="-1"></a>::: panel-tabset</span>
+<span id="cb15-208"><a href="#cb15-208" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Big Creek</span></span>
+<span id="cb15-209"><a href="#cb15-209" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=FALSE, fig.height=8, fig.width=8}</span></span>
+<span id="cb15-210"><a href="#cb15-210" aria-hidden="true" tabindex="-1"></a><span class="in">myplots[[1]]</span></span>
+<span id="cb15-211"><a href="#cb15-211" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb15-212"><a href="#cb15-212" aria-hidden="true" tabindex="-1"></a><span class="fu">#### West Brook</span></span>
+<span id="cb15-213"><a href="#cb15-213" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=FALSE, fig.height=8, fig.width=8}</span></span>
+<span id="cb15-214"><a href="#cb15-214" aria-hidden="true" tabindex="-1"></a><span class="in">myplots[[2]]</span></span>
+<span id="cb15-215"><a href="#cb15-215" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb15-216"><a href="#cb15-216" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Paine Run</span></span>
+<span id="cb15-217"><a href="#cb15-217" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=FALSE, fig.height=8, fig.width=8}</span></span>
+<span id="cb15-218"><a href="#cb15-218" aria-hidden="true" tabindex="-1"></a><span class="in">myplots[[3]]</span></span>
+<span id="cb15-219"><a href="#cb15-219" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb15-220"><a href="#cb15-220" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Staunton River</span></span>
+<span id="cb15-221"><a href="#cb15-221" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=FALSE, fig.height=8, fig.width=8}</span></span>
+<span id="cb15-222"><a href="#cb15-222" aria-hidden="true" tabindex="-1"></a><span class="in">myplots[[4]]</span></span>
+<span id="cb15-223"><a href="#cb15-223" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb15-224"><a href="#cb15-224" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Shields River</span></span>
+<span id="cb15-225"><a href="#cb15-225" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=FALSE, fig.height=8, fig.width=8}</span></span>
+<span id="cb15-226"><a href="#cb15-226" aria-hidden="true" tabindex="-1"></a><span class="in">myplots[[5]]</span></span>
+<span id="cb15-227"><a href="#cb15-227" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb15-228"><a href="#cb15-228" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Snake River</span></span>
+<span id="cb15-229"><a href="#cb15-229" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=FALSE, fig.height=8, fig.width=8}</span></span>
+<span id="cb15-230"><a href="#cb15-230" aria-hidden="true" tabindex="-1"></a><span class="in">myplots[[6]]</span></span>
+<span id="cb15-231"><a href="#cb15-231" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb15-232"><a href="#cb15-232" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Donner Blitzen</span></span>
+<span id="cb15-233"><a href="#cb15-233" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, echo=FALSE, fig.height=8, fig.width=8}</span></span>
+<span id="cb15-234"><a href="#cb15-234" aria-hidden="true" tabindex="-1"></a><span class="in">myplots[[7]]</span></span>
+<span id="cb15-235"><a href="#cb15-235" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb15-236"><a href="#cb15-236" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb15-237"><a href="#cb15-237" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-238"><a href="#cb15-238" aria-hidden="true" tabindex="-1"></a></span>
 </code><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
