@@ -756,7 +756,7 @@ p1_FLBC
 ```{r, echo=FALSE}
 p1_SC
 ```
-#### SHIELDS RIVER
+#### Shields River
 ```{r, echo=FALSE}
 p1_SH
 ```
@@ -929,7 +929,7 @@ bigplotfun(mybasin = "Snake River",
 
 ### Shields River
 ::: panel-tabset
-#### 2022
+#### 2020
 ```{r, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "Shields River",
            mysubbasin = NA,

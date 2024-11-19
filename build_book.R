@@ -16,3 +16,7 @@ quarto::quarto_render("Explore Data/ExploreData.qmd",
 quarto::quarto_render("Big G Little g/GgStoryPlots.qmd", 
                       #cache_refresh = TRUE, # default is FALSE
                       output_format = "html", cache = FALSE)
+
+quarto::quarto_render("Big G Little g/GgDiffKS.qmd", 
+                      #cache_refresh = TRUE, # default is FALSE
+                      output_format = "html")
