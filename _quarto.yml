@@ -17,10 +17,15 @@ book:
   date: today
   chapters:
     - index.qmd
-    - Data Availability/CollateData.qmd
-    - Explore Data/ExploreData.qmd
-    - Big G Little g/GgStoryPlots.qmd
-    - Big G Little g/GgDiffKS.qmd
+    - part: "Data"
+      chapters:
+        - Data Availability/CollateData.qmd
+        - Explore Data/ExploreData.qmd
+    - part: "Big G-Little g"   
+      chapters:
+        - Big G Little g/GgStoryPlots.qmd
+        - Big G Little g/GgDiffKS.qmd
+        - Big G Little g/GgDiffJAGS.qmd
 
 format:
   html:

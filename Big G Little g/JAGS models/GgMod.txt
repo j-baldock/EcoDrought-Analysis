@@ -1,0 +1,29 @@
+model {
+
+##--- LIKELIHOOD ---------------------------------------------------##
+
+for (i in 1:nObs) {
+  Q[i] ~ dnorm(mu[i], pow(sigma, -2))
+  mu[i] <- alpha[months[i]] + beta1[sites[i]] * ind[i] + beta2[sites[i]] * ind[i] * yieldtot[i]
+  
+  # Log-likelihood
+  loglik[i] <- logdensity.norm(Q[i], mu[i], pow(sigma, -2))
+  }
+
+
+##--- PRIORS --------------------------------------------------------##
+
+# Process error is shared among sites
+sigma ~ dunif(0.001, 100)
+
+# Site-specific parameters
+for (j in 1:nSites) {
+  beta1[j] ~ dnorm(0, pow(10, -2))
+  beta2[j] ~ dnorm(0, pow(10, -2))
+  }
+
+for(k in 1:nMonths) {
+  alpha[k] ~ dnorm(0, pow(10, -2))
+  }
+
+}

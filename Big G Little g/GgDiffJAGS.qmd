@@ -1,0 +1,270 @@
+---
+title: "G-g Difference (JAGS)"
+format: html
+editor: visual
+---
+
+Purpose: Model effects of monthly/annual water availability on Big-little difference using JAGS
+
+
+```{r echo=FALSE, message=FALSE}
+library(tidyverse)
+library(sf)
+library(mapview)
+library(fasstr)
+library(GGally)
+library(R2jags)
+library(MCMCvis)
+library(loo)
+library(HDInterval)
+library(scales)
+library(knitr)
+library(aspace) # for radian conversion
+```
+
+## Data
+
+### Site info and daily data
+```{r}
+# site information and locations
+siteinfo <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv")
+siteinfo_sp <- st_as_sf(siteinfo, coords = c("long", "lat"), crs = 4326)
+mapview(siteinfo_sp, zcol = "designation")
+
+# flow/yield (and temp) data 
+dat <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv") %>%
+  filter(!site_name %in% c("WoundedBuckCreek", "Brackett Creek"))
+
+# add water/climate year variables
+dat <- add_date_variables(dat, dates = date, water_year_start = 4)
+```
+
+### Separate and join G-g
+```{r}
+# pull out big G data
+dat_big <- dat %>% filter(site_name %in% c("West Brook NWIS", "Paine Run 10", "Piney River 10", "Staunton River 10", "Spread Creek Dam", "BigCreekLower", "Shields River ab Smith NWIS", "Donner Blitzen River nr Frenchglen NWIS")) 
+
+# pull out little G data, assign big G site name
+dat_little <- dat %>% 
+  filter(designation %in% c("little", "medium"), !subbasin %in% c("Coal Creek", "McGee Creek", "Duck Creek", "Flathead"),
+         !site_name %in% c("West Brook NWIS", "West Brook 0", "Paine Run 10", "Piney River 10", "Staunton River 10", "Spread Creek Dam", "Shields River ab Smith NWIS", "BigCreekLower")) %>%
+  mutate(site_name_big = ifelse(subbasin == "Big Creek", "BigCreekLower",
+                                ifelse(subbasin == "West Brook", "West Brook NWIS", 
+                                       ifelse(subbasin == "Paine Run", "Paine Run 10", 
+                                              ifelse(subbasin == "Piney River", "Piney River 10",
+                                                     ifelse(subbasin == "Staunton River", "Staunton River 10",
+                                                            ifelse(subbasin == "Shields River", "Shields River ab Smith NWIS",
+                                                                   ifelse(subbasin == "Snake River", "Spread Creek Dam", "Donner Blitzen River nr Frenchglen NWIS"))))))))
+
+# Join big-little discharge data
+dat_Gg <- dat_little %>%
+  select(site_name, site_name_big, basin, subbasin, date, Month, MonthName, WaterYear, Yield_filled_mm_7) %>% rename(yield_little = Yield_filled_mm_7) %>%
+  left_join(dat_big %>% select(site_name, date, Yield_filled_mm_7) %>% rename(site_name_big = site_name, yield_big = Yield_filled_mm_7)) %>%
+  drop_na() %>% mutate(MonthName = as.character(MonthName))
+
+# table
+dat_Gg %>% group_by(subbasin) %>% summarise(site_name_big = unique(site_name_big)) %>% kable(caption = "Big G gage names for each focal sub-basin.")
+```
+
+### Calculate total yield
+```{r}
+# Get total annual and monthly Big G yield and join to KS diffs
+
+# get total annual yield by big G site
+totyield_annual <- dat_big %>% 
+  group_by(site_name, WaterYear, basin, subbasin) %>% 
+  summarise(days = n(), yield_annual = sum(Yield_filled_mm, na.rm = TRUE)) %>%
+  filter(!is.na(yield_annual), days >= 360) %>%
+  ungroup() %>%
+  rename(site_name_big = site_name) %>%
+  select(site_name_big, WaterYear, yield_annual) %>%
+  ungroup()
+
+# get total monthly yield by big G site
+totyield_monthly <- dat_big %>% 
+  group_by(site_name, WaterYear, basin, subbasin, Month) %>% 
+  summarise(days = n(), yield_monthly = sum(Yield_filled_mm, na.rm = TRUE)) %>%
+  filter(!is.na(yield_monthly), days >= 28) %>%
+  ungroup() %>%
+  rename(site_name_big = site_name) %>%
+  select(site_name_big, WaterYear, Month, yield_monthly) %>%
+  ungroup()
+```
+
+### Final dataset 
+Join and filter G-g data to relevant basin(s) and years: currently, West Brook CY 2021 only!
+```{r}
+# wide format to enable direct difference calculation (Attempt 1)
+dat_Gg2 <- dat_Gg %>% left_join(totyield_annual) %>% left_join(totyield_monthly) %>% 
+  filter(basin == "West Brook", site_name != "Avery Broook NWIS", WaterYear == 2021) %>% 
+  mutate(site_name_cd = as.numeric(as.factor(site_name)),
+         z_log_yield_monthly = as.numeric(scale(log(yield_monthly), center = TRUE, scale = TRUE)),
+         month_radian = as_radians((Month/12)*360))
+
+# long format for more standard intercept model (Attempt 2)
+dat_Gg3 <- dat_Gg2 %>% select(site_name, site_name_cd, Month, month_radian, WaterYear, yield_little, yield_big, z_log_yield_monthly) %>%
+  gather(key = "ind", value = "yield", yield_little, yield_big) %>% mutate(indnum = as.numeric(as.factor(ind))-1)
+head(dat_Gg3)
+```
+
+Explore G-g data
+```{r}
+#| fig-cap: "Standardized (log) total monthly yield at Big G during CY 2021"
+dat_Gg2 %>% group_by(WaterYear, Month) %>% summarise(z_log_yield_monthly = unique(z_log_yield_monthly)) %>% 
+  ggplot(aes(x = Month, y = z_log_yield_monthly)) + geom_point() + geom_smooth()
+```
+
+```{r fig.height=7, fig.width=9}
+#| fig-cap: "Distribution of (log) yield at G-g over time, by site"
+dat_Gg3 %>% ggplot() + geom_boxplot(aes(x = as.factor(Month), y = log(yield), fill = ind)) + facet_wrap(~site_name)
+```
+
+```{r}
+#| fig-cap: "G-g difference in (log) monthly mean yield over time"
+dat_Gg2 %>% 
+  group_by(site_name, Month) %>% 
+  summarise(yield_little = mean(log(yield_little), na.rm = TRUE), 
+            yield_big = mean(log(yield_big), na.rm = TRUE),
+            z_log_yield_monthly = unique(z_log_yield_monthly)) %>%
+  mutate(Qd = yield_little - yield_big) %>% 
+  ggplot(aes(x = Month, y = Qd)) + geom_point() + geom_smooth() + ylab("mean[log(g) - log(G)]") + 
+  facet_wrap(~site_name) + geom_abline(intercept = 0, slope = 0, linetype = "dashed")
+```
+
+```{r fig.height=7, fig.width=7}
+#| fig-cap: "G-g difference in (log) monthly mean yield as a function of (log) total monthly yield at G"
+dat_Gg2 %>% 
+  group_by(site_name, Month) %>% 
+  summarise(yield_little = mean(log(yield_little), na.rm = TRUE), 
+            yield_big = mean(log(yield_big), na.rm = TRUE),
+            z_log_yield_monthly = unique(z_log_yield_monthly)) %>%
+  mutate(Qd = yield_little - yield_big) %>% 
+  ggplot(aes(x = z_log_yield_monthly, y = Qd)) + geom_point() + geom_smooth(method = "lm") + 
+  ylab("mean[log(g) - log(G)]") + facet_wrap(~site_name) + geom_abline(intercept = 0, slope = 0, linetype = "dashed")
+```
+
+
+## Declare the JAGS model
+
+First attempt tries to model the difference as a derived parameter (like the growth model), but this maintains the temporal structure of the data, and we are primarily interested in the difference in the distributions
+```{r Attempt 1, eval = FALSE}
+cat("model {
+
+##--- LIKELIHOOD ---------------------------------------------------##
+
+for (i in 1:nObs) {
+  Qg[i] ~ dnorm(mu[i], pow(sigma, -2))
+  mu[i] <- QG[i] - Qd[i]
+  Qd[i] <- alpha[sites[i]] + beta[sites[i]] * yield[i]
+  
+  # Log-likelihood
+  loglik[i] <- logdensity.norm(Qg[i], mu[i], pow(sigma, -2))
+  }
+
+
+##--- PRIORS --------------------------------------------------------##
+
+# Process error is shared among sites
+sigma ~ dunif(0.001, 100)
+
+# Site-specific parameters
+for (k in 1:nSites) {
+  alpha[k] ~ dnorm(alpha.mu, pow(sigma.alpha, -2))
+  beta[k] ~ dnorm(beta.mu, pow(sigma.beta, -2))
+  }
+
+# Global parameters
+alpha.mu ~ dnorm(0, pow(10, -2))
+beta.mu ~ dnorm(0, pow(10, -2))
+
+# Site-level variation in alpha and beta
+sigma.alpha ~ dunif(0.001, 100)
+sigma.beta ~ dunif(0.001, 100)
+
+}", file = "./Big G Little g/JAGS Models/GgMod.txt")
+```
+
+Second attempt is a more standard intercept model.
+
+* "alpha" is the mean monthly yield at Big-G, which is shared among sites
+* "beta1" is a Little-g offset to the intercept, which describes the site-level mean G-g difference
+* "beta2" describes the effect of water availability (log total monthly yield at Big G) on the site-level mean G-g difference. 
+  + Note that this is only "turned on" for little-g (ind[i] = 1)
+* Should add covariates on sigma to deal with unequal variance among groups
+
+```{r Attempt 2, class.source = "fold-show"}
+cat("model {
+
+##--- LIKELIHOOD ---------------------------------------------------##
+
+for (i in 1:nObs) {
+  Q[i] ~ dnorm(mu[i], pow(sigma, -2))
+  mu[i] <- alpha[months[i]] + beta1[sites[i]] * ind[i] + beta2[sites[i]] * ind[i] * yieldtot[i]
+  
+  # Log-likelihood
+  loglik[i] <- logdensity.norm(Q[i], mu[i], pow(sigma, -2))
+  }
+
+
+##--- PRIORS --------------------------------------------------------##
+
+# Process error is shared among sites
+sigma ~ dunif(0.001, 100)
+
+# Site-specific parameters
+for (j in 1:nSites) {
+  beta1[j] ~ dnorm(0, pow(10, -2))
+  beta2[j] ~ dnorm(0, pow(10, -2))
+  }
+
+for(k in 1:nMonths) {
+  alpha[k] ~ dnorm(0, pow(10, -2))
+  }
+
+}", file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod.txt")
+```
+
+
+## Fit the JAGS model
+```{r}
+# gather data for JAGS
+# jags.data <- list("nObs" = dim(dat_Gg2)[1], "nSites" = length(unique(dat_Gg2$site_name_cd)), "sites" = dat_Gg2$site_name_cd, 
+#                   "Qg" = dat_Gg2$yield_little, "QG" = dat_Gg2$yield_big, "yield" = dat_Gg2$z_yield_monthly)
+jags.data <- list("nObs" = dim(dat_Gg3)[1], "nSites" = length(unique(dat_Gg3$site_name_cd)), "nMonths" = length(unique(dat_Gg3$Month)), 
+                  "sites" = dat_Gg3$site_name_cd, "months" = dat_Gg3$Month,
+                  "Q" = log(dat_Gg3$yield+0.01), "ind" = dat_Gg3$indnum, "yieldtot" = dat_Gg3$z_log_yield_monthly)
+
+# parameters to monitor
+# jags.params <- c("alpha", "alpha.mu", "sigma.alpha", "beta", "beta.mu", "sigma.beta", "sigma", "loglik")
+jags.params <- c("alpha", "beta1", "beta2", "sigma", "loglik")
+
+# run in jags
+mod_0 <- jags.parallel(data = jags.data, inits = NULL, parameters.to.save = jags.params,
+                       model.file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod.txt",
+                       n.chains = 6, n.thin = 20, n.burnin = 1000, n.iter = 5000, DIC = TRUE)
+saveRDS(mod_0, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod.RDS")
+```
+
+Any problematic R-hat values?
+```{r}
+mod_0$BUGSoutput$summary[,8][mod_0$BUGSoutput$summary[,8] > 1.01]
+```
+
+### View traceplots
+```{r}
+MCMCtrace(mod_0, ind = TRUE, params = c("alpha", "beta1", "beta2", "sigma"), pdf = FALSE)
+```
+
+### Get MCMC samples and summary
+```{r}
+top_mod <- mod_0
+# generate MCMC samples and store as an array
+modelout <- top_mod$BUGSoutput
+McmcList <- vector("list", length = dim(modelout$sims.array)[2])
+for(i in 1:length(McmcList)) { McmcList[[i]] = as.mcmc(modelout$sims.array[,i,]) }
+# rbind MCMC samples from 10 chains 
+Mcmcdat <- rbind(McmcList[[1]], McmcList[[2]], McmcList[[3]], McmcList[[4]], McmcList[[5]], McmcList[[6]])
+param.summary <- modelout$summary
+head(param.summary)
+```
+

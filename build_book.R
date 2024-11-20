@@ -20,3 +20,7 @@ quarto::quarto_render("Big G Little g/GgStoryPlots.qmd",
 quarto::quarto_render("Big G Little g/GgDiffKS.qmd", 
                       #cache_refresh = TRUE, # default is FALSE
                       output_format = "html")
+
+quarto::quarto_render("Big G Little g/GgDiffJAGS.qmd", 
+                      #cache_refresh = TRUE, # default is FALSE
+                      output_format = "html")
