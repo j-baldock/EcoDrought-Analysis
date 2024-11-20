@@ -20,6 +20,8 @@ library(HDInterval)
 library(scales)
 library(knitr)
 library(aspace) # for radian conversion
+library(RColorBrewer)
+library(scales)
 ```
 
 ## Data
@@ -242,7 +244,7 @@ jags.params <- c("alpha", "beta1", "beta2", "sigma", "loglik")
 mod_0 <- jags.parallel(data = jags.data, inits = NULL, parameters.to.save = jags.params,
                        model.file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod.txt",
                        n.chains = 6, n.thin = 20, n.burnin = 1000, n.iter = 5000, DIC = TRUE)
-saveRDS(mod_0, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod.RDS")
+# saveRDS(mod_0, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod.RDS")
 ```
 
 Any problematic R-hat values?
@@ -266,5 +268,47 @@ for(i in 1:length(McmcList)) { McmcList[[i]] = as.mcmc(modelout$sims.array[,i,])
 Mcmcdat <- rbind(McmcList[[1]], McmcList[[2]], McmcList[[3]], McmcList[[4]], McmcList[[5]], McmcList[[6]])
 param.summary <- modelout$summary
 head(param.summary)
+```
+
+## Plot model output
+```{r}
+# control panel
+nvals <- 100
+nsim <- 50
+nsites <- length(unique(dat_Gg3$site_name_cd))
+x_seq <- seq(from = min(dat_Gg2$z_log_yield_monthly), to = max(dat_Gg2$z_log_yield_monthly), length.out = nvals)
+
+# predict from model
+pred_arr <- array(NA, dim = c(nsim, nvals, nsites))
+for (k in 1:nsites) {
+  for (j in 1:nsim) {
+    pred_arr[j,,k] <- Mcmcdat[j,paste("beta1[", k, "]", sep = "")] + Mcmcdat[j,paste("beta2[", k, "]", sep = "")] * x_seq
+  }
+}
+# pred_dist_lin <- matrix(NA, nrow = nrow(Mcmcdat), ncol = nrgs)
+# for (i in 1:nrow(pred_dist_lin)) { pred_dist_lin[i,] <- exp(Mcmcdat[i,"alpha"] + Mcmcdat[i,"beta1"]*pdist) }
+# pred_dist_tran <- matrix(NA, nrow = nrow(Mcmcdat), ncol = nrgs)
+# for (i in 1:nrow(pred_dist_tran)) { pred_dist_tran[i,] <-  pred_dist_lin[i,] / rowSums(pred_dist_lin)[i] }
+# pred_lower <- apply(pred_dist_tran, MARGIN = 2, quantile, prob = 0.025)
+# pred_upper <- apply(pred_dist_tran, MARGIN = 2, quantile, prob = 0.975)
+# pred_median <- apply(pred_dist_tran, MARGIN = 2, quantile, prob = 0.5)
+
+
+```
+
+```{r, fig.width=9, fig.height=7}
+#| fig-cap: "G-g mean difference in (log) yield as a function of (log) total monthly yield at G"
+par(mar = c(5,5,2,12))
+mycols <- brewer.pal(9, "Set1")
+plot(seq(from = range(pred_arr)[1], to = range(pred_arr)[2], length.out = nvals) ~ x_seq, type = "n", xlab = "(log) Monthly total yield at Big G (z-score)", ylab = "Little g deviation from Big G")
+for (k in 1:nsites) {
+  for (j in 1:nsim) {
+    lines(pred_arr[j,,k] ~ x_seq, col = alpha(mycols[k], 0.3))
+  }
+}
+abline(h = 0, lty = 2)
+par(xpd = TRUE)
+legend("right", inset = c(-0.4,0), legend = unlist(dat_Gg3 %>% group_by(site_name) %>% summarise(stcd = unique(site_name_cd)) %>% select(site_name)), fill = mycols, bty = "n")
+
 ```
 
