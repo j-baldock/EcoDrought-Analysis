@@ -1,0 +1,36 @@
+model {
+
+##--- LIKELIHOOD ---------------------------------------------------##
+
+for (i in 1:nObs) {
+  Q[i] ~ dnorm(mu[i], pow(sigma[i], -2))
+  mu[i] <- alpha[indev[i]] + beta1[sites[i], indev[i]] * indGg[i] + beta2[sites[i], indev[i]] * indGg[i] * yield[i]
+  
+  # effect of yield on global process error
+  log(sigma[i]) <- alpha.sig + beta.sig * yield[i]
+  
+  # deviation from Big G
+  dev[i] <- beta1[sites[i], indev[i]] * indGg[i] + beta2[sites[i], indev[i]] * indGg[i] * yield[i]
+  
+  # Log-likelihood
+  loglik[i] <- logdensity.norm(Q[i], mu[i], pow(sigma[i], -2))
+  }
+
+
+##--- PRIORS --------------------------------------------------------##
+
+# Process error parameters
+alpha.sig ~ dnorm(0, pow(10, -2))
+beta.sig ~ dnorm(0, pow(10, -2))
+
+# Site-specific parameters
+for (i in 1:2) {
+  alpha[i] ~ dnorm(0, pow(10, -2))
+  for (j in 1:nSites) {
+    beta1[j,i] ~ dnorm(0, pow(10, -2))
+    beta2[j,i] ~ dnorm(0, pow(10, -2))
+    }
+  }
+
+
+}
