@@ -28,3 +28,7 @@ quarto::quarto_render("Big G Little g/GgDiffKS.qmd",
 quarto::quarto_render("Big G Little g/GgDiffJAGS.qmd", 
                       #cache_refresh = TRUE, # default is FALSE
                       output_format = "html")
+
+quarto::quarto_render("Big G Little g/HydroEvents.qmd", 
+                      #cache_refresh = TRUE, # default is FALSE
+                      output_format = "html")
