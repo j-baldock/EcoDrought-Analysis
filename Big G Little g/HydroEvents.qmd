@@ -276,10 +276,13 @@ First, we need to understand the baseline level of variability in Qg around QG. 
   + *nObs*: number of observations
   + *nSites*: number of sites (little g sites)
 * Parameters
-  + *alpha*: mean volumetric yield at little g at average Big G yield (intercept)
-  + *beta*: effect of water availability (log volumetric yield at Big G) on little g (slope)
-  + *alpha.sig*: mean process error (among sites)
-  + *beta.sig*: effect of water availability on process error (among sites)
+  + *alpha*: site-level intercept
+  + *beta*: site-level effect of water availability (log volumetric yield at Big G) on little g (slope)
+  + *alpha.mu*: global intercept
+  + *beta.mu*: global effect of water availability (log volumetric yield at Big G) on little g (slope)
+  + *alpha.sig.site*: site-level variability in the intercept
+  + *beta.sig.site*: site-level variability in the slope
+  + *sigma*: process error 
 
 ```{r class.source = "fold-show"}
 cat("model {
@@ -322,8 +325,7 @@ beta.sig.site ~ dunif(0.001, 100)
 # gather data for JAGS
 jags.data <- list("nObs" = dim(dat_wb2)[1], "nSites" = length(unique(dat_wb2$site_name_cd)), 
                   "sites" = dat_wb2$site_name_cd, #"indev" = dat_wb2$isevent,
-                  "Qg" = dat_wb2$yield_little_vol_log, "QG" = dat_wb2$yield_big_vol_log, 
-                  "QGvec" = QGvec)
+                  "Qg" = dat_wb2$yield_little_vol_log, "QG" = dat_wb2$yield_big_vol_log)
 
 # parameters to monitor
 jags.params <- c("alpha.mu", "beta.mu", "alpha", "beta", "alpha.sig.site", "beta.sig.site", "sigma", "loglik", "mu", "Qg")
@@ -332,7 +334,7 @@ jags.params <- c("alpha.mu", "beta.mu", "alpha", "beta", "alpha.sig.site", "beta
 mod_null <- jags.parallel(data = jags.data, inits = NULL, parameters.to.save = jags.params,
                        model.file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod_Events_2_NullSigma.txt",
                        n.chains = 10, n.thin = 20, n.burnin = 1000, n.iter = 5000, DIC = FALSE)
-saveRDS(mod_null, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/Fitted models/GgMod_Events_Null.rds")
+# saveRDS(mod_null, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/Fitted models/GgMod_Events_Null.rds")
 ```
 
 Get MCMC samples and summary
@@ -373,9 +375,13 @@ MCMCtrace(mod_null, ind = TRUE, params = c("sigma"), pdf = FALSE)
   + *nObs*: number of observations
   + *nSites*: number of sites (little g sites)
 * Parameters
-  + *alpha*: mean volumetric yield at little g at average Big G yield (intercept)
-  + *beta*: effect of water availability (log volumetric yield at Big G) on little g (slope)
-  + *alpha.sig*: mean process error (among sites)
+  + *alpha*: site-level intercept
+  + *beta*: site-level effect of water availability (log volumetric yield at Big G) on little g (slope)
+  + *alpha.mu*: global intercept
+  + *beta.mu*: global effect of water availability (log volumetric yield at Big G) on little g (slope)
+  + *alpha.sig.site*: site-level variability in the intercept
+  + *beta.sig.site*: site-level variability in the slope
+  + *alpha.sig*: process error intercept
   + *beta.sig*: effect of water availability on process error (among sites)
 
 ```{r class.source = "fold-show"}
@@ -449,7 +455,7 @@ jags.params <- c("alpha.mu", "beta.mu", "alpha", "beta", "alpha.sig.site", "beta
 mod_0 <- jags.parallel(data = jags.data, inits = NULL, parameters.to.save = jags.params,
                        model.file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod_Events_2.txt",
                        n.chains = 10, n.thin = 20, n.burnin = 1000, n.iter = 5000, DIC = FALSE)
-saveRDS(mod_0, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/Fitted models/GgMod_Events.rds")
+# saveRDS(mod_0, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/Fitted models/GgMod_Events.rds")
 ```
 
 Get MCMC samples and summary
@@ -462,7 +468,7 @@ for(i in 1:length(McmcList)) { McmcList[[i]] = as.mcmc(modelout$sims.array[,i,])
 # rbind MCMC samples from 10 chains 
 Mcmcdat_0 <- rbind(McmcList[[1]], McmcList[[2]], McmcList[[3]], McmcList[[4]], McmcList[[5]], McmcList[[6]], McmcList[[7]], McmcList[[8]], McmcList[[9]], McmcList[[10]])
 param.summary_0 <- modelout$summary
-head(param.summary)
+head(param.summary_0)
 ```
 
 #### Model diagnostics
