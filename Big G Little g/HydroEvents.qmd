@@ -262,26 +262,24 @@ dat_wb2 %>%
 
 ## Model using JAGS
 
-### Attempt 1
+Based on results above, there does not appear to be any significant difference in the G-g relationship for event and non-event periods. Therefore, do not include random intercepts/slopes (by event/non-event) in the model. Previously, I tried to estimate the G-g differences using an intercept model, with the magnitude of difference a function of water availability. However, when Q = Qg, this simplified to a linear regression between Qg (dependent var.) and QG (independent var.), which is ultimately what is of interest. I estimate this regression model below:
 
-Here, I try to estimate the G-g differences using an intercept model, with the magnitude of difference a function of water availability. However, note that when Q = Qg, this simplifies to a simple linear regression between Qg (dependent var.) and QG (independent var.), which is ultimately what is of interest. See attempt 2 for this streamlined approach.
+### Fixed sigma (null model)
+
+First, we need to understand the baseline level of variability in Qg around QG. So here I fit a model in which process error (sigma) is fixed, i.e., shared among all sites and does not vary as a function of Qg. From this model, extract the sigma estimate and compare to the variable sigma model: at what level of QG (water availability) do we see more or less variability in Qg than is expected by chance?
 
 #### Declare model
 * Data
-  + *Q*: log volumetric yield 
+  + *Qg*: log volumetric yield at little g
   + *sites*: numeric site id
-  + *indev*: numeric indicator for hydrologic event (1) or non-event (2)
-  + *indGg*: numeric indicator for Big G (0) or little g (1)
-  + *yield*: log volumetric yield at Big G during event/non-event. Note that this is equivalent to *Q* when *indev* = 0
+  + *QG*: log volumetric yield at Big G
   + *nObs*: number of observations
   + *nSites*: number of sites (little g sites)
 * Parameters
-  + *alpha*: mean volumetric yield at Big-G during hydrologic events (*indev* = 1) or non-events (*indev* = 2)
-  + *beta1*: mean site-specific difference between Big-G (*alpha*) and Little-g during events/non-events (i.e., offset to the intercept that describes site-level mean G-g difference)
-  + *beta2*: effect of water availability (log volumetric yield at Big G) on the site-level mean G-g difference (slope)
-    - Note that this is only "turned on" for little-g (*indGg* = 1)
-  + *alpha.sig*: mean process error
-  + *beta.sig*: effect of water availability on process error. **This describes the attenuation of among-site heterogeneity with increasing water availability.**
+  + *alpha*: mean volumetric yield at little g at average Big G yield (intercept)
+  + *beta*: effect of water availability (log volumetric yield at Big G) on little g (slope)
+  + *alpha.sig*: mean process error (among sites)
+  + *beta.sig*: effect of water availability on process error (among sites)
 
 ```{r class.source = "fold-show"}
 cat("model {
@@ -289,122 +287,83 @@ cat("model {
 ##--- LIKELIHOOD ---------------------------------------------------##
 
 for (i in 1:nObs) {
-  Q[i] ~ dnorm(mu[i], pow(sigma[i], -2))
-  mu[i] <- alpha[indev[i]] + beta1[sites[i], indev[i]] * indGg[i] + beta2[sites[i], indev[i]] * indGg[i] * yield[i]
-  
-  # effect of yield on global process error
-  log(sigma[i]) <- alpha.sig + beta.sig * yield[i]
-  
-  # deviation from Big G
-  dev[i] <- beta1[sites[i], indev[i]] * indGg[i] + beta2[sites[i], indev[i]] * indGg[i] * yield[i]
+  Qg[i] ~ dnorm(mu[i], pow(sigma, -2))
+  mu[i] <- alpha[sites[i]] + beta[sites[i]] * QG[i]
   
   # Log-likelihood
-  loglik[i] <- logdensity.norm(Q[i], mu[i], pow(sigma[i], -2))
+  loglik[i] <- logdensity.norm(Qg[i], mu[i], pow(sigma, -2))
   }
 
 
 ##--- PRIORS --------------------------------------------------------##
 
-# Process error parameters
-alpha.sig ~ dnorm(0, pow(10, -2))
-beta.sig ~ dnorm(0, pow(10, -2))
+# process error
+sigma ~ dunif(0.001, 100)
 
 # Site-specific parameters
-for (i in 1:2) {
-  alpha[i] ~ dnorm(0, pow(10, -2))
-  for (j in 1:nSites) {
-    beta1[j,i] ~ dnorm(0, pow(10, -2))
-    beta2[j,i] ~ dnorm(0, pow(10, -2))
+for (j in 1:nSites) {
+    alpha[j] ~ dnorm(alpha.mu, pow(alpha.sig.site, -2))
+    beta[j] ~ dnorm(beta.mu, pow(beta.sig.site, -2))
     }
-  }
+    
+# global intercept and slope
+alpha.mu ~ dnorm(0, pow(10, -2))
+beta.mu ~ dnorm(0, pow(10, -2))
 
+# among-site variation in intercept and slope
+alpha.sig.site ~ dunif(0.001, 100)
+beta.sig.site ~ dunif(0.001, 100)
 
-}", file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod_Events.txt")
+}", file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod_Events_2_NullSigma.txt")
 ```
 
 #### Fit the JAGS model
 ```{r}
 # gather data for JAGS
-jags.data <- list("nObs" = dim(dat_wb2_long)[1], "nSites" = length(unique(dat_wb2_long$site_name_cd)), 
-                  "sites" = dat_wb2_long$site_name_cd, "indev" = dat_wb2_long$isevent,
-                  "Q" = dat_wb2_long$yield_vol_log, "indGg" = dat_wb2_long$type, "yield" = dat_wb2_long$z_yield_big_vol_log)
+jags.data <- list("nObs" = dim(dat_wb2)[1], "nSites" = length(unique(dat_wb2$site_name_cd)), 
+                  "sites" = dat_wb2$site_name_cd, #"indev" = dat_wb2$isevent,
+                  "Qg" = dat_wb2$yield_little_vol_log, "QG" = dat_wb2$yield_big_vol_log, 
+                  "QGvec" = QGvec)
 
 # parameters to monitor
-jags.params <- c("alpha", "beta1", "beta2", "alpha.sig", "beta.sig", "loglik", "dev")
+jags.params <- c("alpha.mu", "beta.mu", "alpha", "beta", "alpha.sig.site", "beta.sig.site", "sigma", "loglik", "mu", "Qg")
 
 # run in jags
-mod_0 <- jags.parallel(data = jags.data, inits = NULL, parameters.to.save = jags.params,
-                       model.file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod_Events.txt",
-                       n.chains = 6, n.thin = 20, n.burnin = 1000, n.iter = 5000, DIC = FALSE)
+mod_null <- jags.parallel(data = jags.data, inits = NULL, parameters.to.save = jags.params,
+                       model.file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod_Events_2_NullSigma.txt",
+                       n.chains = 10, n.thin = 20, n.burnin = 1000, n.iter = 5000, DIC = FALSE)
+saveRDS(mod_null, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/Fitted models/GgMod_Events_Null.rds")
 ```
-
-Any problematic R-hat values?
-```{r}
-mod_0$BUGSoutput$summary[,8][mod_0$BUGSoutput$summary[,8] > 1.01]
-```
-
-#### View traceplots
-```{r}
-MCMCtrace(mod_0, ind = TRUE, params = c("alpha", "beta1", "beta2", "alpha.sig", "beta.sig"), pdf = FALSE)
-```
-
-#### Plot model output
 
 Get MCMC samples and summary
 ```{r}
-top_mod <- mod_0
+top_mod <- mod_null
 # generate MCMC samples and store as an array
 modelout <- top_mod$BUGSoutput
 McmcList <- vector("list", length = dim(modelout$sims.array)[2])
 for(i in 1:length(McmcList)) { McmcList[[i]] = as.mcmc(modelout$sims.array[,i,]) }
 # rbind MCMC samples from 10 chains 
-Mcmcdat <- rbind(McmcList[[1]], McmcList[[2]], McmcList[[3]], McmcList[[4]], McmcList[[5]], McmcList[[6]])
-param.summary <- modelout$summary
-head(param.summary)
+Mcmcdat_null <- rbind(McmcList[[1]], McmcList[[2]], McmcList[[3]], McmcList[[4]], McmcList[[5]], McmcList[[6]], McmcList[[7]], McmcList[[8]], McmcList[[9]], McmcList[[10]])
+param.summary_null <- modelout$summary
+head(param.summary_null)
 ```
 
-Predict from model
+#### Model diagnostics
+
+##### View R-hat
+Any problematic R-hat values?
 ```{r}
-# control panel
-nvals <- 100
-nsim <- 50
-nsites <- length(unique(dat_wb2_long$site_name_cd))
-x_seq <- seq(from = min(dat_wb2_long$z_yield_big_vol_log), to = max(dat_wb2_long$z_yield_big_vol_log), length.out = nvals)
-
-# predict from model
-pred_arr_event <- array(NA, dim = c(nsim, nvals, nsites))
-pred_arr_baseflow <- array(NA, dim = c(nsim, nvals, nsites))
-for (k in 1:nsites) {
-  for (j in 1:nsim) {
-    pred_arr_event[j,,k] <- Mcmcdat[j,paste("beta1[", k, ",1]", sep = "")] + Mcmcdat[j,paste("beta2[", k, ",1]", sep = "")] * x_seq
-    pred_arr_baseflow[j,,k] <- Mcmcdat[j,paste("beta1[", k, ",2]", sep = "")] + Mcmcdat[j,paste("beta2[", k, ",2]", sep = "")] * x_seq
-  }
-}
+mod_null$BUGSoutput$summary[,8][mod_null$BUGSoutput$summary[,8] > 1.01]
 ```
 
-```{r, fig.width=11, fig.height=5}
-#| fig-cap: "G-g mean difference in (log) yield as a function of (log) total monthly yield at G"
-par(mar = c(5,5,1,1), mfrow = c(1,2))
-mycols <- brewer.pal(9, "Set1")
-
-# events
-plot(seq(from = range(c(pred_arr_event, pred_arr_baseflow))[1], to = range(c(pred_arr_event, pred_arr_baseflow))[2], length.out = nvals) ~ x_seq, type = "n", xlab = "(log) Monthly total yield at Big G (z-score)", ylab = "Little g deviation from Big G")
-for (k in 1:nsites) { for (j in 1:nsim) { lines(pred_arr_event[j,,k] ~ x_seq, col = alpha(mycols[k], 0.3)) }}
-abline(h = 0, lty = 2)
-
-# baseflow
-plot(seq(from = range(c(pred_arr_event, pred_arr_baseflow))[1], to = range(c(pred_arr_event, pred_arr_baseflow))[2], length.out = nvals) ~ x_seq, type = "n", xlab = "(log) Monthly total yield at Big G (z-score)", ylab = "Little g deviation from Big G")
-for (k in 1:nsites) { for (j in 1:nsim) { lines(pred_arr_baseflow[j,,k] ~ x_seq, col = alpha(mycols[k], 0.3)) }}
-abline(h = 0, lty = 2)
-
-# par(xpd = TRUE)
-# legend("top", inset = c(0,0), legend = unlist(dat_wb2_long %>% group_by(site_name) %>% summarise(stcd = unique(site_name_cd)) %>% select(site_name)), fill = mycols, bty = "n")
+##### View traceplots
+Just sigma...
+```{r}
+MCMCtrace(mod_null, ind = TRUE, params = c("sigma"), pdf = FALSE)
 ```
 
 
-### Attempt 2
-
-Based on results above, there does not appear to be any significant difference in the G-g relationship for event and non-event periods. Therefore, do not include random intercepts/slopes (by event/non-event) in the model
+### Variable sigma
 
 #### Declare model
 * Data
@@ -430,7 +389,6 @@ for (i in 1:nObs) {
   
   # effect of Big G yield on global process error
   log(sigma[i]) <- alpha.sig + beta.sig * QG[i]
-  #log(sigma[i]) <- alpha.sig[sites[i]] + beta.sig[sites[i]] * QG[i]
   
   # Log-likelihood
   loglik[i] <- logdensity.norm(Qg[i], mu[i], pow(sigma[i], -2))
@@ -439,16 +397,24 @@ for (i in 1:nObs) {
 
 ##--- PRIORS --------------------------------------------------------##
 
+# process error
 alpha.sig ~ dnorm(0, pow(10, -2))
 beta.sig ~ dnorm(0, pow(10, -2))
 
-# Site-specific, event/non-event parameters
+# Site-specific parameters
 for (j in 1:nSites) {
-    alpha[j] ~ dnorm(0, pow(10, -2))
-    beta[j] ~ dnorm(0, pow(10, -2))
-    #alpha.sig[j] ~ dnorm(0, pow(10, -2))
-    #beta.sig[j] ~ dnorm(0, pow(10, -2))
+    alpha[j] ~ dnorm(alpha.mu, pow(alpha.sig.site, -2))
+    beta[j] ~ dnorm(beta.mu, pow(beta.sig.site, -2))
     }
+    
+# global intercept and slope
+alpha.mu ~ dnorm(0, pow(10, -2))
+beta.mu ~ dnorm(0, pow(10, -2))
+
+# among-site variation in intercept and slope
+alpha.sig.site ~ dunif(0.001, 100)
+beta.sig.site ~ dunif(0.001, 100)
+
     
 ##--- DERIVED VALUES ------------------------------------------------##
 
@@ -456,8 +422,8 @@ for (j in 1:nSites) {
 for (j in 1:nSites) { 
   for (k in 1:nDiff) {
     diff[j,k] <- (alpha[j] + beta[j] * QGvec[k]) - QGvec[k]
-    }
-  }
+  }}
+
 
 }", file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod_Events_2.txt")
 ```
@@ -465,8 +431,8 @@ for (j in 1:nSites) {
 #### Fit the JAGS model
 ```{r}
 # vector of QG for prediction
-ndiff <- 10
-QGvec <- seq(from = min(dat_wb2$z_yield_big_vol_log), to = max(dat_wb2$z_yield_big_vol_log), length.out = ndiff)
+ndiff <- 11
+QGvec <- seq(from = min(dat_wb2$yield_big_vol_log), to = max(dat_wb2$yield_big_vol_log), length.out = ndiff)
 
 # gather data for JAGS
 jags.data <- list("nObs" = dim(dat_wb2)[1], "nSites" = length(unique(dat_wb2$site_name_cd)), 
@@ -475,25 +441,16 @@ jags.data <- list("nObs" = dim(dat_wb2)[1], "nSites" = length(unique(dat_wb2$sit
                   "QGvec" = QGvec, "nDiff" = ndiff)
 
 # parameters to monitor
-jags.params <- c("alpha", "beta", "alpha.sig", "beta.sig", "diff", "loglik")
+jags.params <- c("alpha.mu", "beta.mu", "alpha", "beta", "alpha.sig.site", "beta.sig.site", 
+                 "alpha.sig", "beta.sig", 
+                 "diff", "loglik", "mu", "Qg")
 
 # run in jags
 mod_0 <- jags.parallel(data = jags.data, inits = NULL, parameters.to.save = jags.params,
                        model.file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod_Events_2.txt",
                        n.chains = 10, n.thin = 20, n.burnin = 1000, n.iter = 5000, DIC = FALSE)
+saveRDS(mod_0, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/Fitted models/GgMod_Events.rds")
 ```
-
-Any problematic R-hat values?
-```{r}
-mod_0$BUGSoutput$summary[,8][mod_0$BUGSoutput$summary[,8] > 1.01]
-```
-
-#### View traceplots
-```{r}
-MCMCtrace(mod_0, ind = TRUE, params = c("alpha", "beta", "alpha.sig", "beta.sig"), pdf = FALSE)
-```
-
-#### Plot model output
 
 Get MCMC samples and summary
 ```{r}
@@ -503,10 +460,50 @@ modelout <- top_mod$BUGSoutput
 McmcList <- vector("list", length = dim(modelout$sims.array)[2])
 for(i in 1:length(McmcList)) { McmcList[[i]] = as.mcmc(modelout$sims.array[,i,]) }
 # rbind MCMC samples from 10 chains 
-Mcmcdat <- rbind(McmcList[[1]], McmcList[[2]], McmcList[[3]], McmcList[[4]], McmcList[[5]], McmcList[[6]], McmcList[[7]], McmcList[[8]], McmcList[[9]], McmcList[[10]])
-param.summary <- modelout$summary
+Mcmcdat_0 <- rbind(McmcList[[1]], McmcList[[2]], McmcList[[3]], McmcList[[4]], McmcList[[5]], McmcList[[6]], McmcList[[7]], McmcList[[8]], McmcList[[9]], McmcList[[10]])
+param.summary_0 <- modelout$summary
 head(param.summary)
 ```
+
+#### Model diagnostics
+
+##### View R-hat
+Any problematic R-hat values?
+```{r}
+mod_0$BUGSoutput$summary[,8][mod_0$BUGSoutput$summary[,8] > 1.01]
+```
+
+##### View traceplots
+```{r}
+MCMCtrace(mod_0, ind = TRUE, params = c("alpha.mu", "beta.mu", "alpha", "beta", "alpha.sig.site", "beta.sig.site", "alpha.sig", "beta.sig"), pdf = FALSE)
+```
+
+##### PP check
+```{r}
+ppdat_obs <- as.matrix(Mcmcdat_0[,startsWith(colnames(Mcmcdat_0), "Qg")])
+ppdat_exp <- as.matrix(Mcmcdat_0[,startsWith(colnames(Mcmcdat_0), "mu")])
+```
+
+Bayesian p-value: values approaching 0.5 indicate lack of bias in model estimates
+```{r}
+sum(ppdat_exp > ppdat_obs) / (dim(ppdat_obs)[1]*dim(ppdat_obs)[2])
+```
+
+Posterior predictive check: ensure linearity and ~1:1 relationship between expected and observed (log) volumetric Qg yield
+```{r fig.width=5, fig.height=5}
+par(mar = c(4.5,4.5,1,1))
+plot(apply(ppdat_exp, 2, median) ~ apply(ppdat_obs, 2, median), xlab = "Observed Qg", ylab = "Expected Qg")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+legend("topleft", legend = "1:1", lwd = 2, col = "red", bty = "n")
+```
+
+Site-specific posterior predictive check:
+```{r fig.width=7, fig.height=7}
+tibble(obs = apply(ppdat_obs, 2, median), exp = apply(ppdat_exp, 2, median), sitecd = dat_wb2$site_name) %>% ggplot(aes(x = obs, y = exp)) + geom_point() + geom_smooth(method = "lm") + geom_abline(intercept = 0, slope = 1, color = "red") + facet_wrap(~sitecd)
+```
+
+
+#### Plot model output
 
 ##### Effect of G on g
 
@@ -526,7 +523,7 @@ pred_arr <- array(NA, dim = c(nsim, nvals, nsites))
 # pred_arr_baseflow <- array(NA, dim = c(nsim, nvals, nsites))
 for (k in 1:nsites) {
   for (j in 1:nsim) {
-    pred_arr[j,,k] <- Mcmcdat[j,paste("alpha[", k, "]", sep = "")] + Mcmcdat[j,paste("beta[", k, "]", sep = "")] * x_seq
+    pred_arr[j,,k] <- Mcmcdat_0[j,paste("alpha[", k, "]", sep = "")] + Mcmcdat_0[j,paste("beta[", k, "]", sep = "")] * x_seq
     # pred_arr_event[j,,k] <- Mcmcdat[j,paste("alpha[", k, ",1]", sep = "")] + Mcmcdat[j,paste("beta[", k, ",1]", sep = "")] * x_seq_ev
     # pred_arr_baseflow[j,,k] <- Mcmcdat[j,paste("alpha[", k, ",2]", sep = "")] + Mcmcdat[j,paste("beta[", k, ",2]", sep = "")] * x_seq_bf
   }
@@ -535,7 +532,7 @@ for (k in 1:nsites) {
 
 ```{r, fig.width=5, fig.height=5}
 #| fig-cap: "Effect of (log) volumetric yield at Big G on (log) volumetric yield at little g."
-par(mar = c(5,5,2,1), mfrow = c(1,1))
+par(mar = c(5,5,1,1), mfrow = c(1,1))
 gg_color_hue <- function(n) { 
   hues = seq(15, 375, length = n + 1) 
   hcl(h = hues, l = 65, c = 100)[1:n] }
@@ -548,6 +545,7 @@ for (k in 1:nsites) {
   points(yield_little_vol_log ~ yield_big_vol_log, data = dat_wb2 %>% filter(site_name_cd == k), col = mycols[k])
   }
 abline(a = 0, b = 1, lty = 2)
+legend("topleft", legend = "1:1", lty = 2, bty = "n")
 
 # # events
 # plot(seq(from = range(c(pred_arr_event, pred_arr_baseflow))[1], to = range(c(pred_arr_event, pred_arr_baseflow))[2], length.out = nvals) ~ x_seq, type = "n", xlab = "(log) Monthly total yield at Big G (z-score)", ylab = "Little g deviation from Big G", main = "Events")
@@ -581,7 +579,9 @@ x_seq <- seq(from = min(dat_wb2$yield_big_vol_log), to = max(dat_wb2$yield_big_v
 
 # predict from model
 pred_arr <- matrix(NA, nrow = nsim, ncol = nvals)
-for (j in 1:nsim) { pred_arr[j,] <- exp(Mcmcdat[j,"alpha.sig"] + Mcmcdat[j,"beta.sig"] * x_seq) }
+pred_arr_summ <- matrix(NA, nrow = nvals, ncol = 3)
+for (j in 1:nsim) { pred_arr[j,] <- exp(Mcmcdat_0[j,"alpha.sig"] + Mcmcdat_0[j,"beta.sig"] * x_seq) }
+for (j in 1:nvals) { pred_arr_summ[j,] <- quantile(pred_arr[,j], probs = c(0.025, 0.5, 0.95))}
 
 # pred_arr <- array(NA, dim = c(nsim, nvals, nsites))
 # for (k in 1:nsites) {
@@ -592,8 +592,8 @@ for (j in 1:nsim) { pred_arr[j,] <- exp(Mcmcdat[j,"alpha.sig"] + Mcmcdat[j,"beta
 ```
 
 ```{r, fig.width=5, fig.height=5}
-#| fig-cap: "Effect of (log) volumetric yield at Big G on among-site variation in little g (sigma)."
-par(mar = c(5,5,2,1), mfrow = c(1,1))
+#| fig-cap: "Declining water availability increases heterogeneity in flow regimes across the West Brook. Black line and polygon represent the median and 95% credible interval of the effect of (log) volumetric yield at Big G on among-site variation in little g (sigma). Blue horizontal line and polygon represent the median and 95% credible interval of sigma estimated from a null model in which process error is shared among all sites and does not vary as a function of Qg. Where the black line falls below the blue line, variation in streamflow among sites is less heterogeneous (more similar) than would be expected by chance. Conversely, where black lines fall above the blue line, variation in streamflow among sites is more heterogeneous (less similar) than would be expected by chance."
+par(mar = c(5,5,1,1), mfrow = c(1,1))
 gg_color_hue <- function(n) { 
   hues = seq(15, 375, length = n + 1) 
   hcl(h = hues, l = 65, c = 100)[1:n] }
@@ -601,48 +601,112 @@ mycols <- gg_color_hue(9)
 
 # among sites
 plot(seq(from = range(pred_arr)[1], to = range(pred_arr)[2], length.out = nvals) ~ x_seq, type = "n", xlab = "(log) volumetric yield at Big G", ylab = "sigma")
-for (j in 1:nsim) { lines(pred_arr[j,] ~ x_seq, col = alpha("grey", 0.3)) }
+# fixed sigma
+polygon(x = c(min(x_seq),max(x_seq),max(x_seq),min(x_seq)), y = c(param.summary_null["sigma",3], param.summary_null["sigma",3], param.summary_null["sigma",7], param.summary_null["sigma",7]), col = alpha("blue", 0.2), border = NA)
+lines(rep(param.summary_null["sigma",5], times = nvals) ~ x_seq, col = "blue", lwd = 2)
+# variable sigma
+polygon(x = c(x_seq, rev(x_seq)), y = c(pred_arr_summ[,1], rev(pred_arr_summ[,3])), col = alpha("black", 0.2), border = NA)
+lines(pred_arr_summ[,2] ~ x_seq, col = "black", lwd = 2)
+box(bty = "o")
+legend("topright", legend = c("Fixed", "Variable"), fill = c(alpha("blue", 0.5), alpha("black", 0.5)), bty = "n")
 
 # # site-specific
 # plot(seq(from = range(pred_arr)[1], to = range(pred_arr)[2], length.out = nvals) ~ x_seq, type = "n", xlab = "(log) volumetric yield at Big G", ylab = "sigma")
 # for (k in 1:nsites) { for (j in 1:nsim) { lines(pred_arr[j,,k] ~ x_seq, col = alpha(mycols[k], 0.3)) }}
 ```
 
+
 ##### Diff density plots
 
-Here, I plot site-specific posterior differences between little g and Big G (as density plots) at three levels of water availability/Big G flow. This is similar to the plot above, but provides a site-level examination of deviations and how those change over the range of Big G flow.
-```{r}
+Here, I plot site-specific posterior differences between little g and Big G (as density plots) at different levels of water availability/Big G flow. This is similar to the plot above, but provides a site-level examination of Qg variation around QG and how those change over the range of Big G flow.
+
+First, view tabbed plots, for a sequence of QG
+```{r fig.width=7, fig.height = 4}
 # control panel
 nsites <- length(unique(dat_wb2$site_name_cd))
 x_seq <- seq(-2.5, 2.5, length.out = 10)
-
-
-plot(seq(0, 1, length.out = 10) ~ x_seq, type = "n", xlab = "Difference from Big G", ylab = "Posterior density", main = "log Big G = -2.35", axes = FALSE)
-axis(1)
-box(bty = "o")
-for (i in 1:nsites) {
-  dens <- density(Mcmcdat[,paste("diff[", i, ",1]", sep = "")])
-  dens$y2 <- dens$y/max(dens$y)
-  lines(dens$y2 ~ dens$x, col = mycols[i], lwd = 2)
+myplotfun <- function(j) {
+  plot(seq(0, 1, length.out = 10) ~ x_seq, type = "n", xlab = "Mean difference from Big G", ylab = "Posterior density", main = paste("log Big G = ", round(QGvec[j], 2), sep = ""), axes = FALSE)
+  axis(1)
+  box(bty = "o")
+  for (i in 1:nsites) {
+    dens <- density(Mcmcdat_0[,paste("diff[", i, ",", j, "]", sep = "")])
+    dens$y2 <- dens$y/max(dens$y)
+    l <- min(which(dens$x >= hdi(dens, credMass = 0.95)[1]))
+    h <- max(which(dens$x < hdi(dens, credMass = 0.95)[2]))
+    polygon(x = c(dens$x[c(l,l:h,h)]), y = c(0,dens$y2[l:h],0), col = alpha(mycols[i], 0.3), lty = 0)
+    lines(dens$y2 ~ dens$x, col = mycols[i], lwd = 2)
+  }
+  abline(v = 0, lty = 2)
 }
 
-plot(seq(0, 1, length.out = 10) ~ x_seq, type = "n", xlab = "Difference from Big G", ylab = "Posterior density", main = "log Big G = -0.06", axes = FALSE)
-axis(1)
-box(bty = "o")
-for (i in 1:nsites) {
-  dens <- density(Mcmcdat[,paste("diff[", i, ",6]", sep = "")])
-  dens$y2 <- dens$y/max(dens$y)
-  lines(dens$y2 ~ dens$x, col = mycols[i], lwd = 2)
-}
-
-plot(seq(0, 1, length.out = 10) ~ x_seq, type = "n", xlab = "Difference from Big G", ylab = "Posterior density", main = "log Big G = 2.00", axes = FALSE)
-axis(1)
-box(bty = "o")
-for (i in 1:nsites) {
-  dens <- density(Mcmcdat[,paste("diff[", i, ",10]", sep = "")])
-  dens$y2 <- dens$y/max(dens$y)
-  lines(dens$y2 ~ dens$x, col = mycols[i], lwd = 2)
-}
+# for (j in 1:ndiff) {
+#   plot(seq(0, 1, length.out = 10) ~ x_seq, type = "n", xlab = "Mean difference from Big G", ylab = "Posterior density", main = paste("log Big G = ", round(QGvec[j], 2), sep = ""), axes = FALSE)
+#   axis(1)
+#   box(bty = "o")
+#   for (i in 1:nsites) {
+#     dens <- density(Mcmcdat_0[,paste("diff[", i, ",", j, "]", sep = "")])
+#     dens$y2 <- dens$y/max(dens$y)
+#     l <- min(which(dens$x >= hdi(dens, credMass = 0.95)[1]))
+#     h <- max(which(dens$x < hdi(dens, credMass = 0.95)[2]))
+#     polygon(x = c(dens$x[c(l,l:h,h)]), y = c(0,dens$y2[l:h],0), col = alpha(mycols[i], 0.3), lty = 0)
+#     lines(dens$y2 ~ dens$x, col = mycols[i], lwd = 2)
+#   }
+#   abline(v = 0, lty = 2)
+# }
 ```
 
+::: panel-tabset
+###### 1
+```{r, echo=FALSE}
+myplotfun(1)
+```
+###### 3
+```{r, echo=FALSE}
+myplotfun(3)
+```
+###### 5
+```{r, echo=FALSE}
+myplotfun(5)
+```
+###### 7
+```{r, echo=FALSE}
+myplotfun(7)
+```
+###### 9
+```{r, echo=FALSE}
+myplotfun(9)
+```
+###### 11
+```{r, echo=FALSE}
+myplotfun(11)
+```
+:::
+
+Combined plot for 3 levels of QG
+```{r fig.width=5, fig.height = 5}
+# control panel
+nsites <- length(unique(dat_wb2$site_name_cd))
+x_seq <- seq(-2.5, 2.5, length.out = 10)
+mylabs <- c("Low G", "Med G", "High G")
+ctr <- 1
+par(mfrow = c(1,3), mar = c(4,1,1.5,1), oma = c(0,2,0,0), mgp = c(1,0.75,0))
+for (j in c(1,6,11)) {
+  plot(x_seq ~ seq(0, 1, length.out = 10), type = "n", ylab = "", xlab = "", main = mylabs[ctr], axes = FALSE)
+  axis(2)
+  box(bty = "o")
+  for (i in 1:nsites) {
+    dens <- density(Mcmcdat_0[,paste("diff[", i, ",", j, "]", sep = "")])
+    dens$y2 <- dens$y/max(dens$y)
+    l <- min(which(dens$x >= hdi(dens, credMass = 0.95)[1]))
+    h <- max(which(dens$x < hdi(dens, credMass = 0.95)[2]))
+    polygon(y = c(dens$x[c(l,l:h,h)]), x = c(0,dens$y2[l:h],0), col = alpha(mycols[i], 0.3), lty = 0)
+    lines(dens$x ~ dens$y2, col = mycols[i], lwd = 2)
+  }
+  abline(h = 0, lty = 2)
+  ctr <- ctr+1
+}
+mtext("Mean difference from Big G", side = 2, line = 1, outer = TRUE, cex = 0.8)
+mtext("Posterior density", side = 1, line = -2, outer = TRUE, cex = 0.8,)
+```
 
