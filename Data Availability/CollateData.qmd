@@ -278,6 +278,111 @@ Check unique subbasins
 unique(dat$subbasin)
 ```
 
+### Inspect hourly data
+```{r}
+mysites <- unlist(unique(dat %>% filter(basin == "Flathead") %>% select(site_name)))
+myplots <- list()
+for (i in 1:length(mysites)) {
+  test <- dat %>% filter(site_name == mysites[i]) %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% mutate(mindiff = as.numeric(lead(datetime) - (datetime)))
+na_index <- which(test$mindiff > 60)
+  ds_blank <- tibble(index = na_index + 0.5, datetime = NA, "0" = NA, "1" = NA)
+  myplots[[i]] <- test %>% select(-mindiff) %>% rowid_to_column("index") %>% union(ds_blank) %>% arrange(index) %>% select(-index) %>% mutate(datetime = if_else(is.na(datetime), lag(datetime) + hours(1), datetime)) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+}
+
+```
+
+::: panel-tabset
+#### BigCreekLower
+```{r, echo=FALSE}
+myplots[[1]]
+```
+#### BigCreekMiddle
+```{r, echo=FALSE}
+myplots[[2]]
+```
+#### BigCreekUpper
+```{r, echo=FALSE}
+myplots[[3]]
+```
+#### CoalCreekHeadwaters
+```{r, echo=FALSE}
+myplots[[4]]
+```
+#### CoalCreekLower
+```{r, echo=FALSE}
+myplots[[5]]
+```
+#### CoalCreekMiddle
+```{r, echo=FALSE}
+myplots[[6]]
+```
+#### CoalCreekNorth
+```{r, echo=FALSE}
+myplots[[7]]
+```
+#### CycloneCreekLower
+```{r, echo=FALSE}
+myplots[[8]]
+```
+#### CycloneCreekMidddle
+```{r, echo=FALSE}
+myplots[[9]]
+```
+#### CycloneCreekUpper
+```{r, echo=FALSE}
+myplots[[10]]
+```
+#### HallowattCreekLower
+```{r, echo=FALSE}
+myplots[[11]]
+```
+#### LangfordCreekLower
+```{r, echo=FALSE}
+myplots[[12]]
+```
+#### LangfordCreekUpper
+```{r, echo=FALSE}
+myplots[[13]]
+```
+#### McGeeCreekLower
+```{r, echo=FALSE}
+myplots[[14]]
+```
+#### McGeeCreekTrib
+```{r, echo=FALSE}
+myplots[[15]]
+```
+#### McGeeCreekUpper
+```{r, echo=FALSE}
+myplots[[16]]
+```
+#### MeadowCreek
+```{r, echo=FALSE}
+myplots[[17]]
+```
+#### NicolaCreek
+```{r, echo=FALSE}
+myplots[[18]]
+```
+#### SkookoleelCreek
+```{r, echo=FALSE}
+myplots[[19]]
+```
+#### WernerCreek
+```{r, echo=FALSE}
+myplots[[20]]
+```
+#### WoundedBuckCreek
+```{r, echo=FALSE}
+myplots[[21]]
+```
+:::
+
+```{r}
+dat %>% filter(site_name == "CoalCreekLower") %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+```
+
+
 ## Load NWIS data
 
 ```{r}
@@ -329,7 +434,7 @@ dat_daily <- bind_rows(dat_daily %>% select(-flow_min, -flow_max, -tempc_min, -t
 dat_daily <- fill_missing_dates(dat_daily, dates = date, groups = site_name)
 ```
 
-View daily mean time series data, for exampple, site_name = CoalCreekLower. Notice the many shorts gaps in the daily data.
+View daily mean time series data, for example, site_name = CoalCreekLower. Notice the many shorts gaps in the daily data.
 ```{r eval = FALSE, echo = FALSE, include = FALSE}
 #| fig-cap: "Mean daily stream flow (cfs) by site"
 #| standalone: true
