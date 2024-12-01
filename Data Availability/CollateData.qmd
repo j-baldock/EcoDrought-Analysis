@@ -378,10 +378,6 @@ myplots[[21]]
 ```
 :::
 
-```{r}
-dat %>% filter(site_name == "CoalCreekLower") %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
-```
-
 
 ## Load NWIS data
 
