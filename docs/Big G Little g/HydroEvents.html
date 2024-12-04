@@ -1232,7 +1232,10 @@ sample estimates:
 <span id="cb46-17"><a href="#cb46-17" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">apply</span>(sig_mat, <span class="dv">1</span>, quantile, <span class="at">probs =</span> <span class="fl">0.025</span>) <span class="sc">~</span> QGvec, <span class="at">col =</span> <span class="st">"blue"</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
 <span id="cb46-18"><a href="#cb46-18" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">apply</span>(sig_mat, <span class="dv">1</span>, quantile, <span class="at">probs =</span> <span class="fl">0.5</span>) <span class="sc">~</span> QGvec, <span class="at">col =</span> <span class="st">"blue"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
 <span id="cb46-19"><a href="#cb46-19" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">apply</span>(sig_mat, <span class="dv">1</span>, quantile, <span class="at">probs =</span> <span class="fl">0.975</span>) <span class="sc">~</span> QGvec, <span class="at">col =</span> <span class="st">"blue"</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
-<span id="cb46-20"><a href="#cb46-20" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topleft"</span>, <span class="at">legend =</span> <span class="fu">c</span>(<span class="st">"Simulations"</span>, <span class="st">"Median"</span>, <span class="st">"95% CI"</span>), <span class="at">lty =</span> <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">2</span>), <span class="at">lwd =</span> <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">1</span>), <span class="at">col =</span> <span class="fu">c</span>(<span class="fu">alpha</span>(<span class="st">"grey"</span>, <span class="fl">0.75</span>), <span class="st">"blue"</span>, <span class="st">"blue"</span>), <span class="at">bty =</span> <span class="st">"n"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb46-20"><a href="#cb46-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb46-21"><a href="#cb46-21" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(sim_sigma <span class="sc">~</span> QGvec, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lty =</span> <span class="dv">3</span>)</span>
+<span id="cb46-22"><a href="#cb46-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb46-23"><a href="#cb46-23" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topleft"</span>, <span class="at">legend =</span> <span class="fu">c</span>(<span class="st">"Simulations"</span>, <span class="st">"Median"</span>, <span class="st">"95% CI"</span>), <span class="at">lty =</span> <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">2</span>), <span class="at">lwd =</span> <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">1</span>), <span class="at">col =</span> <span class="fu">c</span>(<span class="fu">alpha</span>(<span class="st">"grey"</span>, <span class="fl">0.75</span>), <span class="st">"blue"</span>, <span class="st">"blue"</span>), <span class="at">bty =</span> <span class="st">"n"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
 <div>
@@ -2754,163 +2757,166 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb57-692"><a href="#cb57-692" aria-hidden="true" tabindex="-1"></a><span class="in">lines(apply(sig_mat, 1, quantile, probs = 0.025) ~ QGvec, col = "blue", lty = 2)</span></span>
 <span id="cb57-693"><a href="#cb57-693" aria-hidden="true" tabindex="-1"></a><span class="in">lines(apply(sig_mat, 1, quantile, probs = 0.5) ~ QGvec, col = "blue", lwd = 2)</span></span>
 <span id="cb57-694"><a href="#cb57-694" aria-hidden="true" tabindex="-1"></a><span class="in">lines(apply(sig_mat, 1, quantile, probs = 0.975) ~ QGvec, col = "blue", lty = 2)</span></span>
-<span id="cb57-695"><a href="#cb57-695" aria-hidden="true" tabindex="-1"></a><span class="in">legend("topleft", legend = c("Simulations", "Median", "95% CI"), lty = c(1,1,2), lwd = c(1,2,1), col = c(alpha("grey", 0.75), "blue", "blue"), bty = "n")</span></span>
-<span id="cb57-696"><a href="#cb57-696" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb57-695"><a href="#cb57-695" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-696"><a href="#cb57-696" aria-hidden="true" tabindex="-1"></a><span class="in">lines(sim_sigma ~ QGvec, col = "red", lty = 3)</span></span>
 <span id="cb57-697"><a href="#cb57-697" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-698"><a href="#cb57-698" aria-hidden="true" tabindex="-1"></a>Here's an example of an individual simulation...</span>
-<span id="cb57-699"><a href="#cb57-699" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig.width=5, fig.height=5}</span></span>
-<span id="cb57-700"><a href="#cb57-700" aria-hidden="true" tabindex="-1"></a><span class="in">gg_color_hue &lt;- function(n) {</span></span>
-<span id="cb57-701"><a href="#cb57-701" aria-hidden="true" tabindex="-1"></a><span class="in">  hues = seq(15, 375, length = n + 1)</span></span>
-<span id="cb57-702"><a href="#cb57-702" aria-hidden="true" tabindex="-1"></a><span class="in">  hcl(h = hues, l = 65, c = 100)[1:n] }</span></span>
-<span id="cb57-703"><a href="#cb57-703" aria-hidden="true" tabindex="-1"></a><span class="in">mycols &lt;- gg_color_hue(9)</span></span>
-<span id="cb57-704"><a href="#cb57-704" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-705"><a href="#cb57-705" aria-hidden="true" tabindex="-1"></a><span class="in">par(mar = c(5,5,1,1), mfrow = c(1,1))</span></span>
-<span id="cb57-706"><a href="#cb57-706" aria-hidden="true" tabindex="-1"></a><span class="in">plot(seq(from = range(pred_mat)[1], to = range(pred_mat)[2], length.out = ndiff) ~ QGvec, type = "n", xlab = "(log) volumetric yield at Big G", ylab = "(log) volumetric yield at little g")</span></span>
-<span id="cb57-707"><a href="#cb57-707" aria-hidden="true" tabindex="-1"></a><span class="in">abline(a = 0, b = 1, lty = 2)</span></span>
-<span id="cb57-708"><a href="#cb57-708" aria-hidden="true" tabindex="-1"></a><span class="in">for (i in 1:nsites) { lines(pred_mat[,i] ~ QGvec, lwd = 2, col = mycols[i]) }</span></span>
-<span id="cb57-709"><a href="#cb57-709" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb57-710"><a href="#cb57-710" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-711"><a href="#cb57-711" aria-hidden="true" tabindex="-1"></a><span class="fu">##### Portfolio strength</span></span>
-<span id="cb57-712"><a href="#cb57-712" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-713"><a href="#cb57-713" aria-hidden="true" tabindex="-1"></a>There are probably better ways to do this, but here I'm quantifying/visualizing what I'm calling "portfolio strength", or the degree of heterogeneity in streamflow regimes across the network, as a function of water availability (big G flow). Portfolio strength is calculated as the (median) observed among-site variation in little G divided by the (median) expected/simulated among site variation in little g assuming flow homogeneity. Thus, values &gt;1 and &lt;1 indicate greater and less heterogeneity in streamflow than expected under the assumption of homogeneity, respectively. I think this would be a good way to compare/standardize among basins. </span>
-<span id="cb57-714"><a href="#cb57-714" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig.width=5, fig.height=5}</span></span>
-<span id="cb57-715"><a href="#cb57-715" aria-hidden="true" tabindex="-1"></a><span class="in">par(mar = c(5,5,1,1), mfrow = c(1,1))</span></span>
-<span id="cb57-716"><a href="#cb57-716" aria-hidden="true" tabindex="-1"></a><span class="in">plot(pred_arr_summ$med / apply(sig_mat, 1, quantile, probs = 0.5) ~ QGvec, type = "l", lwd = 2, xlab = "(log) volumetric yield at Big G", ylab = "Portfolio strength")</span></span>
-<span id="cb57-717"><a href="#cb57-717" aria-hidden="true" tabindex="-1"></a><span class="in">abline(a = 1, b = 0, lty = 2)</span></span>
-<span id="cb57-718"><a href="#cb57-718" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb57-719"><a href="#cb57-719" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-720"><a href="#cb57-720" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-721"><a href="#cb57-721" aria-hidden="true" tabindex="-1"></a>Alternatively, portfolio strength can be defined as the ratio between among-site variation in little g at low vs. high values of Big G (sensu Chezik et al. 2017)...so we get distributions for observed and expected values, where a value of 1 indicates no portfolio behavior (no streamflow diversity at different levels of Big G). I don't think this makes sense because the whole point is the evaluation how diversity in flow regimes (i.e., portfolio strength) changes with water availability.</span>
-<span id="cb57-722"><a href="#cb57-722" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig.width=6, fig.height=4}</span></span>
-<span id="cb57-723"><a href="#cb57-723" aria-hidden="true" tabindex="-1"></a><span class="in">par(mar = c(5,5,1,1), mfrow = c(1,1))</span></span>
-<span id="cb57-724"><a href="#cb57-724" aria-hidden="true" tabindex="-1"></a><span class="in">plot(seq(from = 0, to = 1, length.out = 100) ~ seq(from = 0, to = 6, length.out = 100), type = "n", xlab = "Porfolio strength", ylab = "Density")</span></span>
-<span id="cb57-725"><a href="#cb57-725" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-726"><a href="#cb57-726" aria-hidden="true" tabindex="-1"></a><span class="in"># observed among-site attenuation strength</span></span>
-<span id="cb57-727"><a href="#cb57-727" aria-hidden="true" tabindex="-1"></a><span class="in">obs_den &lt;- density(pred_arr[,1] / pred_arr[,dim(pred_arr)[2]])</span></span>
-<span id="cb57-728"><a href="#cb57-728" aria-hidden="true" tabindex="-1"></a><span class="in">obs_den$y2 &lt;- obs_den$y / max(obs_den$y)</span></span>
-<span id="cb57-729"><a href="#cb57-729" aria-hidden="true" tabindex="-1"></a><span class="in">obs_l &lt;- min(which(obs_den$x &gt;= hdi(obs_den, credMass = 0.95)[1]))</span></span>
-<span id="cb57-730"><a href="#cb57-730" aria-hidden="true" tabindex="-1"></a><span class="in">obs_h &lt;- max(which(obs_den$x &lt; hdi(obs_den, credMass = 0.95)[2]))</span></span>
-<span id="cb57-731"><a href="#cb57-731" aria-hidden="true" tabindex="-1"></a><span class="in">polygon(x = c(obs_den$x[c(obs_l,obs_l:obs_h,obs_h)]), y = c(0,obs_den$y2[obs_l:obs_h],0), col = alpha("black", 0.3), lty = 0)</span></span>
-<span id="cb57-732"><a href="#cb57-732" aria-hidden="true" tabindex="-1"></a><span class="in">lines(obs_den$y2 ~ obs_den$x, col = "black", lwd = 2)</span></span>
-<span id="cb57-733"><a href="#cb57-733" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-734"><a href="#cb57-734" aria-hidden="true" tabindex="-1"></a><span class="in"># expected among-site attenuation strength</span></span>
-<span id="cb57-735"><a href="#cb57-735" aria-hidden="true" tabindex="-1"></a><span class="in">exp_den &lt;- density(sig_mat[1,] / sig_mat[dim(sig_mat)[1],])</span></span>
-<span id="cb57-736"><a href="#cb57-736" aria-hidden="true" tabindex="-1"></a><span class="in">exp_den$y2 &lt;- exp_den$y / max(exp_den$y)</span></span>
-<span id="cb57-737"><a href="#cb57-737" aria-hidden="true" tabindex="-1"></a><span class="in">exp_l &lt;- min(which(exp_den$x &gt;= hdi(exp_den, credMass = 0.95)[1]))</span></span>
-<span id="cb57-738"><a href="#cb57-738" aria-hidden="true" tabindex="-1"></a><span class="in">exp_h &lt;- max(which(exp_den$x &lt; hdi(exp_den, credMass = 0.95)[2]))</span></span>
-<span id="cb57-739"><a href="#cb57-739" aria-hidden="true" tabindex="-1"></a><span class="in">polygon(x = c(exp_den$x[c(exp_l,exp_l:exp_h,exp_h)]), y = c(0,exp_den$y2[exp_l:exp_h],0), col = alpha("blue", 0.3), lty = 0)</span></span>
-<span id="cb57-740"><a href="#cb57-740" aria-hidden="true" tabindex="-1"></a><span class="in">lines(exp_den$y2 ~ exp_den$x, col = "blue", lwd = 2)</span></span>
-<span id="cb57-741"><a href="#cb57-741" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-742"><a href="#cb57-742" aria-hidden="true" tabindex="-1"></a><span class="in">legend("topright", legend = c("Observed", "Expected"), fill = c(alpha("black", 0.3), alpha("blue", 0.3)), bty = "n")</span></span>
-<span id="cb57-743"><a href="#cb57-743" aria-hidden="true" tabindex="-1"></a><span class="in">abline(v = 1, lty = 2)</span></span>
-<span id="cb57-744"><a href="#cb57-744" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb57-745"><a href="#cb57-745" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-746"><a href="#cb57-746" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-747"><a href="#cb57-747" aria-hidden="true" tabindex="-1"></a><span class="fu">### Agnostic to sites</span></span>
+<span id="cb57-698"><a href="#cb57-698" aria-hidden="true" tabindex="-1"></a><span class="in">legend("topleft", legend = c("Simulations", "Median", "95% CI"), lty = c(1,1,2), lwd = c(1,2,1), col = c(alpha("grey", 0.75), "blue", "blue"), bty = "n")</span></span>
+<span id="cb57-699"><a href="#cb57-699" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb57-700"><a href="#cb57-700" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-701"><a href="#cb57-701" aria-hidden="true" tabindex="-1"></a>Here's an example of an individual simulation...</span>
+<span id="cb57-702"><a href="#cb57-702" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig.width=5, fig.height=5}</span></span>
+<span id="cb57-703"><a href="#cb57-703" aria-hidden="true" tabindex="-1"></a><span class="in">gg_color_hue &lt;- function(n) {</span></span>
+<span id="cb57-704"><a href="#cb57-704" aria-hidden="true" tabindex="-1"></a><span class="in">  hues = seq(15, 375, length = n + 1)</span></span>
+<span id="cb57-705"><a href="#cb57-705" aria-hidden="true" tabindex="-1"></a><span class="in">  hcl(h = hues, l = 65, c = 100)[1:n] }</span></span>
+<span id="cb57-706"><a href="#cb57-706" aria-hidden="true" tabindex="-1"></a><span class="in">mycols &lt;- gg_color_hue(9)</span></span>
+<span id="cb57-707"><a href="#cb57-707" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-708"><a href="#cb57-708" aria-hidden="true" tabindex="-1"></a><span class="in">par(mar = c(5,5,1,1), mfrow = c(1,1))</span></span>
+<span id="cb57-709"><a href="#cb57-709" aria-hidden="true" tabindex="-1"></a><span class="in">plot(seq(from = range(pred_mat)[1], to = range(pred_mat)[2], length.out = ndiff) ~ QGvec, type = "n", xlab = "(log) volumetric yield at Big G", ylab = "(log) volumetric yield at little g")</span></span>
+<span id="cb57-710"><a href="#cb57-710" aria-hidden="true" tabindex="-1"></a><span class="in">abline(a = 0, b = 1, lty = 2)</span></span>
+<span id="cb57-711"><a href="#cb57-711" aria-hidden="true" tabindex="-1"></a><span class="in">for (i in 1:nsites) { lines(pred_mat[,i] ~ QGvec, lwd = 2, col = mycols[i]) }</span></span>
+<span id="cb57-712"><a href="#cb57-712" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb57-713"><a href="#cb57-713" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-714"><a href="#cb57-714" aria-hidden="true" tabindex="-1"></a><span class="fu">##### Portfolio strength</span></span>
+<span id="cb57-715"><a href="#cb57-715" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-716"><a href="#cb57-716" aria-hidden="true" tabindex="-1"></a>There are probably better ways to do this, but here I'm quantifying/visualizing what I'm calling "portfolio strength", or the degree of heterogeneity in streamflow regimes across the network, as a function of water availability (big G flow). Portfolio strength is calculated as the (median) observed among-site variation in little G divided by the (median) expected/simulated among site variation in little g assuming flow homogeneity. Thus, values &gt;1 and &lt;1 indicate greater and less heterogeneity in streamflow than expected under the assumption of homogeneity, respectively. I think this would be a good way to compare/standardize among basins. </span>
+<span id="cb57-717"><a href="#cb57-717" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig.width=5, fig.height=5}</span></span>
+<span id="cb57-718"><a href="#cb57-718" aria-hidden="true" tabindex="-1"></a><span class="in">par(mar = c(5,5,1,1), mfrow = c(1,1))</span></span>
+<span id="cb57-719"><a href="#cb57-719" aria-hidden="true" tabindex="-1"></a><span class="in">plot(pred_arr_summ$med / apply(sig_mat, 1, quantile, probs = 0.5) ~ QGvec, type = "l", lwd = 2, xlab = "(log) volumetric yield at Big G", ylab = "Portfolio strength")</span></span>
+<span id="cb57-720"><a href="#cb57-720" aria-hidden="true" tabindex="-1"></a><span class="in">abline(a = 1, b = 0, lty = 2)</span></span>
+<span id="cb57-721"><a href="#cb57-721" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb57-722"><a href="#cb57-722" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-723"><a href="#cb57-723" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-724"><a href="#cb57-724" aria-hidden="true" tabindex="-1"></a>Alternatively, portfolio strength can be defined as the ratio between among-site variation in little g at low vs. high values of Big G (sensu Chezik et al. 2017)...so we get distributions for observed and expected values, where a value of 1 indicates no portfolio behavior (no streamflow diversity at different levels of Big G). I don't think this makes sense because the whole point is the evaluation how diversity in flow regimes (i.e., portfolio strength) changes with water availability.</span>
+<span id="cb57-725"><a href="#cb57-725" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig.width=6, fig.height=4}</span></span>
+<span id="cb57-726"><a href="#cb57-726" aria-hidden="true" tabindex="-1"></a><span class="in">par(mar = c(5,5,1,1), mfrow = c(1,1))</span></span>
+<span id="cb57-727"><a href="#cb57-727" aria-hidden="true" tabindex="-1"></a><span class="in">plot(seq(from = 0, to = 1, length.out = 100) ~ seq(from = 0, to = 6, length.out = 100), type = "n", xlab = "Porfolio strength", ylab = "Density")</span></span>
+<span id="cb57-728"><a href="#cb57-728" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-729"><a href="#cb57-729" aria-hidden="true" tabindex="-1"></a><span class="in"># observed among-site attenuation strength</span></span>
+<span id="cb57-730"><a href="#cb57-730" aria-hidden="true" tabindex="-1"></a><span class="in">obs_den &lt;- density(pred_arr[,1] / pred_arr[,dim(pred_arr)[2]])</span></span>
+<span id="cb57-731"><a href="#cb57-731" aria-hidden="true" tabindex="-1"></a><span class="in">obs_den$y2 &lt;- obs_den$y / max(obs_den$y)</span></span>
+<span id="cb57-732"><a href="#cb57-732" aria-hidden="true" tabindex="-1"></a><span class="in">obs_l &lt;- min(which(obs_den$x &gt;= hdi(obs_den, credMass = 0.95)[1]))</span></span>
+<span id="cb57-733"><a href="#cb57-733" aria-hidden="true" tabindex="-1"></a><span class="in">obs_h &lt;- max(which(obs_den$x &lt; hdi(obs_den, credMass = 0.95)[2]))</span></span>
+<span id="cb57-734"><a href="#cb57-734" aria-hidden="true" tabindex="-1"></a><span class="in">polygon(x = c(obs_den$x[c(obs_l,obs_l:obs_h,obs_h)]), y = c(0,obs_den$y2[obs_l:obs_h],0), col = alpha("black", 0.3), lty = 0)</span></span>
+<span id="cb57-735"><a href="#cb57-735" aria-hidden="true" tabindex="-1"></a><span class="in">lines(obs_den$y2 ~ obs_den$x, col = "black", lwd = 2)</span></span>
+<span id="cb57-736"><a href="#cb57-736" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-737"><a href="#cb57-737" aria-hidden="true" tabindex="-1"></a><span class="in"># expected among-site attenuation strength</span></span>
+<span id="cb57-738"><a href="#cb57-738" aria-hidden="true" tabindex="-1"></a><span class="in">exp_den &lt;- density(sig_mat[1,] / sig_mat[dim(sig_mat)[1],])</span></span>
+<span id="cb57-739"><a href="#cb57-739" aria-hidden="true" tabindex="-1"></a><span class="in">exp_den$y2 &lt;- exp_den$y / max(exp_den$y)</span></span>
+<span id="cb57-740"><a href="#cb57-740" aria-hidden="true" tabindex="-1"></a><span class="in">exp_l &lt;- min(which(exp_den$x &gt;= hdi(exp_den, credMass = 0.95)[1]))</span></span>
+<span id="cb57-741"><a href="#cb57-741" aria-hidden="true" tabindex="-1"></a><span class="in">exp_h &lt;- max(which(exp_den$x &lt; hdi(exp_den, credMass = 0.95)[2]))</span></span>
+<span id="cb57-742"><a href="#cb57-742" aria-hidden="true" tabindex="-1"></a><span class="in">polygon(x = c(exp_den$x[c(exp_l,exp_l:exp_h,exp_h)]), y = c(0,exp_den$y2[exp_l:exp_h],0), col = alpha("blue", 0.3), lty = 0)</span></span>
+<span id="cb57-743"><a href="#cb57-743" aria-hidden="true" tabindex="-1"></a><span class="in">lines(exp_den$y2 ~ exp_den$x, col = "blue", lwd = 2)</span></span>
+<span id="cb57-744"><a href="#cb57-744" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-745"><a href="#cb57-745" aria-hidden="true" tabindex="-1"></a><span class="in">legend("topright", legend = c("Observed", "Expected"), fill = c(alpha("black", 0.3), alpha("blue", 0.3)), bty = "n")</span></span>
+<span id="cb57-746"><a href="#cb57-746" aria-hidden="true" tabindex="-1"></a><span class="in">abline(v = 1, lty = 2)</span></span>
+<span id="cb57-747"><a href="#cb57-747" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb57-748"><a href="#cb57-748" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-749"><a href="#cb57-749" aria-hidden="true" tabindex="-1"></a>This model evaluates the G-g relationship and the effect of G on sigma, but ignores site groupings. With respect to the sigma~G relationship, this is essentially what I am trying to reconstruct above using derived values. </span>
-<span id="cb57-752"><a href="#cb57-752" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb57-753"><a href="#cb57-753" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"model {</span></span>
-<span id="cb57-754"><a href="#cb57-754" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-755"><a href="#cb57-755" aria-hidden="true" tabindex="-1"></a><span class="st">##--- LIKELIHOOD ---------------------------------------------------##</span></span>
-<span id="cb57-756"><a href="#cb57-756" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-757"><a href="#cb57-757" aria-hidden="true" tabindex="-1"></a><span class="st">for (i in 1:nObs) {</span></span>
-<span id="cb57-758"><a href="#cb57-758" aria-hidden="true" tabindex="-1"></a><span class="st">  Qg[i] ~ dnorm(mu[i], pow(sigma[i], -2))</span></span>
-<span id="cb57-759"><a href="#cb57-759" aria-hidden="true" tabindex="-1"></a><span class="st">  mu[i] &lt;- alpha + beta * QG[i]</span></span>
-<span id="cb57-760"><a href="#cb57-760" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
-<span id="cb57-761"><a href="#cb57-761" aria-hidden="true" tabindex="-1"></a><span class="st">  # effect of Big G yield on global process error</span></span>
-<span id="cb57-762"><a href="#cb57-762" aria-hidden="true" tabindex="-1"></a><span class="st">  log(sigma[i]) &lt;- alpha.sig + beta.sig * QG[i]</span></span>
+<span id="cb57-749"><a href="#cb57-749" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-750"><a href="#cb57-750" aria-hidden="true" tabindex="-1"></a><span class="fu">### Agnostic to sites</span></span>
+<span id="cb57-751"><a href="#cb57-751" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-752"><a href="#cb57-752" aria-hidden="true" tabindex="-1"></a>This model evaluates the G-g relationship and the effect of G on sigma, but ignores site groupings. With respect to the sigma~G relationship, this is essentially what I am trying to reconstruct above using derived values. </span>
+<span id="cb57-755"><a href="#cb57-755" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb57-756"><a href="#cb57-756" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"model {</span></span>
+<span id="cb57-757"><a href="#cb57-757" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-758"><a href="#cb57-758" aria-hidden="true" tabindex="-1"></a><span class="st">##--- LIKELIHOOD ---------------------------------------------------##</span></span>
+<span id="cb57-759"><a href="#cb57-759" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-760"><a href="#cb57-760" aria-hidden="true" tabindex="-1"></a><span class="st">for (i in 1:nObs) {</span></span>
+<span id="cb57-761"><a href="#cb57-761" aria-hidden="true" tabindex="-1"></a><span class="st">  Qg[i] ~ dnorm(mu[i], pow(sigma[i], -2))</span></span>
+<span id="cb57-762"><a href="#cb57-762" aria-hidden="true" tabindex="-1"></a><span class="st">  mu[i] &lt;- alpha + beta * QG[i]</span></span>
 <span id="cb57-763"><a href="#cb57-763" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
-<span id="cb57-764"><a href="#cb57-764" aria-hidden="true" tabindex="-1"></a><span class="st">  # Log-likelihood</span></span>
-<span id="cb57-765"><a href="#cb57-765" aria-hidden="true" tabindex="-1"></a><span class="st">  loglik[i] &lt;- logdensity.norm(Qg[i], mu[i], pow(sigma[i], -2))</span></span>
-<span id="cb57-766"><a href="#cb57-766" aria-hidden="true" tabindex="-1"></a><span class="st">  }</span></span>
-<span id="cb57-767"><a href="#cb57-767" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-768"><a href="#cb57-768" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-769"><a href="#cb57-769" aria-hidden="true" tabindex="-1"></a><span class="st">##--- PRIORS --------------------------------------------------------##</span></span>
+<span id="cb57-764"><a href="#cb57-764" aria-hidden="true" tabindex="-1"></a><span class="st">  # effect of Big G yield on global process error</span></span>
+<span id="cb57-765"><a href="#cb57-765" aria-hidden="true" tabindex="-1"></a><span class="st">  log(sigma[i]) &lt;- alpha.sig + beta.sig * QG[i]</span></span>
+<span id="cb57-766"><a href="#cb57-766" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
+<span id="cb57-767"><a href="#cb57-767" aria-hidden="true" tabindex="-1"></a><span class="st">  # Log-likelihood</span></span>
+<span id="cb57-768"><a href="#cb57-768" aria-hidden="true" tabindex="-1"></a><span class="st">  loglik[i] &lt;- logdensity.norm(Qg[i], mu[i], pow(sigma[i], -2))</span></span>
+<span id="cb57-769"><a href="#cb57-769" aria-hidden="true" tabindex="-1"></a><span class="st">  }</span></span>
 <span id="cb57-770"><a href="#cb57-770" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-771"><a href="#cb57-771" aria-hidden="true" tabindex="-1"></a><span class="st"># process error</span></span>
-<span id="cb57-772"><a href="#cb57-772" aria-hidden="true" tabindex="-1"></a><span class="st">alpha.sig ~ dnorm(0, pow(10, -2))</span></span>
-<span id="cb57-773"><a href="#cb57-773" aria-hidden="true" tabindex="-1"></a><span class="st">beta.sig ~ dnorm(0, pow(10, -2))</span></span>
-<span id="cb57-774"><a href="#cb57-774" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
-<span id="cb57-775"><a href="#cb57-775" aria-hidden="true" tabindex="-1"></a><span class="st"># global intercept and slope</span></span>
-<span id="cb57-776"><a href="#cb57-776" aria-hidden="true" tabindex="-1"></a><span class="st">alpha ~ dnorm(0, pow(10, -2))</span></span>
-<span id="cb57-777"><a href="#cb57-777" aria-hidden="true" tabindex="-1"></a><span class="st">beta ~ dnorm(0, pow(10, -2))</span></span>
-<span id="cb57-778"><a href="#cb57-778" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-779"><a href="#cb57-779" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
-<span id="cb57-780"><a href="#cb57-780" aria-hidden="true" tabindex="-1"></a><span class="st">##--- DERIVED VALUES ------------------------------------------------##</span></span>
+<span id="cb57-771"><a href="#cb57-771" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-772"><a href="#cb57-772" aria-hidden="true" tabindex="-1"></a><span class="st">##--- PRIORS --------------------------------------------------------##</span></span>
+<span id="cb57-773"><a href="#cb57-773" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-774"><a href="#cb57-774" aria-hidden="true" tabindex="-1"></a><span class="st"># process error</span></span>
+<span id="cb57-775"><a href="#cb57-775" aria-hidden="true" tabindex="-1"></a><span class="st">alpha.sig ~ dnorm(0, pow(10, -2))</span></span>
+<span id="cb57-776"><a href="#cb57-776" aria-hidden="true" tabindex="-1"></a><span class="st">beta.sig ~ dnorm(0, pow(10, -2))</span></span>
+<span id="cb57-777"><a href="#cb57-777" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
+<span id="cb57-778"><a href="#cb57-778" aria-hidden="true" tabindex="-1"></a><span class="st"># global intercept and slope</span></span>
+<span id="cb57-779"><a href="#cb57-779" aria-hidden="true" tabindex="-1"></a><span class="st">alpha ~ dnorm(0, pow(10, -2))</span></span>
+<span id="cb57-780"><a href="#cb57-780" aria-hidden="true" tabindex="-1"></a><span class="st">beta ~ dnorm(0, pow(10, -2))</span></span>
 <span id="cb57-781"><a href="#cb57-781" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-782"><a href="#cb57-782" aria-hidden="true" tabindex="-1"></a><span class="st"># # expected deviation from Big G</span></span>
-<span id="cb57-783"><a href="#cb57-783" aria-hidden="true" tabindex="-1"></a><span class="st"># for (j in 1:nSites) { </span></span>
-<span id="cb57-784"><a href="#cb57-784" aria-hidden="true" tabindex="-1"></a><span class="st">#   for (k in 1:nDiff) {</span></span>
-<span id="cb57-785"><a href="#cb57-785" aria-hidden="true" tabindex="-1"></a><span class="st">#     diff[j,k] &lt;- (alpha[j] + beta[j] * QGvec[k]) - QGvec[k]</span></span>
-<span id="cb57-786"><a href="#cb57-786" aria-hidden="true" tabindex="-1"></a><span class="st">#   }}</span></span>
-<span id="cb57-787"><a href="#cb57-787" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-788"><a href="#cb57-788" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-789"><a href="#cb57-789" aria-hidden="true" tabindex="-1"></a><span class="st">}"</span>, <span class="at">file =</span> <span class="st">"C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod_Events_3.txt"</span>)</span>
-<span id="cb57-790"><a href="#cb57-790" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb57-782"><a href="#cb57-782" aria-hidden="true" tabindex="-1"></a><span class="st">    </span></span>
+<span id="cb57-783"><a href="#cb57-783" aria-hidden="true" tabindex="-1"></a><span class="st">##--- DERIVED VALUES ------------------------------------------------##</span></span>
+<span id="cb57-784"><a href="#cb57-784" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-785"><a href="#cb57-785" aria-hidden="true" tabindex="-1"></a><span class="st"># # expected deviation from Big G</span></span>
+<span id="cb57-786"><a href="#cb57-786" aria-hidden="true" tabindex="-1"></a><span class="st"># for (j in 1:nSites) { </span></span>
+<span id="cb57-787"><a href="#cb57-787" aria-hidden="true" tabindex="-1"></a><span class="st">#   for (k in 1:nDiff) {</span></span>
+<span id="cb57-788"><a href="#cb57-788" aria-hidden="true" tabindex="-1"></a><span class="st">#     diff[j,k] &lt;- (alpha[j] + beta[j] * QGvec[k]) - QGvec[k]</span></span>
+<span id="cb57-789"><a href="#cb57-789" aria-hidden="true" tabindex="-1"></a><span class="st">#   }}</span></span>
+<span id="cb57-790"><a href="#cb57-790" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb57-791"><a href="#cb57-791" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-792"><a href="#cb57-792" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Fit the JAGS model</span></span>
-<span id="cb57-795"><a href="#cb57-795" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb57-796"><a href="#cb57-796" aria-hidden="true" tabindex="-1"></a><span class="co"># gather data for JAGS</span></span>
-<span id="cb57-797"><a href="#cb57-797" aria-hidden="true" tabindex="-1"></a>jags.data <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="st">"nObs"</span> <span class="ot">=</span> <span class="fu">dim</span>(dat_wb2)[<span class="dv">1</span>], <span class="st">"nSites"</span> <span class="ot">=</span> <span class="fu">length</span>(<span class="fu">unique</span>(dat_wb2<span class="sc">$</span>site_name_cd)), </span>
-<span id="cb57-798"><a href="#cb57-798" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"sites"</span> <span class="ot">=</span> dat_wb2<span class="sc">$</span>site_name_cd, <span class="co">#"indev" = dat_wb2$isevent,</span></span>
-<span id="cb57-799"><a href="#cb57-799" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"Qg"</span> <span class="ot">=</span> dat_wb2<span class="sc">$</span>yield_little_vol_log, <span class="st">"QG"</span> <span class="ot">=</span> dat_wb2<span class="sc">$</span>yield_big_vol_log)</span>
-<span id="cb57-800"><a href="#cb57-800" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-801"><a href="#cb57-801" aria-hidden="true" tabindex="-1"></a><span class="co"># parameters to monitor</span></span>
-<span id="cb57-802"><a href="#cb57-802" aria-hidden="true" tabindex="-1"></a>jags.params <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"alpha"</span>, <span class="st">"beta"</span>, <span class="st">"alpha.sig"</span>, <span class="st">"beta.sig"</span>, <span class="st">"loglik"</span>, <span class="st">"mu"</span>, <span class="st">"Qg"</span>)</span>
+<span id="cb57-792"><a href="#cb57-792" aria-hidden="true" tabindex="-1"></a><span class="st">}"</span>, <span class="at">file =</span> <span class="st">"C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod_Events_3.txt"</span>)</span>
+<span id="cb57-793"><a href="#cb57-793" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb57-794"><a href="#cb57-794" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-795"><a href="#cb57-795" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Fit the JAGS model</span></span>
+<span id="cb57-798"><a href="#cb57-798" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb57-799"><a href="#cb57-799" aria-hidden="true" tabindex="-1"></a><span class="co"># gather data for JAGS</span></span>
+<span id="cb57-800"><a href="#cb57-800" aria-hidden="true" tabindex="-1"></a>jags.data <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="st">"nObs"</span> <span class="ot">=</span> <span class="fu">dim</span>(dat_wb2)[<span class="dv">1</span>], <span class="st">"nSites"</span> <span class="ot">=</span> <span class="fu">length</span>(<span class="fu">unique</span>(dat_wb2<span class="sc">$</span>site_name_cd)), </span>
+<span id="cb57-801"><a href="#cb57-801" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"sites"</span> <span class="ot">=</span> dat_wb2<span class="sc">$</span>site_name_cd, <span class="co">#"indev" = dat_wb2$isevent,</span></span>
+<span id="cb57-802"><a href="#cb57-802" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"Qg"</span> <span class="ot">=</span> dat_wb2<span class="sc">$</span>yield_little_vol_log, <span class="st">"QG"</span> <span class="ot">=</span> dat_wb2<span class="sc">$</span>yield_big_vol_log)</span>
 <span id="cb57-803"><a href="#cb57-803" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-804"><a href="#cb57-804" aria-hidden="true" tabindex="-1"></a><span class="co"># run in jags</span></span>
-<span id="cb57-805"><a href="#cb57-805" aria-hidden="true" tabindex="-1"></a>mod_test <span class="ot">&lt;-</span> <span class="fu">jags.parallel</span>(<span class="at">data =</span> jags.data, <span class="at">inits =</span> <span class="cn">NULL</span>, <span class="at">parameters.to.save =</span> jags.params,</span>
-<span id="cb57-806"><a href="#cb57-806" aria-hidden="true" tabindex="-1"></a>                       <span class="at">model.file =</span> <span class="st">"C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod_Events_3.txt"</span>,</span>
-<span id="cb57-807"><a href="#cb57-807" aria-hidden="true" tabindex="-1"></a>                       <span class="at">n.chains =</span> <span class="dv">10</span>, <span class="at">n.thin =</span> <span class="dv">20</span>, <span class="at">n.burnin =</span> <span class="dv">1000</span>, <span class="at">n.iter =</span> <span class="dv">5000</span>, <span class="at">DIC =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb57-808"><a href="#cb57-808" aria-hidden="true" tabindex="-1"></a><span class="co"># saveRDS(mod_0, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/Fitted models/GgMod_Events.rds")</span></span>
-<span id="cb57-809"><a href="#cb57-809" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb57-810"><a href="#cb57-810" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-811"><a href="#cb57-811" aria-hidden="true" tabindex="-1"></a>Get MCMC samples and summary</span>
-<span id="cb57-814"><a href="#cb57-814" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb57-815"><a href="#cb57-815" aria-hidden="true" tabindex="-1"></a>top_mod <span class="ot">&lt;-</span> mod_test</span>
-<span id="cb57-816"><a href="#cb57-816" aria-hidden="true" tabindex="-1"></a><span class="co"># generate MCMC samples and store as an array</span></span>
-<span id="cb57-817"><a href="#cb57-817" aria-hidden="true" tabindex="-1"></a>modelout <span class="ot">&lt;-</span> top_mod<span class="sc">$</span>BUGSoutput</span>
-<span id="cb57-818"><a href="#cb57-818" aria-hidden="true" tabindex="-1"></a>McmcList <span class="ot">&lt;-</span> <span class="fu">vector</span>(<span class="st">"list"</span>, <span class="at">length =</span> <span class="fu">dim</span>(modelout<span class="sc">$</span>sims.array)[<span class="dv">2</span>])</span>
-<span id="cb57-819"><a href="#cb57-819" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(McmcList)) { McmcList[[i]] <span class="ot">=</span> <span class="fu">as.mcmc</span>(modelout<span class="sc">$</span>sims.array[,i,]) }</span>
-<span id="cb57-820"><a href="#cb57-820" aria-hidden="true" tabindex="-1"></a><span class="co"># rbind MCMC samples from 10 chains </span></span>
-<span id="cb57-821"><a href="#cb57-821" aria-hidden="true" tabindex="-1"></a>Mcmcdat_test <span class="ot">&lt;-</span> <span class="fu">rbind</span>(McmcList[[<span class="dv">1</span>]], McmcList[[<span class="dv">2</span>]], McmcList[[<span class="dv">3</span>]], McmcList[[<span class="dv">4</span>]], McmcList[[<span class="dv">5</span>]], McmcList[[<span class="dv">6</span>]], McmcList[[<span class="dv">7</span>]], McmcList[[<span class="dv">8</span>]], McmcList[[<span class="dv">9</span>]], McmcList[[<span class="dv">10</span>]])</span>
-<span id="cb57-822"><a href="#cb57-822" aria-hidden="true" tabindex="-1"></a>param.summary_test <span class="ot">&lt;-</span> modelout<span class="sc">$</span>summary</span>
-<span id="cb57-823"><a href="#cb57-823" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(param.summary_test)</span>
-<span id="cb57-824"><a href="#cb57-824" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb57-825"><a href="#cb57-825" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-826"><a href="#cb57-826" aria-hidden="true" tabindex="-1"></a><span class="fu">#### View traceplots</span></span>
-<span id="cb57-829"><a href="#cb57-829" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb57-830"><a href="#cb57-830" aria-hidden="true" tabindex="-1"></a><span class="fu">MCMCtrace</span>(mod_test, <span class="at">ind =</span> <span class="cn">TRUE</span>, <span class="at">params =</span> <span class="fu">c</span>(<span class="st">"alpha"</span>, <span class="st">"beta"</span>, <span class="st">"alpha.sig"</span>, <span class="st">"beta.sig"</span>), <span class="at">pdf =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb57-831"><a href="#cb57-831" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb57-832"><a href="#cb57-832" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-833"><a href="#cb57-833" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-834"><a href="#cb57-834" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Effect of G on sigma</span></span>
+<span id="cb57-804"><a href="#cb57-804" aria-hidden="true" tabindex="-1"></a><span class="co"># parameters to monitor</span></span>
+<span id="cb57-805"><a href="#cb57-805" aria-hidden="true" tabindex="-1"></a>jags.params <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"alpha"</span>, <span class="st">"beta"</span>, <span class="st">"alpha.sig"</span>, <span class="st">"beta.sig"</span>, <span class="st">"loglik"</span>, <span class="st">"mu"</span>, <span class="st">"Qg"</span>)</span>
+<span id="cb57-806"><a href="#cb57-806" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-807"><a href="#cb57-807" aria-hidden="true" tabindex="-1"></a><span class="co"># run in jags</span></span>
+<span id="cb57-808"><a href="#cb57-808" aria-hidden="true" tabindex="-1"></a>mod_test <span class="ot">&lt;-</span> <span class="fu">jags.parallel</span>(<span class="at">data =</span> jags.data, <span class="at">inits =</span> <span class="cn">NULL</span>, <span class="at">parameters.to.save =</span> jags.params,</span>
+<span id="cb57-809"><a href="#cb57-809" aria-hidden="true" tabindex="-1"></a>                       <span class="at">model.file =</span> <span class="st">"C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod_Events_3.txt"</span>,</span>
+<span id="cb57-810"><a href="#cb57-810" aria-hidden="true" tabindex="-1"></a>                       <span class="at">n.chains =</span> <span class="dv">10</span>, <span class="at">n.thin =</span> <span class="dv">20</span>, <span class="at">n.burnin =</span> <span class="dv">1000</span>, <span class="at">n.iter =</span> <span class="dv">5000</span>, <span class="at">DIC =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb57-811"><a href="#cb57-811" aria-hidden="true" tabindex="-1"></a><span class="co"># saveRDS(mod_0, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/Fitted models/GgMod_Events.rds")</span></span>
+<span id="cb57-812"><a href="#cb57-812" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb57-813"><a href="#cb57-813" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-814"><a href="#cb57-814" aria-hidden="true" tabindex="-1"></a>Get MCMC samples and summary</span>
+<span id="cb57-817"><a href="#cb57-817" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb57-818"><a href="#cb57-818" aria-hidden="true" tabindex="-1"></a>top_mod <span class="ot">&lt;-</span> mod_test</span>
+<span id="cb57-819"><a href="#cb57-819" aria-hidden="true" tabindex="-1"></a><span class="co"># generate MCMC samples and store as an array</span></span>
+<span id="cb57-820"><a href="#cb57-820" aria-hidden="true" tabindex="-1"></a>modelout <span class="ot">&lt;-</span> top_mod<span class="sc">$</span>BUGSoutput</span>
+<span id="cb57-821"><a href="#cb57-821" aria-hidden="true" tabindex="-1"></a>McmcList <span class="ot">&lt;-</span> <span class="fu">vector</span>(<span class="st">"list"</span>, <span class="at">length =</span> <span class="fu">dim</span>(modelout<span class="sc">$</span>sims.array)[<span class="dv">2</span>])</span>
+<span id="cb57-822"><a href="#cb57-822" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(McmcList)) { McmcList[[i]] <span class="ot">=</span> <span class="fu">as.mcmc</span>(modelout<span class="sc">$</span>sims.array[,i,]) }</span>
+<span id="cb57-823"><a href="#cb57-823" aria-hidden="true" tabindex="-1"></a><span class="co"># rbind MCMC samples from 10 chains </span></span>
+<span id="cb57-824"><a href="#cb57-824" aria-hidden="true" tabindex="-1"></a>Mcmcdat_test <span class="ot">&lt;-</span> <span class="fu">rbind</span>(McmcList[[<span class="dv">1</span>]], McmcList[[<span class="dv">2</span>]], McmcList[[<span class="dv">3</span>]], McmcList[[<span class="dv">4</span>]], McmcList[[<span class="dv">5</span>]], McmcList[[<span class="dv">6</span>]], McmcList[[<span class="dv">7</span>]], McmcList[[<span class="dv">8</span>]], McmcList[[<span class="dv">9</span>]], McmcList[[<span class="dv">10</span>]])</span>
+<span id="cb57-825"><a href="#cb57-825" aria-hidden="true" tabindex="-1"></a>param.summary_test <span class="ot">&lt;-</span> modelout<span class="sc">$</span>summary</span>
+<span id="cb57-826"><a href="#cb57-826" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(param.summary_test)</span>
+<span id="cb57-827"><a href="#cb57-827" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb57-828"><a href="#cb57-828" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-829"><a href="#cb57-829" aria-hidden="true" tabindex="-1"></a><span class="fu">#### View traceplots</span></span>
+<span id="cb57-832"><a href="#cb57-832" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb57-833"><a href="#cb57-833" aria-hidden="true" tabindex="-1"></a><span class="fu">MCMCtrace</span>(mod_test, <span class="at">ind =</span> <span class="cn">TRUE</span>, <span class="at">params =</span> <span class="fu">c</span>(<span class="st">"alpha"</span>, <span class="st">"beta"</span>, <span class="st">"alpha.sig"</span>, <span class="st">"beta.sig"</span>), <span class="at">pdf =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb57-834"><a href="#cb57-834" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb57-835"><a href="#cb57-835" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-836"><a href="#cb57-836" aria-hidden="true" tabindex="-1"></a>Here, I plot the effects of Big G yield on among-site variation in little g (i.e., sigma). This describes the effect of water availability on network-wide heterogeneity in streamflow.</span>
-<span id="cb57-839"><a href="#cb57-839" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb57-840"><a href="#cb57-840" aria-hidden="true" tabindex="-1"></a><span class="co"># control panel</span></span>
-<span id="cb57-841"><a href="#cb57-841" aria-hidden="true" tabindex="-1"></a>nvals <span class="ot">&lt;-</span> <span class="dv">100</span></span>
-<span id="cb57-842"><a href="#cb57-842" aria-hidden="true" tabindex="-1"></a>nsim <span class="ot">&lt;-</span> <span class="dv">100</span></span>
-<span id="cb57-843"><a href="#cb57-843" aria-hidden="true" tabindex="-1"></a>nsites <span class="ot">&lt;-</span> <span class="fu">length</span>(<span class="fu">unique</span>(dat_wb2<span class="sc">$</span>site_name_cd))</span>
-<span id="cb57-844"><a href="#cb57-844" aria-hidden="true" tabindex="-1"></a>x_seq <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="at">from =</span> <span class="fu">min</span>(dat_wb2<span class="sc">$</span>yield_big_vol_log), <span class="at">to =</span> <span class="fu">max</span>(dat_wb2<span class="sc">$</span>yield_big_vol_log), <span class="at">length.out =</span> nvals)</span>
-<span id="cb57-845"><a href="#cb57-845" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-846"><a href="#cb57-846" aria-hidden="true" tabindex="-1"></a><span class="co"># predict from model</span></span>
-<span id="cb57-847"><a href="#cb57-847" aria-hidden="true" tabindex="-1"></a>pred_arr <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="cn">NA</span>, <span class="at">nrow =</span> nsim, <span class="at">ncol =</span> nvals)</span>
-<span id="cb57-848"><a href="#cb57-848" aria-hidden="true" tabindex="-1"></a>pred_arr_summ <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="cn">NA</span>, <span class="at">nrow =</span> nvals, <span class="at">ncol =</span> <span class="dv">3</span>)</span>
-<span id="cb57-849"><a href="#cb57-849" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>nsim) { pred_arr[j,] <span class="ot">&lt;-</span> <span class="fu">exp</span>(Mcmcdat_test[j,<span class="st">"alpha.sig"</span>] <span class="sc">+</span> Mcmcdat_test[j,<span class="st">"beta.sig"</span>] <span class="sc">*</span> x_seq) }</span>
-<span id="cb57-850"><a href="#cb57-850" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>nvals) { pred_arr_summ[j,] <span class="ot">&lt;-</span> <span class="fu">quantile</span>(pred_arr[,j], <span class="at">probs =</span> <span class="fu">c</span>(<span class="fl">0.025</span>, <span class="fl">0.5</span>, <span class="fl">0.95</span>))}</span>
-<span id="cb57-851"><a href="#cb57-851" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb57-852"><a href="#cb57-852" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb57-853"><a href="#cb57-853" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, fig.width=5, fig.height=5}</span></span>
-<span id="cb57-854"><a href="#cb57-854" aria-hidden="true" tabindex="-1"></a><span class="in">par(mar = c(5,5,1,1), mfrow = c(1,1))</span></span>
-<span id="cb57-855"><a href="#cb57-855" aria-hidden="true" tabindex="-1"></a><span class="in"># among sites</span></span>
-<span id="cb57-856"><a href="#cb57-856" aria-hidden="true" tabindex="-1"></a><span class="in">plot(seq(from = 0, to = range(pred_arr_summ)[2], length.out = nvals) ~ x_seq, type = "n", xlab = "(log) volumetric yield at Big G", ylab = "sigma")</span></span>
-<span id="cb57-857"><a href="#cb57-857" aria-hidden="true" tabindex="-1"></a><span class="in"># variable sigma</span></span>
-<span id="cb57-858"><a href="#cb57-858" aria-hidden="true" tabindex="-1"></a><span class="in">polygon(x = c(x_seq, rev(x_seq)), y = c(pred_arr_summ[,1], rev(pred_arr_summ[,3])), col = alpha("black", 0.2), border = NA)</span></span>
-<span id="cb57-859"><a href="#cb57-859" aria-hidden="true" tabindex="-1"></a><span class="in">lines(pred_arr_summ[,2] ~ x_seq, col = "black", lwd = 2)</span></span>
-<span id="cb57-860"><a href="#cb57-860" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb57-861"><a href="#cb57-861" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-836"><a href="#cb57-836" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-837"><a href="#cb57-837" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Effect of G on sigma</span></span>
+<span id="cb57-838"><a href="#cb57-838" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-839"><a href="#cb57-839" aria-hidden="true" tabindex="-1"></a>Here, I plot the effects of Big G yield on among-site variation in little g (i.e., sigma). This describes the effect of water availability on network-wide heterogeneity in streamflow.</span>
+<span id="cb57-842"><a href="#cb57-842" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb57-843"><a href="#cb57-843" aria-hidden="true" tabindex="-1"></a><span class="co"># control panel</span></span>
+<span id="cb57-844"><a href="#cb57-844" aria-hidden="true" tabindex="-1"></a>nvals <span class="ot">&lt;-</span> <span class="dv">100</span></span>
+<span id="cb57-845"><a href="#cb57-845" aria-hidden="true" tabindex="-1"></a>nsim <span class="ot">&lt;-</span> <span class="dv">100</span></span>
+<span id="cb57-846"><a href="#cb57-846" aria-hidden="true" tabindex="-1"></a>nsites <span class="ot">&lt;-</span> <span class="fu">length</span>(<span class="fu">unique</span>(dat_wb2<span class="sc">$</span>site_name_cd))</span>
+<span id="cb57-847"><a href="#cb57-847" aria-hidden="true" tabindex="-1"></a>x_seq <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="at">from =</span> <span class="fu">min</span>(dat_wb2<span class="sc">$</span>yield_big_vol_log), <span class="at">to =</span> <span class="fu">max</span>(dat_wb2<span class="sc">$</span>yield_big_vol_log), <span class="at">length.out =</span> nvals)</span>
+<span id="cb57-848"><a href="#cb57-848" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-849"><a href="#cb57-849" aria-hidden="true" tabindex="-1"></a><span class="co"># predict from model</span></span>
+<span id="cb57-850"><a href="#cb57-850" aria-hidden="true" tabindex="-1"></a>pred_arr <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="cn">NA</span>, <span class="at">nrow =</span> nsim, <span class="at">ncol =</span> nvals)</span>
+<span id="cb57-851"><a href="#cb57-851" aria-hidden="true" tabindex="-1"></a>pred_arr_summ <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="cn">NA</span>, <span class="at">nrow =</span> nvals, <span class="at">ncol =</span> <span class="dv">3</span>)</span>
+<span id="cb57-852"><a href="#cb57-852" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>nsim) { pred_arr[j,] <span class="ot">&lt;-</span> <span class="fu">exp</span>(Mcmcdat_test[j,<span class="st">"alpha.sig"</span>] <span class="sc">+</span> Mcmcdat_test[j,<span class="st">"beta.sig"</span>] <span class="sc">*</span> x_seq) }</span>
+<span id="cb57-853"><a href="#cb57-853" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>nvals) { pred_arr_summ[j,] <span class="ot">&lt;-</span> <span class="fu">quantile</span>(pred_arr[,j], <span class="at">probs =</span> <span class="fu">c</span>(<span class="fl">0.025</span>, <span class="fl">0.5</span>, <span class="fl">0.95</span>))}</span>
+<span id="cb57-854"><a href="#cb57-854" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb57-855"><a href="#cb57-855" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-856"><a href="#cb57-856" aria-hidden="true" tabindex="-1"></a><span class="in">```{r, fig.width=5, fig.height=5}</span></span>
+<span id="cb57-857"><a href="#cb57-857" aria-hidden="true" tabindex="-1"></a><span class="in">par(mar = c(5,5,1,1), mfrow = c(1,1))</span></span>
+<span id="cb57-858"><a href="#cb57-858" aria-hidden="true" tabindex="-1"></a><span class="in"># among sites</span></span>
+<span id="cb57-859"><a href="#cb57-859" aria-hidden="true" tabindex="-1"></a><span class="in">plot(seq(from = 0, to = range(pred_arr_summ)[2], length.out = nvals) ~ x_seq, type = "n", xlab = "(log) volumetric yield at Big G", ylab = "sigma")</span></span>
+<span id="cb57-860"><a href="#cb57-860" aria-hidden="true" tabindex="-1"></a><span class="in"># variable sigma</span></span>
+<span id="cb57-861"><a href="#cb57-861" aria-hidden="true" tabindex="-1"></a><span class="in">polygon(x = c(x_seq, rev(x_seq)), y = c(pred_arr_summ[,1], rev(pred_arr_summ[,3])), col = alpha("black", 0.2), border = NA)</span></span>
+<span id="cb57-862"><a href="#cb57-862" aria-hidden="true" tabindex="-1"></a><span class="in">lines(pred_arr_summ[,2] ~ x_seq, col = "black", lwd = 2)</span></span>
+<span id="cb57-863"><a href="#cb57-863" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb57-864"><a href="#cb57-864" aria-hidden="true" tabindex="-1"></a></span>
 </code><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
