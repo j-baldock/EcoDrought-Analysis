@@ -7,7 +7,7 @@ for (i in 1:nObs) {
   mu[i] <- alpha[sites[i]] + beta[sites[i]] * QG[i]
   
   # effect of Big G yield on global process error
-  log(sigma[i]) <- alpha.sig + beta.sig * QG[i]
+  log(sigma[i]) <- sig.alpha[sites[i]] + sig.beta[sites[i]] * QG[i]
   
   # Log-likelihood
   loglik[i] <- logdensity.norm(Qg[i], mu[i], pow(sigma[i], -2))
@@ -16,23 +16,27 @@ for (i in 1:nObs) {
 
 ##--- PRIORS --------------------------------------------------------##
 
-# process error
-alpha.sig ~ dnorm(0, pow(10, -2))
-beta.sig ~ dnorm(0, pow(10, -2))
-
 # Site-specific parameters
 for (j in 1:nSites) {
-    alpha[j] ~ dnorm(alpha.mu, pow(alpha.sig.site, -2))
-    beta[j] ~ dnorm(beta.mu, pow(beta.sig.site, -2))
+    alpha[j] ~ dnorm(alpha.mu, pow(alpha.sigma, -2))
+    beta[j] ~ dnorm(beta.mu, pow(beta.sigma, -2))
+    sig.alpha[j] ~ dnorm(sig.alpha.mu, pow(sig.alpha.sigma, -2))
+    sig.beta[j] ~ dnorm(sig.beta.mu, pow(sig.beta.sigma, -2))
     }
     
 # global intercept and slope
 alpha.mu ~ dnorm(0, pow(10, -2))
 beta.mu ~ dnorm(0, pow(10, -2))
 
-# among-site variation in intercept and slope
-alpha.sig.site ~ dunif(0.001, 100)
-beta.sig.site ~ dunif(0.001, 100)
+# global process error
+sig.alpha.mu ~ dnorm(0, pow(10, -2))
+sig.beta.mu ~ dnorm(0, pow(10, -2))
+
+# among-site variation in intercept, slope, and process errors
+alpha.sigma ~ dunif(0.001, 100)
+beta.sigma ~ dunif(0.001, 100)
+sig.alpha.sigma ~ dunif(0.001, 100)
+sig.beta.sigma ~ dunif(0.001, 100)
 
     
 ##--- DERIVED VALUES ------------------------------------------------##
@@ -40,6 +44,7 @@ beta.sig.site ~ dunif(0.001, 100)
 # expected deviation from Big G
 for (j in 1:nSites) { 
   for (k in 1:nDiff) {
+    predlg[j,k] <- alpha[j] + beta[j] * QGvec[k]
     diff[j,k] <- (alpha[j] + beta[j] * QGvec[k]) - QGvec[k]
   }}
 

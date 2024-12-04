@@ -1,0 +1,37 @@
+model {
+
+##--- LIKELIHOOD ---------------------------------------------------##
+
+for (i in 1:nObs) {
+  Qg[i] ~ dnorm(mu[i], pow(sigma[i], -2))
+  mu[i] <- alpha + beta * QG[i]
+  
+  # effect of Big G yield on global process error
+  log(sigma[i]) <- alpha.sig + beta.sig * QG[i]
+  
+  # Log-likelihood
+  loglik[i] <- logdensity.norm(Qg[i], mu[i], pow(sigma[i], -2))
+  }
+
+
+##--- PRIORS --------------------------------------------------------##
+
+# process error
+alpha.sig ~ dnorm(0, pow(10, -2))
+beta.sig ~ dnorm(0, pow(10, -2))
+    
+# global intercept and slope
+alpha ~ dnorm(0, pow(10, -2))
+beta ~ dnorm(0, pow(10, -2))
+
+    
+##--- DERIVED VALUES ------------------------------------------------##
+
+# # expected deviation from Big G
+# for (j in 1:nSites) { 
+#   for (k in 1:nDiff) {
+#     diff[j,k] <- (alpha[j] + beta[j] * QGvec[k]) - QGvec[k]
+#   }}
+
+
+}
