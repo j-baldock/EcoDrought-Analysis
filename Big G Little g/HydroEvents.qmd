@@ -101,6 +101,8 @@ ggpairs(dat_wb_sens %>% select(bf_c, bf_3y, bf_1y, bf_6m, bf_3m, bf_1m)) + geom_
 Perform baseflow separation. See Wasko and Guo (2022, Hydrological Processes) for recommendations on parameterization, as different algorithms and alpha values can produce different results. Section 4.1: "...users should not simply use recommended filter parameter values from literature in combination with any baseflow filter code without verification of their choice of filter parameter. As the digital baseflow filter is not tied to any physical realism (Nathan and McMahon, 1990) and a larger fractional baseflow may aid identification of events—even if this is not strictly baseflow as per its definition (Linsley et al., 1958)...".
 
 It is not actually necessary to do this separately, as baseflow separation is conducted in the event delineation function internally. But it is helpful to view the results and explore how different parameterizations yield different baseflow contributions.
+
+### West Brook
 ```{r}
 dat_wb <- dat %>% filter(site_name %in% c("West Brook NWIS", "West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook"))
 dat_wb_bf <- dat_wb %>% 
@@ -112,9 +114,25 @@ dat_wb_bf <- dat_wb %>%
 head(dat_wb_bf)
 ```
 
-```{r eval=FALSE}
+```{r}
 #| fig-cap: "Total daily streamflow in yield (mm), baseflow in yield, and fractional baseflow index over the period of record for site West Brook NWIS"
 dat_wb_bf %>% filter(site_name == "West Brook NWIS") %>% select(date, Yield_filled_mm, bf, bfi) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+```
+
+### Spread Creek
+
+Perform baseflow separation for spread creek, an example of a snowmelt dominated stream. Note that with the default parameters, the ~entire summer/fall period could potentially be classified as a single event 
+```{r}
+#| fig-cap: "Total daily streamflow in yield (mm), baseflow in yield, and fractional baseflow index over the period of record for site SF Spread Creek Lower NWIS"
+alp <- 0.925
+dat_sh <- dat %>% 
+  filter(site_name %in% c("SF Spread Creek Lower NWIS")) %>% 
+  filter(!is.na(Yield_filled_mm)) %>% 
+  select(site_name, basin, subbasin, WaterYear, date, Yield_filled_mm) %>%
+  group_by(site_name) %>%
+  mutate(bf = baseflowB(Yield_filled_mm, alpha = alp)$bf, bfi = baseflowB(Yield_filled_mm, alpha = alp)$bfi) %>%
+  ungroup()
+dat_sh %>% filter(site_name == "SF Spread Creek Lower NWIS") %>% select(date, Yield_filled_mm, bf, bfi) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 
 
@@ -262,6 +280,8 @@ dat_wb2 %>%
 
 
 ## Model using JAGS
+
+***Question***: How does water availability affect *upstream* diversity in streamflow regimes? How does this manifest as heterogeneity ***within*** and ***among*** locations in the upstream river network?
 
 Based on results above, there does not appear to be any significant difference in the G-g relationship for event and non-event periods. Therefore, do not include random intercepts/slopes (by event/non-event) in the model. Previously, I tried to estimate the G-g differences using an intercept model, with the magnitude of difference a function of water availability. However, when Q = Qg, this simplified to a linear regression between Qg (dependent var.) and QG (independent var.), which is ultimately what is of interest. I estimate this regression model below:
 
