@@ -27,7 +27,7 @@ library(lme4)
 **Questions:**
 
 1. How does water availability (G) affect *upstream* diversity in streamflow regimes (g)? 
-  a. How does streamflow diversity manifest as heterogeneity *within* and *among* locations in the upstream river network?
+    a. How does streamflow diversity manifest as heterogeneity *within* and *among* locations in the upstream river network?
 2. What are the relative contributions of within- and among-site diversity to the total streamflow diversity across the river network and does this change with water availability?
 
 **The Wedge Hypothesis:** Among- and within-site diversity in g response to G drive spatiotemporal variation in flow across river networks
@@ -39,18 +39,18 @@ library(lme4)
 **Approach**
 
 1. Break up data into manageable chunks using event/non-event delineation
-  a. Using Big G flow time series data, perform baseflow separation and event delineation to break up data into event and intervening non-event (baseflow) periods. 
-  b. Apply Big G event/non-event periods to corresponding little g time series data and calculate (log) volumetric yield during each period for both G and g. 
+    a. Using Big G flow time series data, perform baseflow separation and event delineation to break up data into event and intervening non-event (baseflow) periods. 
+    b. Apply Big G event/non-event periods to corresponding little g time series data and calculate (log) volumetric yield during each period for both G and g. 
 2. Using a Bayesian hierarchical model to account for site-level variation, model g ~ G, where g is (log) volumetric yield at little g and G is (log) volumetric yield at Big G during successive event/non-event periods.
-  a. Fit site-aware and site-agnostic models to describe within- and among-site diversity in g response to G, respectively. 
-  b. Derive measures of observed and expected g variance dampening with increasing G under different assumptions regarding among- and within-site streamflow diversity
+    a. Fit site-aware and site-agnostic models to describe within- and among-site diversity in g response to G, respectively. 
+    b. Derive measures of observed and expected g variance dampening with increasing G under different assumptions regarding among- and within-site streamflow diversity
 
 
-![The Wedge Hypothesis - general](C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/WedgeHypDiag.jpg)
+![The Wedge Hypothesis - general](WedgeHypDiag.jpg)
 
-![The Wedge Hypothesis - parameters](C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/WedgeHypDiag_Decon.jpg)
+![The Wedge Hypothesis - parameters](WedgeHypDiag_Decon.jpg)
 
-![The Wedge Hypothesis - portfolio strength](C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/WedgeHypDiag_Portfolio.jpg)
+![The Wedge Hypothesis - portfolio strength](WedgeHypDiag_Portfolio.jpg)
 
 
 ## Data
