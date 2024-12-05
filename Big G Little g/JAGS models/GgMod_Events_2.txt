@@ -3,11 +3,16 @@ model {
 ##--- LIKELIHOOD ---------------------------------------------------##
 
 for (i in 1:nObs) {
+
+  ## SITE AWARE
   Qg[i] ~ dnorm(mu[i], pow(sigma[i], -2))
   mu[i] <- alpha[sites[i]] + beta[sites[i]] * QG[i]
-  
-  # effect of Big G yield on global process error
   log(sigma[i]) <- sig.alpha[sites[i]] + sig.beta[sites[i]] * QG[i]
+  
+  ## SITE AGNOSTIC
+  Qg2[i] ~ dnorm(ag.mu[i], pow(ag.sigma[i], -2))
+  ag.mu[i] <- ag.alpha + ag.beta * QG[i]
+  log(ag.sigma[i]) <- ag.sig.alpha + ag.sig.beta * QG[i]  
   
   # Log-likelihood
   loglik[i] <- logdensity.norm(Qg[i], mu[i], pow(sigma[i], -2))
@@ -15,6 +20,8 @@ for (i in 1:nObs) {
 
 
 ##--- PRIORS --------------------------------------------------------##
+
+## SITE AWARE
 
 # Site-specific parameters
 for (j in 1:nSites) {
@@ -24,29 +31,40 @@ for (j in 1:nSites) {
     sig.beta[j] ~ dnorm(sig.beta.mu, pow(sig.beta.sigma, -2))
     }
     
-# global intercept and slope
+# global intercepts and slopes
 alpha.mu ~ dnorm(0, pow(10, -2))
 beta.mu ~ dnorm(0, pow(10, -2))
-
-# global process error
 sig.alpha.mu ~ dnorm(0, pow(10, -2))
 sig.beta.mu ~ dnorm(0, pow(10, -2))
 
-# among-site variation in intercept, slope, and process errors
+# among-site variation in intercepts and slopes
 alpha.sigma ~ dunif(0.001, 100)
 beta.sigma ~ dunif(0.001, 100)
 sig.alpha.sigma ~ dunif(0.001, 100)
 sig.beta.sigma ~ dunif(0.001, 100)
 
-    
+
+## SITE AGNOSTIC
+
+# global intercepts and slopes
+ag.alpha ~ dnorm(0, pow(10, -2))
+ag.beta ~ dnorm(0, pow(10, -2))
+ag.sig.alpha ~ dnorm(0, pow(10, -2))
+ag.sig.beta ~ dnorm(0, pow(10, -2))
+
+
 ##--- DERIVED VALUES ------------------------------------------------##
 
 # expected deviation from Big G
 for (j in 1:nSites) { 
-  for (k in 1:nDiff) {
-    predlg[j,k] <- alpha[j] + beta[j] * QGvec[k]
-    diff[j,k] <- (alpha[j] + beta[j] * QGvec[k]) - QGvec[k]
+  for (i in 1:nDiff) {
+    predlg[j,i] <- alpha[j] + beta[j] * QGvec[i]
+    diff[j,i] <- (alpha[j] + beta[j] * QGvec[i]) - QGvec[i]
   }}
 
+for (i in 1:nDiff) {
+  portfolio1[i] <- exp(ag.sig.alpha + ag.sig.beta * QGvec[i]) / exp(sig.alpha.mu)
+  portfolio3[i] <- exp(ag.sig.alpha + ag.sig.beta * QGvec[i]) / exp(sig.alpha.mu + sig.beta.mu * QGvec[i])
+}
 
 }
