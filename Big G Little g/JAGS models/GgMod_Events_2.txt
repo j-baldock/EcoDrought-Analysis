@@ -67,4 +67,9 @@ for (i in 1:nDiff) {
   portfolio3[i] <- exp(ag.sig.alpha + ag.sig.beta * QGvec[i]) / exp(sig.alpha.mu + sig.beta.mu * QGvec[i])
 }
 
+atten3 <- exp(sig.alpha.mu + sig.beta.mu * QGvec[1]) / exp(sig.alpha.mu + sig.beta.mu * QGvec[nDiff])
+attenObs <- exp(ag.sig.alpha + ag.sig.beta * QGvec[1]) / exp(ag.sig.alpha + ag.sig.beta * QGvec[nDiff])
+
+
+
 }

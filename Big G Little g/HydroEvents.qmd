@@ -234,6 +234,60 @@ dat_big %>% select(date, big_yield, big_bf, big_event_yield, big_nonevent_yield)
 ```
 
 
+Applying Big G event/non-event periods to little g time series data inherently assumes that event/non-event periods would be similarly delineated for little g. If this assumption does not hold, then non-event little g flow would be included in event periods, and vice-versa. How well does this assumption hold? 
+```{r}
+#| fig-cap: "Time series of yield for Big G (West Brook NWIS) and one little g site (Jimmy Brook) during hydrologic events as delineated for Big G and little g, respectively. "
+sites <- c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook")
+
+dat_little2 <- dat_little %>% filter(site_name == "Jimmy Brook")
+events_little <- eventBaseflow(dat_little2$Yield_filled_mm, BFI_Th = 0.75)
+
+# define positions of non-events
+srt <- c(1)
+end <- c(events_little$srt[1]-1)
+for (i in 2:(dim(events_little)[1])) {
+  srt[i] <- events_little$end[i-1]+1
+  end[i] <- events_little$srt[i]-1
+}
+nonevents <- data.frame(tibble(srt, end) %>% mutate(len = end - srt) %>% filter(len >= 0) %>% select(-len) %>% add_row(srt = events_little$end[dim(events_little)[1]]+1, end = dim(dat_little2)[1]))
+
+# create vectors of binary event/non-event and event IDs
+isevent_vec <- rep(2, times = dim(dat_little2)[1])
+eventid_vec <- rep(NA, times = dim(dat_little2)[1])
+for (i in 1:dim(events_little)[1]) { 
+  isevent_vec[c(events_little[i,1]:events_little[i,2])] <- 1 
+  eventid_vec[c(events_little[i,1]:events_little[i,2])] <- i
+}
+
+# create vector of non-event IDs
+noneventid_vec <- rep(NA, times = dim(dat_little2)[1])
+for (i in 1:dim(nonevents)[1]) { noneventid_vec[c(nonevents[i,1]:nonevents[i,2])] <- i }
+
+# create vector of "agnostic events": combined hydro events and non-events
+agnevents <- rbind(events_little %>% select(srt, end) %>% mutate(event = 1), nonevents %>% mutate(event = 0)) %>% arrange((srt))
+agneventid_vec <- c()
+for (i in 1:dim(agnevents)[1]){ agneventid_vec[c(agnevents[i,1]:agnevents[i,2])] <- i }
+
+# add event/non-event vectors to Big G data
+dat_little2 <- dat_little2 %>% 
+  mutate(isevent = isevent_vec, 
+         eventid = eventid_vec,
+         noneventid = noneventid_vec,
+         agneventid = agneventid_vec,
+         little_event_yield = ifelse(isevent_vec == 1, Yield_filled_mm, NA),
+         little_nonevent_yield = ifelse(isevent_vec == 2, Yield_filled_mm, NA),
+         little_event_quick = little_event_yield - bf) %>%
+  rename(little_yield = Yield_filled_mm, little_bf = bf, little_bfi = bfi)
+
+
+dat_big %>% select(date, big_event_yield) %>% left_join(dat_little2 %>% select(date, little_event_yield)) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+```
+
+Whether or not events alight between G and g is highly variable. In some cases, g events begin/end prior to G events, and in other cases g events begin/end later G events. In some cases g events are shorter than G events, and in other cases they are longer. In many cases, events are perfectly matched. Importantly, peaks in yield are almost always synchronous. 
+
+Ultimately, does this matter given that we are simply using this as a method to break up our data? Furthermore, the framing of the ~entire project is that Big G is the reference by which to compare all little g's. In this sense, applying event/non-event periods derived from G to g matches this persepctive. 
+
+
 ## Join events to Little g
 
 ```{r}
@@ -335,6 +389,8 @@ Based on results above, there does not appear to be any significant difference i
 * Derived values
   + *predlg*: predicted little g
   + *diff*: difference between predicted little g and Big G
+  + *portfolio1*: predicted portfolio strength (over a range of G) assuming no within- or among-site flow diversity
+  + *portfolio3*: predicted portfolio strength (over a range of G) assuming no or among-site flow diversity
 
 ```{r class.source = "fold-show"}
 cat("model {
@@ -406,6 +462,11 @@ for (i in 1:nDiff) {
   portfolio3[i] <- exp(ag.sig.alpha + ag.sig.beta * QGvec[i]) / exp(sig.alpha.mu + sig.beta.mu * QGvec[i])
 }
 
+atten3 <- exp(sig.alpha.mu + sig.beta.mu * QGvec[1]) / exp(sig.alpha.mu + sig.beta.mu * QGvec[nDiff])
+attenObs <- exp(ag.sig.alpha + ag.sig.beta * QGvec[1]) / exp(ag.sig.alpha + ag.sig.beta * QGvec[nDiff])
+
+
+
 }", file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod_Events_2.txt")
 ```
 
@@ -425,7 +486,7 @@ jags.data <- list("nObs" = dim(dat_wb2)[1], "nSites" = length(unique(dat_wb2$sit
 jags.params <- c("alpha", "beta", "alpha.mu", "beta.mu", "alpha.sigma", "beta.sigma", 
                  "sig.alpha", "sig.beta", "sig.alpha.mu", "sig.beta.mu", "sig.alpha.sigma", "sig.beta.sigma", 
                  "ag.alpha", "ag.beta", "ag.sig.alpha", "ag.sig.beta",
-                 "diff", "predlg", "loglik", "mu", "Qg", "portfolio1", "portfolio3")
+                 "diff", "predlg", "loglik", "mu", "Qg", "portfolio1", "portfolio3", "atten3", "attenObs")
 
 # run in jags
 mod_0 <- jags.parallel(data = jags.data, inits = NULL, parameters.to.save = jags.params,
@@ -459,7 +520,7 @@ mod_0$BUGSoutput$summary[,8][mod_0$BUGSoutput$summary[,8] > 1.01]
 
 For global parameters and hyperparameters only...
 ```{r}
-MCMCtrace(mod_0, ind = TRUE, params = c("alpha.mu", "beta.mu", "alpha.sigma", "beta.sigma", "sig.alpha.mu", "sig.beta.mu", "sig.alpha.sigma", "sig.beta.sigma", "ag.alpha", "ag.beta", "ag.sig.alpha", "ag.sig.beta"), pdf = FALSE)
+MCMCtrace(mod_0, ind = TRUE, params = c("alpha.mu", "beta.mu", "alpha.sigma", "beta.sigma", "sig.alpha.mu", "sig.beta.mu", "sig.alpha.sigma", "sig.beta.sigma", "ag.alpha", "ag.beta", "ag.sig.alpha", "ag.sig.beta",  "atten3", "attenObs"), pdf = FALSE)
 ```
 
 ##### PP check
@@ -712,7 +773,7 @@ mtext("Mean difference from Big G", side = 2, line = 1, outer = TRUE, cex = 0.8)
 mtext("Posterior density", side = 1, line = -2, outer = TRUE, cex = 0.8,)
 ```
 
-```{r fig.width=5, fig.height = 5}
+```{r fig.width=5, fig.height = 5, eval=FALSE, echo=FALSE}
 # control panel
 nvals <- 100
 nsim <- dim(Mcmcdat_0)[1]
@@ -785,12 +846,42 @@ lines(pred_arr_p1_summ[,2] ~ QGvec, col = "black", lwd = 2)
 # portfolio 3
 polygon(x = c(QGvec, rev(QGvec)), y = c(pred_arr_p3_summ[,1], rev(pred_arr_p3_summ[,3])), col = alpha("blue", 0.2), border = NA)
 lines(pred_arr_p3_summ[,2] ~ QGvec, col = "blue", lwd = 2)
-# reference line
+# reference line and legend
 abline(h = 1, lty = 2)
+legend("topright", legend = c("1. No within- or among-site diversity",
+                              "3. No among-site diversity"),
+       fill = c(alpha("black", 0.3), alpha("blue", 0.3)), bty = "n")
+```
+
+#### Attenuation strength
+
+```{r fig.width=6, fig.height=4}
+par(mar = c(5,5,1,1), mfrow = c(1,1))
+plot(seq(from = 0, to = 1, length.out = 100) ~ seq(from = 0, to = 7, length.out = 100), type = "n", xlab = "Attenuation strength", ylab = "Density")
+
+# observed among-site attenuation strength
+obs_den <- density(Mcmcdat_0[,"attenObs"])
+obs_den$y2 <- obs_den$y / max(obs_den$y)
+obs_l <- min(which(obs_den$x >= hdi(obs_den, credMass = 0.95)[1]))
+obs_h <- max(which(obs_den$x < hdi(obs_den, credMass = 0.95)[2]))
+polygon(x = c(obs_den$x[c(obs_l,obs_l:obs_h,obs_h)]), y = c(0,obs_den$y2[obs_l:obs_h],0), col = alpha("darkgreen", 0.3), lty = 0)
+lines(obs_den$y2 ~ obs_den$x, col = "darkgreen", lwd = 2)
+
+# expected among-site attenuation strength
+exp_den <- density(Mcmcdat_0[,"atten3"])
+exp_den$y2 <- exp_den$y / max(exp_den$y)
+exp_l <- min(which(exp_den$x >= hdi(exp_den, credMass = 0.95)[1]))
+exp_h <- max(which(exp_den$x < hdi(exp_den, credMass = 0.95)[2]))
+polygon(x = c(exp_den$x[c(exp_l,exp_l:exp_h,exp_h)]), y = c(0,exp_den$y2[exp_l:exp_h],0), col = alpha("blue", 0.3), lty = 0)
+lines(exp_den$y2 ~ exp_den$x, col = "blue", lwd = 2)
+
+legend("topright", legend = c("Observed", "Scen. 3"), fill = c(alpha("darkgreen", 0.3), alpha("blue", 0.3)), bty = "n")
+abline(v = 1, lty = 2)
 ```
 
 
 
+## OLD
 
 #### Null model simulations
 
