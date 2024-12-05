@@ -886,7 +886,7 @@ abline(v = 1, lty = 2)
 #### Null model simulations
 
 How much among-site variation in little G response to Big G might we expect assuming homogeneity in flow regimes? This is the null hypotheses. Although I'm not sure this is the proper way to do this...for each of n sites, I randomly sample from the posterior distributions of alpha.mu and beta.mu to generate site-specific relationships that all follow the global parameters/relationships.
-```{r fig.width=5, fig.height=5}
+```{r fig.width=5, fig.height=5, eval=FALSE, echo=FALSE}
 nsims <- 1000
 nsites <- length(unique(dat_wb2$site_name_cd))
 sig_mat <- matrix(NA, nrow = ndiff, ncol = nsims)
@@ -913,7 +913,7 @@ legend("topleft", legend = c("Simulations", "Median", "95% CI"), lty = c(1,1,2),
 ```
 
 Here's an example of an individual simulation...
-```{r fig.width=5, fig.height=5}
+```{r fig.width=5, fig.height=5, eval=FALSE, echo=FALSE}
 gg_color_hue <- function(n) {
   hues = seq(15, 375, length = n + 1)
   hcl(h = hues, l = 65, c = 100)[1:n] }
@@ -928,7 +928,7 @@ for (i in 1:nsites) { lines(pred_mat[,i] ~ QGvec, lwd = 2, col = mycols[i]) }
 ##### Portfolio strength
 
 There are probably better ways to do this, but here I'm quantifying/visualizing what I'm calling "portfolio strength", or the degree of heterogeneity in streamflow regimes across the network, as a function of water availability (big G flow). Portfolio strength is calculated as the (median) observed among-site variation in little G divided by the (median) expected/simulated among site variation in little g assuming flow homogeneity. Thus, values >1 and <1 indicate greater and less heterogeneity in streamflow than expected under the assumption of homogeneity, respectively. I think this would be a good way to compare/standardize among basins. 
-```{r fig.width=5, fig.height=5}
+```{r fig.width=5, fig.height=5, eval=FALSE, echo=FALSE}
 par(mar = c(5,5,1,1), mfrow = c(1,1))
 plot(pred_arr_summ$med / apply(sig_mat, 1, quantile, probs = 0.5) ~ QGvec, type = "l", lwd = 2, xlab = "(log) volumetric yield at Big G", ylab = "Portfolio strength")
 abline(a = 1, b = 0, lty = 2)
@@ -936,7 +936,7 @@ abline(a = 1, b = 0, lty = 2)
 
 
 Alternatively, portfolio strength can be defined as the ratio between among-site variation in little g at low vs. high values of Big G (sensu Chezik et al. 2017)...so we get distributions for observed and expected values, where a value of 1 indicates no portfolio behavior (no streamflow diversity at different levels of Big G). I don't think this makes sense because the whole point is the evaluation how diversity in flow regimes (i.e., portfolio strength) changes with water availability.
-```{r fig.width=6, fig.height=4}
+```{r fig.width=6, fig.height=4, eval=FALSE, echo=FALSE}
 par(mar = c(5,5,1,1), mfrow = c(1,1))
 plot(seq(from = 0, to = 1, length.out = 100) ~ seq(from = 0, to = 6, length.out = 100), type = "n", xlab = "Porfolio strength", ylab = "Density")
 
@@ -964,7 +964,7 @@ abline(v = 1, lty = 2)
 ### Agnostic to sites
 
 This model evaluates the G-g relationship and the effect of G on sigma, but ignores site groupings. With respect to the sigma~G relationship, this is essentially what I am trying to reconstruct above using derived values. 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 cat("model {
 
 ##--- LIKELIHOOD ---------------------------------------------------##
@@ -1005,7 +1005,7 @@ beta ~ dnorm(0, pow(10, -2))
 ```
 
 #### Fit the JAGS model
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 # gather data for JAGS
 jags.data <- list("nObs" = dim(dat_wb2)[1], "nSites" = length(unique(dat_wb2$site_name_cd)), 
                   "sites" = dat_wb2$site_name_cd, #"indev" = dat_wb2$isevent,
@@ -1022,7 +1022,7 @@ mod_test <- jags.parallel(data = jags.data, inits = NULL, parameters.to.save = j
 ```
 
 Get MCMC samples and summary
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 top_mod <- mod_test
 # generate MCMC samples and store as an array
 modelout <- top_mod$BUGSoutput
@@ -1035,7 +1035,7 @@ head(param.summary_test)
 ```
 
 #### View traceplots
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 MCMCtrace(mod_test, ind = TRUE, params = c("alpha", "beta", "alpha.sig", "beta.sig"), pdf = FALSE)
 ```
 
@@ -1043,7 +1043,7 @@ MCMCtrace(mod_test, ind = TRUE, params = c("alpha", "beta", "alpha.sig", "beta.s
 #### Effect of G on sigma
 
 Here, I plot the effects of Big G yield on among-site variation in little g (i.e., sigma). This describes the effect of water availability on network-wide heterogeneity in streamflow.
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 # control panel
 nvals <- 100
 nsim <- 100
@@ -1057,7 +1057,7 @@ for (j in 1:nsim) { pred_arr[j,] <- exp(Mcmcdat_test[j,"alpha.sig"] + Mcmcdat_te
 for (j in 1:nvals) { pred_arr_summ[j,] <- quantile(pred_arr[,j], probs = c(0.025, 0.5, 0.95))}
 ```
 
-```{r, fig.width=5, fig.height=5}
+```{r, fig.width=5, fig.height=5, eval=FALSE, echo=FALSE}
 par(mar = c(5,5,1,1), mfrow = c(1,1))
 # among sites
 plot(seq(from = 0, to = range(pred_arr_summ)[2], length.out = nvals) ~ x_seq, type = "n", xlab = "(log) volumetric yield at Big G", ylab = "sigma")
