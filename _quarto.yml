@@ -24,9 +24,12 @@ book:
     - part: "Big G-Little g"   
       chapters:
         - Big G Little g/GgStoryPlots.qmd
+        - Event Delineation/HydroEvents.qmd
+        - Big G Little g/WedgeModel.qmd
+    - part: "DEPRECATED"   
+      chapters:
         - Big G Little g/GgDiffKS.qmd
         - Big G Little g/GgDiffJAGS.qmd
-        - Big G Little g/HydroEvents.qmd
 
 format:
   html:

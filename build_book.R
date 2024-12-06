@@ -21,6 +21,17 @@ quarto::quarto_render("Big G Little g/GgStoryPlots.qmd",
                       #cache_refresh = TRUE, # default is FALSE
                       output_format = "html", cache = FALSE)
 
+quarto::quarto_render("Event Delineation/HydroEvents.qmd", 
+                      cache_refresh = TRUE, # default is FALSE
+                      output_format = "html")
+
+quarto::quarto_render("Big G Little g/WedgeModel.qmd", 
+                      #cache_refresh = TRUE, # default is FALSE
+                      output_format = "html")
+
+
+# Deprecated
+
 quarto::quarto_render("Big G Little g/GgDiffKS.qmd", 
                       #cache_refresh = TRUE, # default is FALSE
                       output_format = "html")
@@ -29,6 +40,4 @@ quarto::quarto_render("Big G Little g/GgDiffJAGS.qmd",
                       #cache_refresh = TRUE, # default is FALSE
                       output_format = "html")
 
-quarto::quarto_render("Big G Little g/HydroEvents.qmd", 
-                      cache_refresh = TRUE, # default is FALSE
-                      output_format = "html")
+
