@@ -26,8 +26,12 @@ for (i in 1:nObs) {
 
 # Site-specific parameters
 for (j in 1:nSites) {
-    alpha[j] ~ dnorm(alpha.mu, pow(alpha.sigma, -2))
-    beta[j] ~ dnorm(beta.mu, pow(beta.sigma, -2))
+    alpha[j] <- B[j,1]
+    beta[j] <- B[j,2]
+    B[j,1:2] ~ dmnorm(B.hat[j,], Tau.B[,])
+    B.hat[j,1] <- alpha.mu
+    B.hat[j,2] <- beta.mu
+    
     sig.alpha[j] ~ dnorm(sig.alpha.mu, pow(sig.alpha.sigma, -2))
     sig.beta[j] ~ dnorm(sig.beta.mu, pow(sig.beta.sigma, -2))
     }
@@ -38,9 +42,20 @@ beta.mu ~ dnorm(0, pow(10, -2))
 sig.alpha.mu ~ dnorm(0, pow(10, -2))
 sig.beta.mu ~ dnorm(0, pow(10, -2))
 
-# among-site variation in intercepts and slopes
+
+Tau.B[1:2,1:2] <- inverse(Sigma.B[,])
+
+Sigma.B[1,1] <- pow(alpha.sigma, 2)
 alpha.sigma ~ dunif(0.001, 100)
+
+Sigma.B[2,2] <- pow(beta.sigma, 2)
 beta.sigma ~ dunif(0.001, 100)
+
+Sigma.B[1,2] <- rho * alpha.sigma * beta.sigma
+Sigma.B[2,1] <- Sigma.B[1,2]
+rho ~ dunif(-1,1)
+
+# among-site variation in intercepts and slopes
 sig.alpha.sigma ~ dunif(0.001, 100)
 sig.beta.sigma ~ dunif(0.001, 100)
 
@@ -66,12 +81,18 @@ for (j in 1:nSites) {
 for (i in 1:nDiff) {
   portfolio1[i] <- exp(ag.sig.alpha + ag.sig.beta * QGvec[i]) / exp(sig.alpha.mu)
   portfolio3[i] <- exp(ag.sig.alpha + ag.sig.beta * QGvec[i]) / exp(sig.alpha.mu + sig.beta.mu * QGvec[i])
+  
+  VpObs[i] <- (beta.mu^2) * varx + (alpha.sigma^2) + (QGvec[i]^2) * (beta.sigma^2) + 2 * QGvec[i] * (rho * alpha.sigma * beta.sigma) + (exp(sig.alpha.mu + sig.beta.mu * QGvec[i]))^2
+  VpScen1[i] <- (beta.mu^2) * varx + (exp(sig.alpha.mu))^2
+  VpScen2[i] <- (beta.mu^2) * varx + (alpha.sigma^2) + (QGvec[i]^2) * (beta.sigma^2) + 2 * QGvec[i] * (rho * alpha.sigma * beta.sigma) + (exp(sig.alpha.mu))^2
+  VpScen3[i] <- (beta.mu^2) * varx + (exp(sig.alpha.mu + sig.beta.mu * QGvec[i]))^2
+  
+  port1[i] <- VpObs[i] / VpScen1[i]
+  port2[i] <- VpObs[i] / VpScen2[i]
+  port3[i] <- VpObs[i] / VpScen3[i]
 }
-
 
 atten3 <- exp(sig.alpha.mu + sig.beta.mu * QGvec[1]) / exp(sig.alpha.mu + sig.beta.mu * QGvec[nDiff])
 attenObs <- exp(ag.sig.alpha + ag.sig.beta * QGvec[1]) / exp(ag.sig.alpha + ag.sig.beta * QGvec[nDiff])
-
-
 
 }
