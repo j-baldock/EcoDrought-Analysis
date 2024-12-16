@@ -181,7 +181,7 @@ dat_wb <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/E
   mutate(Station_No = factor(Station_No), Site_Name = factor(Site_Name)) %>%
   rename(station_no = Station_No, site_name = Site_Name, datetime = DateTime_EST, height = GageHeight_Hobo_ft, flow = Discharge_Hobo_cfs, tempf = WaterTemperature_HOBO_DegF) %>%
   mutate(tempc = (tempf - 32)*(5/9)) %>% select(station_no, site_name, datetime, height, flow, tempc) %>%
-  left_join(siteinfo %>% select(-station_no))
+  left_join(siteinfo %>% select(-station_no)) 
 
 
 # Shenandoah
@@ -244,6 +244,7 @@ dat_gya <- bind_rows(gyalist) %>% select(DateTime, depth, discharge, temperature
   left_join(siteinfo) %>% filter(tempc <= 100)
 ```
 
+
 Bind EcoD hourly flow/temp data with siteinfo and write to file
 
 ```{r}
@@ -279,6 +280,64 @@ unique(dat$subbasin)
 ```
 
 ### Inspect hourly data
+
+#### West Brook
+
+Join data update
+```{r}
+dat_wb_new <- dat_wb %>%
+  bind_rows(read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw data/Mass/EcoDrought Continuous_MA_updateDec2024.csv") %>% 
+            rename(datetime = TimeStamp) %>%
+            gather(key = "station_no", value = "flow", 2:9) %>% 
+            mutate(datetime = as_datetime(datetime),
+                   station_no = factor(sub(".*Discharge@", "", station_no))) %>% 
+            left_join(siteinfo %>% mutate(station_no = factor(station_no))))
+```
+
+::: panel-tabset
+##### Avery
+```{r}
+dat_wb_new %>% filter(site_name == "Avery Brook") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
+```
+##### Jimmy
+```{r}
+dat_wb_new %>% filter(site_name == "Jimmy Brook") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
+```
+##### Mitchell
+```{r}
+dat_wb_new %>% filter(site_name == "Mitchell Brook") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
+```
+##### Obear
+```{r}
+dat_wb_new %>% filter(site_name == "Obear Brook Lower") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
+```
+##### Sanderson
+```{r}
+dat_wb_new %>% filter(site_name == "Sanderson Brook") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
+```
+##### WB0
+```{r}
+dat_wb_new %>% filter(site_name == "West Brook 0") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
+```
+##### WB Lower
+```{r}
+dat_wb_new %>% filter(site_name == "West Brook Lower") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
+```
+##### WB Reservoir
+```{r}
+dat_wb_new %>% filter(site_name == "West Brook Reservoir") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
+```
+##### WB Upper
+```{r}
+dat_wb_new %>% filter(site_name == "West Brook Upper") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
+```
+##### West Whateley
+```{r}
+dat_wb_new %>% filter(site_name == "West Whately Brook") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
+```
+:::
+
+#### Flathead
 ```{r}
 mysites <- unlist(unique(dat %>% filter(basin == "Flathead") %>% select(site_name)))
 myplots <- list()
@@ -292,87 +351,87 @@ na_index <- which(test$mindiff > 60)
 ```
 
 ::: panel-tabset
-#### BigCreekLower
+##### BigCreekLower
 ```{r, echo=FALSE}
 myplots[[1]]
 ```
-#### BigCreekMiddle
+##### BigCreekMiddle
 ```{r, echo=FALSE}
 myplots[[2]]
 ```
-#### BigCreekUpper
+##### BigCreekUpper
 ```{r, echo=FALSE}
 myplots[[3]]
 ```
-#### CoalCreekHeadwaters
+##### CoalCreekHeadwaters
 ```{r, echo=FALSE}
 myplots[[4]]
 ```
-#### CoalCreekLower
+##### CoalCreekLower
 ```{r, echo=FALSE}
 myplots[[5]]
 ```
-#### CoalCreekMiddle
+##### CoalCreekMiddle
 ```{r, echo=FALSE}
 myplots[[6]]
 ```
-#### CoalCreekNorth
+##### CoalCreekNorth
 ```{r, echo=FALSE}
 myplots[[7]]
 ```
-#### CycloneCreekLower
+##### CycloneCreekLower
 ```{r, echo=FALSE}
 myplots[[8]]
 ```
-#### CycloneCreekMidddle
+##### CycloneCreekMidddle
 ```{r, echo=FALSE}
 myplots[[9]]
 ```
-#### CycloneCreekUpper
+##### CycloneCreekUpper
 ```{r, echo=FALSE}
 myplots[[10]]
 ```
-#### HallowattCreekLower
+##### HallowattCreekLower
 ```{r, echo=FALSE}
 myplots[[11]]
 ```
-#### LangfordCreekLower
+##### LangfordCreekLower
 ```{r, echo=FALSE}
 myplots[[12]]
 ```
-#### LangfordCreekUpper
+##### LangfordCreekUpper
 ```{r, echo=FALSE}
 myplots[[13]]
 ```
-#### McGeeCreekLower
+##### McGeeCreekLower
 ```{r, echo=FALSE}
 myplots[[14]]
 ```
-#### McGeeCreekTrib
+##### McGeeCreekTrib
 ```{r, echo=FALSE}
 myplots[[15]]
 ```
-#### McGeeCreekUpper
+##### McGeeCreekUpper
 ```{r, echo=FALSE}
 myplots[[16]]
 ```
-#### MeadowCreek
+##### MeadowCreek
 ```{r, echo=FALSE}
 myplots[[17]]
 ```
-#### NicolaCreek
+##### NicolaCreek
 ```{r, echo=FALSE}
 myplots[[18]]
 ```
-#### SkookoleelCreek
+##### SkookoleelCreek
 ```{r, echo=FALSE}
 myplots[[19]]
 ```
-#### WernerCreek
+##### WernerCreek
 ```{r, echo=FALSE}
 myplots[[20]]
 ```
-#### WoundedBuckCreek
+##### WoundedBuckCreek
 ```{r, echo=FALSE}
 myplots[[21]]
 ```
@@ -385,7 +444,7 @@ myplots[[21]]
 # extract daily mean discharge and temp data from USGS NWIS website
 dat_superg_nwis <- tibble(readNWISdv(siteNumbers = sites, parameterCd = c("00010", "00060"), startDate = "1980-01-01", endDate = Sys.Date(), statCd = c("00003", "00001", "00002")))[,-c(1,5,7,9,11)]
 names(dat_superg_nwis) <- c("station_no", "date", "tempc_max", "tempc_min", "tempc_mean", "flow_mean")
-dat_superg_nwis <- dat_superg_nwis %>% left_join(siteinfo)
+dat_superg_nwis <- dat_superg_nwis %>% left_join(siteinfo %>% filter(designation %in% c("big", "medium")))
 
 # Manually grab Donner Blitzen above Indian Creek at the original timescale
 # daily mean flow dropped from above query, perhaps b/c in 2020 flow measurements were made every minute
