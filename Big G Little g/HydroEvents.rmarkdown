@@ -1,0 +1,1687 @@
+---
+title: "Hydro Event Delineation"
+---
+
+
+
+
+
+
+
+
+Purpose: Conducte baseflow separation and delineate hydrologic events to model in Gg framework
+
+
+
+
+
+
+
+
+
+```{r echo=FALSE, message=FALSE}
+library(tidyverse)
+library(sf)
+library(mapview)
+library(knitr)
+library(fasstr)
+library(RColorBrewer)
+library(scales)
+library(dygraphs)
+library(hydroEvents)
+library(GGally)
+library(R2jags)
+library(MCMCvis)
+library(loo)
+library(HDInterval)
+library(lme4)
+```
+
+
+
+
+
+
+
+## Q, H, A
+
+**Questions:**
+
+1. How does water availability (G) affect *upstream* diversity in streamflow regimes (g)? 
+    a. How does streamflow diversity manifest as heterogeneity *within* and *among* locations in the upstream river network?
+2. What are the relative contributions of within- and among-site diversity to the total streamflow diversity across the river network and does this change with water availability?
+
+**The Wedge Hypothesis:** Among- and within-site diversity in g response to G drive spatiotemporal variation in flow across river networks
+
+1. Among-site wedge: heterogeneity in physical characteristics among sites diversify little g response during low flows, but diversity in little g response attenuates (decreases) during high flows
+2. Within-site wedge: within sites, variation in little g response to G is greater at low flows than at high flows 
+3. Additive diversity in the response of little g to Big G among and within sites drives total streamflow diversity across river networks
+
+**Approach**
+
+1. Break up data into manageable chunks using event/non-event delineation
+    a. Using Big G flow time series data, perform baseflow separation and event delineation to break up data into event and intervening non-event (baseflow) periods. 
+    b. Apply Big G event/non-event periods to corresponding little g time series data and calculate (log) volumetric yield during each period for both G and g. 
+2. Using a Bayesian hierarchical model to account for site-level variation, model g ~ G, where g is (log) volumetric yield at little g and G is (log) volumetric yield at Big G during successive event/non-event periods.
+    a. Fit site-aware and site-agnostic models to describe within- and among-site diversity in g response to G, respectively. 
+    b. Derive measures of observed and expected g variance dampening with increasing G under different assumptions regarding among- and within-site streamflow diversity
+
+
+![The Wedge Hypothesis - general](WedgeHypDiag.jpg)
+
+![The Wedge Hypothesis - parameters](WedgeHypDiag_Decon.jpg)
+
+![The Wedge Hypothesis - portfolio strength](WedgeHypDiag_Portfolio.jpg)
+
+
+## Data
+
+### Site info and daily data
+
+
+
+
+
+
+
+```{r}
+# site information and locations
+siteinfo <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv")
+siteinfo_sp <- st_as_sf(siteinfo, coords = c("long", "lat"), crs = 4326)
+mapview(siteinfo_sp, zcol = "designation")
+
+# flow/yield (and temp) data 
+dat <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv") %>%
+  filter(!site_name %in% c("WoundedBuckCreek", "Brackett Creek"))
+
+# add water/climate year variables
+dat <- add_date_variables(dat, dates = date, water_year_start = 4)
+str(dat)
+```
+
+
+
+
+
+
+
+
+
+### Trim to focal site
+
+
+
+
+
+
+
+```{r}
+dat_wb <- dat %>% filter(site_name == "West Brook NWIS")
+```
+
+
+
+
+
+
+
+
+Raw flow
+
+
+
+
+
+
+
+```{r}
+#| fig-cap: "Total daily streamflow in yield (mm), over the period of record"
+dat_wb %>% select(date, Yield_filled_mm) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+```
+
+
+
+
+
+
+
+
+
+## Sensitivity analysis
+
+Many of the EcoDrought time series data are incomplete. At some sites, discharge data is available only during the summer and/or fall periods, and at other sites, time series data are interrupted due to malfunctioning sensors and/or ice formation ("ice spikes"). So how does the length of the time series affect baseflow separation (and subsequent event identification)? Wasko and Guo (2022) use a 67 day time series of flow to demonstrate the utility of the *hydroEvents* packages, suggesting digital baseflow separation techniques may be valid for relatively short time series. 
+
+Here, I perform a simple sensitivity analysis to explore the effect of time series length on the results of baseflow separation. Essentially, perform baseflow separation on increasingly smaller subsets of the data. With the default parameters, the minimum number of days/observations needed is 31. This is because the default number of points reflected at start and end of data (r) is 30. Reflection allows bf/bfi to be calculated over the entire period of record as the underlying baseflow separation equations result in "issues of "Warm-up" and "cool-down" as the recursive filter is moved forward and backward over the dataset" (Ladson et al. 2013, Australian Journal of Water Resources). *baseflowB()* uses a default reflection period of 30, which Ladson et al. (2013) found to "provide a realistic baselfow response for the start and end of the actual flow data".
+
+
+
+
+
+
+
+```{r}
+
+dat_wb_sens <- dat_wb %>% mutate(bf_c = baseflowB(Yield_filled_mm)$bf, bfi_c = baseflowB(Yield_filled_mm)$bfi) %>% select(date, bf_c, bfi_c) %>%
+  left_join(dat_wb[1:(365*3),] %>% mutate(bf_3y = baseflowB(Yield_filled_mm)$bf, bfi_3y = baseflowB(Yield_filled_mm)$bfi) %>% select(date, bf_3y, bfi_3y)) %>%
+  left_join(dat_wb[1:(365),] %>% mutate(bf_1y = baseflowB(Yield_filled_mm)$bf, bfi_1y = baseflowB(Yield_filled_mm)$bfi) %>% select(date, bf_1y, bfi_1y)) %>%
+  left_join(dat_wb[1:(182),] %>% mutate(bf_6m = baseflowB(Yield_filled_mm)$bf, bfi_6m = baseflowB(Yield_filled_mm)$bfi) %>% select(date, bf_6m, bfi_6m)) %>%
+  left_join(dat_wb[1:(90),] %>% mutate(bf_3m = baseflowB(Yield_filled_mm)$bf, bfi_3m = baseflowB(Yield_filled_mm)$bfi) %>% select(date, bf_3m, bfi_3m)) %>%
+  left_join(dat_wb[1:(35),] %>% mutate(bf_1m = baseflowB(Yield_filled_mm)$bf, bfi_1m = baseflowB(Yield_filled_mm)$bfi) %>% select(date, bf_1m, bfi_1m))
+```
+
+
+
+
+
+
+
+
+### Compare baseflow
+
+Divergence in baseflow among datasets is a result of the reflected data of the shorter dataset not matching the actual data of the longer dataset. As a result, divergence really only occurs at the end of each time series and is generally small in magnitude. 
+
+
+
+
+
+
+
+```{r}
+#| fig-cap: "Time series of baseflow derived from datasets of different lengths."
+dat_wb_sens %>% select(date, bf_c, bf_3y, bf_1y, bf_6m, bf_3m, bf_1m) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily baseflow in yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+```
+
+```{r message = FALSE, warning = FALSE}
+#| fig-cap: "Pairs plot of baseflow derrived from datasets of different lengths. Red lines are 1:1."
+ggpairs(dat_wb_sens %>% select(bf_c, bf_3y, bf_1y, bf_6m, bf_3m, bf_1m)) + geom_abline(intercept = 0, slope = 1, color = "red")
+```
+
+
+
+
+
+
+
+
+### Compare baseflow index
+
+The story here is essentially the same as above: divergence is ~minimal and restricted to the end of each time series. However, we note that divergence in BFI appears to increase as absolute flow/baseflow decreases, because small differences in absolute space become much larger in relative space when absolute values are small. 
+
+
+
+
+
+
+
+```{r}
+#| fig-cap: "Time series of baseflow index derived from datasets of different lengths."
+dat_wb_sens %>% select(date, bfi_c, bfi_3y, bfi_1y, bfi_6m, bfi_3m, bfi_1m) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily baseflow in yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+```
+
+```{r message = FALSE, warning = FALSE}
+#| fig-cap: "Pairs plot of baseflow derrived from datasets of different lengths. Red lines are 1:1."
+ggpairs(dat_wb_sens %>% select(bf_c, bf_3y, bf_1y, bf_6m, bf_3m, bf_1m)) + geom_abline(intercept = 0, slope = 1, color = "red")
+```
+
+
+
+
+
+
+
+
+
+## Baseflow separation
+
+Perform baseflow separation. See Wasko and Guo (2022, Hydrological Processes) for recommendations on parameterization, as different algorithms and alpha values can produce different results. Section 4.1: "...users should not simply use recommended filter parameter values from literature in combination with any baseflow filter code without verification of their choice of filter parameter. As the digital baseflow filter is not tied to any physical realism (Nathan and McMahon, 1990) and a larger fractional baseflow may aid identification of events—even if this is not strictly baseflow as per its definition (Linsley et al., 1958)...".
+
+It is not actually necessary to do this separately, as baseflow separation is conducted in the event delineation function internally. But it is helpful to view the results and explore how different parameterizations yield different baseflow contributions.
+
+### West Brook
+
+
+
+
+
+
+
+```{r}
+dat_wb <- dat %>% filter(site_name %in% c("West Brook NWIS", "West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook"))
+dat_wb_bf <- dat_wb %>% 
+  filter(!is.na(Yield_filled_mm)) %>% 
+  select(site_name, basin, subbasin, WaterYear, date, Yield_filled_mm) %>%
+  group_by(site_name) %>%
+  mutate(bf = baseflowB(Yield_filled_mm)$bf, bfi = baseflowB(Yield_filled_mm)$bfi) %>%
+  ungroup()
+head(dat_wb_bf)
+```
+
+```{r}
+#| fig-cap: "Total daily streamflow in yield (mm), baseflow in yield, and fractional baseflow index over the period of record for site West Brook NWIS"
+dat_wb_bf %>% filter(site_name == "West Brook NWIS") %>% select(date, Yield_filled_mm, bf, bfi) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+```
+
+
+
+
+
+
+
+
+### Spread Creek
+
+Perform baseflow separation for spread creek, an example of a snowmelt dominated stream. Note that with the default parameters, the ~entire summer/fall period could potentially be classified as a single event 
+
+
+
+
+
+
+
+```{r}
+#| fig-cap: "Total daily streamflow in yield (mm), baseflow in yield, and fractional baseflow index over the period of record for site SF Spread Creek Lower NWIS"
+alp <- 0.925
+dat_sh <- dat %>% 
+  filter(site_name %in% c("SF Spread Creek Lower NWIS")) %>% 
+  filter(!is.na(Yield_filled_mm)) %>% 
+  select(site_name, basin, subbasin, WaterYear, date, Yield_filled_mm) %>%
+  group_by(site_name) %>%
+  mutate(bf = baseflowB(Yield_filled_mm, alpha = alp)$bf, bfi = baseflowB(Yield_filled_mm, alpha = alp)$bfi) %>%
+  ungroup()
+dat_sh %>% filter(site_name == "SF Spread Creek Lower NWIS") %>% select(date, Yield_filled_mm, bf, bfi) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+```
+
+
+
+
+
+
+
+
+
+## Event identification
+
+There are multiple options for methods of event identification. Section 4.2 in Wasko and Guo (2022): It can be generalized that, if the aim of the analysis is to identify independent streamflow maxima then eventMaxima() and eventMinima() work well and indeed have been traditionally employed for this task. If identifying independent small events becomes difficult, or the aim is to identify wet spells, eventBaseflow() may be preferred." In our case, small events are likely important, so we use eventBaseflow() with a ~large values for BFI_Th to capture those small events.
+
+The aim is to understand how water availability affects differences in yield between Big G and Little g during hydrologic events and the intervening periods (non-event baseflow periods). Therefore, we identify events from the Big G data, apply event/non-event time periods to the little g data, then explore G-g deviations during both events and non-events as a function of 
+
+Separate Big G and Little G data
+
+
+
+
+
+
+
+```{r}
+dat_big <- dat_wb_bf %>% filter(site_name == "West Brook NWIS")
+dat_little <- dat_wb_bf %>% filter(site_name != "West Brook NWIS")
+```
+
+
+
+
+
+
+
+
+Identify events at Big G:
+
+
+
+
+
+
+
+```{r}
+events <- eventBaseflow(dat_big$Yield_filled_mm, BFI_Th = 0.75)
+head(events)
+```
+
+
+
+
+
+
+
+
+Plot Big G events using the default function
+
+
+
+
+
+
+
+```{r}
+#| fig-cap: "Time series of hydrologic events at Big G, identified using eventBaseflow()."
+plotEvents(dat_big$Yield_filled_mm, events = events)
+```
+
+
+
+
+
+
+
+
+Now add variables to the Big G time series data specifying events and non-events 
+
+
+
+
+
+
+
+```{r}
+# define positions of non-events
+srt <- c(1)
+end <- c(events$srt[1]-1)
+for (i in 2:(dim(events)[1])) {
+  srt[i] <- events$end[i-1]+1
+  end[i] <- events$srt[i]-1
+}
+nonevents <- data.frame(tibble(srt, end) %>% mutate(len = end - srt) %>% filter(len >= 0) %>% select(-len) %>% add_row(srt = events$end[dim(events)[1]]+1, end = dim(dat_big)[1]))
+
+# create vectors of binary event/non-event and event IDs
+isevent_vec <- rep(2, times = dim(dat_big)[1])
+eventid_vec <- rep(NA, times = dim(dat_big)[1])
+for (i in 1:dim(events)[1]) { 
+  isevent_vec[c(events[i,1]:events[i,2])] <- 1 
+  eventid_vec[c(events[i,1]:events[i,2])] <- i
+}
+
+# create vector of non-event IDs
+noneventid_vec <- rep(NA, times = dim(dat_big)[1])
+for (i in 1:dim(nonevents)[1]) { noneventid_vec[c(nonevents[i,1]:nonevents[i,2])] <- i }
+
+# create vector of "agnostic events": combined hydro events and non-events
+agnevents <- rbind(events %>% select(srt, end) %>% mutate(event = 1), nonevents %>% mutate(event = 0)) %>% arrange((srt))
+agneventid_vec <- c()
+for (i in 1:dim(agnevents)[1]){ agneventid_vec[c(agnevents[i,1]:agnevents[i,2])] <- i }
+
+# add event/non-event vectors to Big G data
+dat_big <- dat_big %>% 
+  mutate(isevent = isevent_vec, 
+         eventid = eventid_vec,
+         noneventid = noneventid_vec,
+         agneventid = agneventid_vec,
+         big_event_yield = ifelse(isevent_vec == 1, Yield_filled_mm, NA),
+         big_nonevent_yield = ifelse(isevent_vec == 2, Yield_filled_mm, NA),
+         big_event_quick = big_event_yield - bf) %>%
+  rename(big_yield = Yield_filled_mm, big_bf = bf, big_bfi = bfi)
+(dat_big)
+```
+
+```{r}
+#| fig-cap: "Time series of hydrologic events at Big G, identified using eventBaseflow()."
+dat_big %>% select(date, big_yield, big_bf, big_event_yield, big_nonevent_yield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+```
+
+
+
+
+
+
+
+
+
+Applying Big G event/non-event periods to little g time series data inherently assumes that event/non-event periods would be similarly delineated for little g. If this assumption does not hold, then non-event little g flow would be included in event periods, and vice-versa. How well does this assumption hold? 
+
+
+
+
+
+
+
+```{r}
+#| fig-cap: "Time series of yield for Big G (West Brook NWIS) and one little g site (Jimmy Brook) during hydrologic events as delineated for Big G and little g, respectively. "
+sites <- c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook")
+
+dat_little2 <- dat_little %>% filter(site_name == "Jimmy Brook")
+events_little <- eventBaseflow(dat_little2$Yield_filled_mm, BFI_Th = 0.75)
+
+# define positions of non-events
+srt <- c(1)
+end <- c(events_little$srt[1]-1)
+for (i in 2:(dim(events_little)[1])) {
+  srt[i] <- events_little$end[i-1]+1
+  end[i] <- events_little$srt[i]-1
+}
+nonevents <- data.frame(tibble(srt, end) %>% mutate(len = end - srt) %>% filter(len >= 0) %>% select(-len) %>% add_row(srt = events_little$end[dim(events_little)[1]]+1, end = dim(dat_little2)[1]))
+
+# create vectors of binary event/non-event and event IDs
+isevent_vec <- rep(2, times = dim(dat_little2)[1])
+eventid_vec <- rep(NA, times = dim(dat_little2)[1])
+for (i in 1:dim(events_little)[1]) { 
+  isevent_vec[c(events_little[i,1]:events_little[i,2])] <- 1 
+  eventid_vec[c(events_little[i,1]:events_little[i,2])] <- i
+}
+
+# create vector of non-event IDs
+noneventid_vec <- rep(NA, times = dim(dat_little2)[1])
+for (i in 1:dim(nonevents)[1]) { noneventid_vec[c(nonevents[i,1]:nonevents[i,2])] <- i }
+
+# create vector of "agnostic events": combined hydro events and non-events
+agnevents <- rbind(events_little %>% select(srt, end) %>% mutate(event = 1), nonevents %>% mutate(event = 0)) %>% arrange((srt))
+agneventid_vec <- c()
+for (i in 1:dim(agnevents)[1]){ agneventid_vec[c(agnevents[i,1]:agnevents[i,2])] <- i }
+
+# add event/non-event vectors to Big G data
+dat_little2 <- dat_little2 %>% 
+  mutate(isevent = isevent_vec, 
+         eventid = eventid_vec,
+         noneventid = noneventid_vec,
+         agneventid = agneventid_vec,
+         little_event_yield = ifelse(isevent_vec == 1, Yield_filled_mm, NA),
+         little_nonevent_yield = ifelse(isevent_vec == 2, Yield_filled_mm, NA),
+         little_event_quick = little_event_yield - bf) %>%
+  rename(little_yield = Yield_filled_mm, little_bf = bf, little_bfi = bfi)
+
+
+dat_big %>% select(date, big_event_yield) %>% left_join(dat_little2 %>% select(date, little_event_yield)) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+```
+
+
+
+
+
+
+
+
+Whether or not events alight between G and g is highly variable. In some cases, g events begin/end prior to G events, and in other cases g events begin/end later G events. In some cases g events are shorter than G events, and in other cases they are longer. In many cases, events are perfectly matched. Importantly, peaks in yield are almost always synchronous. 
+
+Ultimately, does this matter given that we are simply using this as a method to break up our data? Furthermore, the framing of the ~entire project is that Big G is the reference by which to compare all little g's. In this sense, applying event/non-event periods derived from G to g matches this persepctive. 
+
+
+## Join events to Little g
+
+
+
+
+
+
+
+
+```{r}
+# wide
+dat_wb2 <- dat_little %>% 
+  filter(date >= min(dat_big$date) & date <= max(dat_big$date)) %>%
+  left_join(dat_big %>% select(-site_name)) %>% 
+  group_by(site_name, basin, subbasin, WaterYear, agneventid) %>% 
+  summarise(mindate = min(date),
+            isevent = unique(isevent), 
+            yield_little_vol = sum(Yield_filled_mm+0.01),
+            yield_big_vol = sum(big_yield+0.01),
+            yield_little_vol_log = log(yield_little_vol),
+            yield_big_vol_log = log(yield_big_vol)) %>%
+  ungroup() %>%
+  mutate(site_name = factor(site_name, levels = c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook")),
+         site_name_cd = as.numeric(site_name),
+         z_yield_big_vol_log = as.numeric(scale(yield_big_vol_log, center = TRUE, scale = TRUE)))
+# long
+# dat_wb2_long <- dat_wb2 %>% 
+#   select(-c(yield_little_vol_log, yield_big_vol_log)) %>% 
+#   gather(key = "type", value = "yield_vol", yield_little_vol:yield_big_vol) %>% 
+#   mutate(type = recode(type, "yield_little_vol" == 1, "yield_big_vol" == 0),
+#          yield_vol_log = log(yield_vol),
+#          site_name_cd = as.numeric(as.factor(site_name))) %>% 
+#   left_join(dat_wb2 %>%  group_by(site_name, agneventid) %>% summarise(yield_big_vol_log = log(sum(yield_big_vol)))) %>%
+#   mutate(z_yield_big_vol_log = as.numeric(scale(yield_big_vol_log, center = TRUE, scale = TRUE)))
+```
+
+
+
+
+
+
+
+
+
+View relationship between Big G and little g, color by site, facet by event/non-event.
+
+
+
+
+
+
+
+```{r, fig.height=4, fig.width=9}
+#| fig-cap: "Effect of (log) volumetric yield at Big G on (log) volumetric yield at little g during baseflow and event periods."
+dat_wb2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_vol_log, y = yield_little_vol_log, group = site_name, color = site_name)) + 
+  geom_point() + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + facet_wrap(~isevent)
+```
+
+
+
+
+
+
+
+
+View relationship between Big G and little g, color by event/non-event, facet by site. For most sites (except may Obear Brook), G-g relationships are identical between events and non-event.
+
+
+
+
+
+
+
+```{r, fig.height=7, fig.width=8}
+#| fig-cap: "Effect of (log) volumetric yield at Big G on (log) volumetric yield at little g during baseflow and event periods."
+dat_wb2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_vol_log, y = yield_little_vol_log, group = isevent, color = isevent)) + 
+  geom_point() + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm") + facet_wrap(~site_name)
+```
+
+
+
+
+
+
+
+
+Plot derived G-g differences as a function of Big G yield, by site, facet by events/non-events.
+
+
+
+
+
+
+
+```{r, fig.height=4, fig.width=9}
+#| fig-cap: "Effect of (log) volumetric yield at Big G on G-g difference (log volumetric yield) during baseflow and event periods."
+dat_wb2 %>% 
+  mutate(diff = yield_little_vol_log - yield_big_vol_log, 
+         isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_vol_log, y = diff, group = site_name, color = site_name)) + 
+  geom_point() + geom_abline(intercept = 0, slope = 0, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + facet_wrap(~isevent)
+```
+
+
+
+
+
+
+
+
+Plot derived G-g differences as a function of Big G yield, color by events/non-events.
+
+
+
+
+
+
+
+```{r, fig.height=5, fig.width=6}
+#| fig-cap: "Effect of (log) volumetric yield at Big G on G-g difference (log volumetric yield) during baseflow and event periods."
+dat_wb2 %>% 
+  mutate(diff = yield_little_vol_log - yield_big_vol_log, 
+         isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_vol_log, y = diff, group = isevent, color = isevent)) + 
+  geom_point() + geom_abline(intercept = 0, slope = 0, linetype = "dashed") 
+```
+
+
+
+
+
+
+
+
+
+## Model using JAGS
+
+Based on results above, there does not appear to be any significant difference in the G-g relationship for event and non-event periods. Therefore, do not include random intercepts/slopes (by event/non-event) in the model. Previously, I tried to estimate the G-g differences using an intercept model, with the magnitude of difference a function of water availability. However, when Q = Qg, this simplified to a linear regression between Qg (dependent var.) and QG (independent var.), which is ultimately what is of interest. I estimate this regression model below:
+
+### Variable sigma
+
+#### Declare model
+* Data
+  + *Qg*: log volumetric yield at little g
+  + *sites*: numeric site id
+  + *QG*: log volumetric yield at Big G
+  + *nObs*: number of observations
+  + *nSites*: number of sites (little g sites)
+* Parameters
+  + *alpha*: site-level intercept
+  + *beta*: site-level effect of Big G on little g (slope)
+  + *alpha.mu*: global intercept
+  + *beta.mu*: global effect of Big G on little g (slope)
+  + *alpha.sigma*: site-level variability in the intercept
+  + *beta.sigma*: site-level variability in the slope
+  + *sig.alpha*: site-level intercept for process error
+  + *sig.beta*: site-level effect of Big G on process error (slope)
+  + *sig.alpha.mu*: global process error intercept
+  + *sig.beta.mu*: global process error slope
+  + *sig.alpha.sigma*: site-level variability in process error intercept
+  + *sig.beta.sigma*: site-level variability in process error slope
+* Derived values
+  + *predlg*: predicted little g
+  + *diff*: difference between predicted little g and Big G
+  + *portfolio1*: predicted portfolio strength (over a range of G) assuming no within- or among-site flow diversity
+  + *portfolio3*: predicted portfolio strength (over a range of G) assuming no or among-site flow diversity
+
+
+
+
+
+
+
+
+```{r class.source = "fold-show"}
+cat("model {
+
+##--- LIKELIHOOD ---------------------------------------------------##
+
+for (i in 1:nObs) {
+
+  ## SITE AWARE
+  Qg[i] ~ dnorm(mu[i], pow(sigma[i], -2))
+  mu[i] <- alpha[sites[i]] + beta[sites[i]] * QG[i]
+  log(sigma[i]) <- sig.alpha[sites[i]] + sig.beta[sites[i]] * QG[i]
+  
+  ## SITE AGNOSTIC
+  Qg2[i] ~ dnorm(ag.mu[i], pow(ag.sigma[i], -2))
+  ag.mu[i] <- ag.alpha + ag.beta * QG[i]
+  log(ag.sigma[i]) <- ag.sig.alpha + ag.sig.beta * QG[i]  
+  
+  # Log-likelihood
+  loglik[i] <- logdensity.norm(Qg[i], mu[i], pow(sigma[i], -2))
+  }
+
+
+##--- PRIORS --------------------------------------------------------##
+
+## SITE AWARE
+
+# Site-specific parameters
+for (j in 1:nSites) {
+    alpha[j] ~ dnorm(alpha.mu, pow(alpha.sigma, -2))
+    beta[j] ~ dnorm(beta.mu, pow(beta.sigma, -2))
+    sig.alpha[j] ~ dnorm(sig.alpha.mu, pow(sig.alpha.sigma, -2))
+    sig.beta[j] ~ dnorm(sig.beta.mu, pow(sig.beta.sigma, -2))
+    }
+    
+# global intercepts and slopes
+alpha.mu ~ dnorm(0, pow(10, -2))
+beta.mu ~ dnorm(0, pow(10, -2))
+sig.alpha.mu ~ dnorm(0, pow(10, -2))
+sig.beta.mu ~ dnorm(0, pow(10, -2))
+
+# among-site variation in intercepts and slopes
+alpha.sigma ~ dunif(0.001, 100)
+beta.sigma ~ dunif(0.001, 100)
+sig.alpha.sigma ~ dunif(0.001, 100)
+sig.beta.sigma ~ dunif(0.001, 100)
+
+
+## SITE AGNOSTIC
+
+# global intercepts and slopes
+ag.alpha ~ dnorm(0, pow(10, -2))
+ag.beta ~ dnorm(0, pow(10, -2))
+ag.sig.alpha ~ dnorm(0, pow(10, -2))
+ag.sig.beta ~ dnorm(0, pow(10, -2))
+
+
+##--- DERIVED VALUES ------------------------------------------------##
+
+# expected deviation from Big G
+for (j in 1:nSites) { 
+  for (i in 1:nDiff) {
+    predlg[j,i] <- alpha[j] + beta[j] * QGvec[i]
+    diff[j,i] <- (alpha[j] + beta[j] * QGvec[i]) - QGvec[i]
+  }}
+
+for (i in 1:nDiff) {
+  portfolio1[i] <- exp(ag.sig.alpha + ag.sig.beta * QGvec[i]) / exp(sig.alpha.mu)
+  portfolio3[i] <- exp(ag.sig.alpha + ag.sig.beta * QGvec[i]) / exp(sig.alpha.mu + sig.beta.mu * QGvec[i])
+}
+
+atten3 <- exp(sig.alpha.mu + sig.beta.mu * QGvec[1]) / exp(sig.alpha.mu + sig.beta.mu * QGvec[nDiff])
+attenObs <- exp(ag.sig.alpha + ag.sig.beta * QGvec[1]) / exp(ag.sig.alpha + ag.sig.beta * QGvec[nDiff])
+
+
+
+}", file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod_Events_2.txt")
+```
+
+
+
+
+
+
+
+
+#### Fit the JAGS model
+
+
+
+
+
+
+
+```{r}
+# vector of QG for prediction
+ndiff <- 100
+QGvec <- seq(from = min(dat_wb2$yield_big_vol_log), to = max(dat_wb2$yield_big_vol_log), length.out = ndiff)
+
+# gather data for JAGS
+jags.data <- list("nObs" = dim(dat_wb2)[1], "nSites" = length(unique(dat_wb2$site_name_cd)), 
+                  "sites" = dat_wb2$site_name_cd, #"indev" = dat_wb2$isevent,
+                  "Qg" = dat_wb2$yield_little_vol_log, "Qg2" = dat_wb2$yield_little_vol_log, "QG" = dat_wb2$yield_big_vol_log, 
+                  "QGvec" = QGvec, "nDiff" = ndiff)
+
+# parameters to monitor
+jags.params <- c("alpha", "beta", "alpha.mu", "beta.mu", "alpha.sigma", "beta.sigma", 
+                 "sig.alpha", "sig.beta", "sig.alpha.mu", "sig.beta.mu", "sig.alpha.sigma", "sig.beta.sigma", 
+                 "ag.alpha", "ag.beta", "ag.sig.alpha", "ag.sig.beta",
+                 "diff", "predlg", "loglik", "mu", "Qg", "portfolio1", "portfolio3", "atten3", "attenObs")
+
+# run in jags
+mod_0 <- jags.parallel(data = jags.data, inits = NULL, parameters.to.save = jags.params,
+                       model.file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod_Events_2.txt",
+                       n.chains = 10, n.thin = 20, n.burnin = 1000, n.iter = 5000, DIC = FALSE)
+# saveRDS(mod_0, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/Fitted models/GgMod_Events.rds")
+```
+
+
+
+
+
+
+
+
+Get MCMC samples and summary
+
+
+
+
+
+
+
+```{r}
+top_mod <- mod_0
+# generate MCMC samples and store as an array
+modelout <- top_mod$BUGSoutput
+McmcList <- vector("list", length = dim(modelout$sims.array)[2])
+for(i in 1:length(McmcList)) { McmcList[[i]] = as.mcmc(modelout$sims.array[,i,]) }
+# rbind MCMC samples from 10 chains 
+Mcmcdat_0 <- rbind(McmcList[[1]], McmcList[[2]], McmcList[[3]], McmcList[[4]], McmcList[[5]], McmcList[[6]], McmcList[[7]], McmcList[[8]], McmcList[[9]], McmcList[[10]])
+param.summary_0 <- modelout$summary
+head(param.summary_0)
+```
+
+
+
+
+
+
+
+
+#### Model diagnostics
+
+##### View R-hat
+Any problematic R-hat values (>1.01)?
+
+
+
+
+
+
+
+```{r}
+mod_0$BUGSoutput$summary[,8][mod_0$BUGSoutput$summary[,8] > 1.01]
+```
+
+
+
+
+
+
+
+
+##### View traceplots
+
+For global parameters and hyperparameters only...
+
+
+
+
+
+
+
+```{r}
+MCMCtrace(mod_0, ind = TRUE, params = c("alpha.mu", "beta.mu", "alpha.sigma", "beta.sigma", "sig.alpha.mu", "sig.beta.mu", "sig.alpha.sigma", "sig.beta.sigma", "ag.alpha", "ag.beta", "ag.sig.alpha", "ag.sig.beta",  "atten3", "attenObs"), pdf = FALSE)
+```
+
+
+
+
+
+
+
+
+##### PP check
+
+Get observed and expected values
+
+
+
+
+
+
+
+```{r}
+ppdat_obs <- as.matrix(Mcmcdat_0[,startsWith(colnames(Mcmcdat_0), "Qg")])
+ppdat_exp <- as.matrix(Mcmcdat_0[,startsWith(colnames(Mcmcdat_0), "mu")])
+```
+
+
+
+
+
+
+
+
+Bayesian p-value: values approaching 0.5 indicate lack of bias in model estimates
+
+
+
+
+
+
+
+```{r}
+sum(ppdat_exp > ppdat_obs) / (dim(ppdat_obs)[1]*dim(ppdat_obs)[2])
+```
+
+
+
+
+
+
+
+
+Posterior predictive check: ensure linearity and ~1:1 relationship between expected and observed (log) volumetric Qg yield
+
+
+
+
+
+
+
+```{r fig.width=5, fig.height=5}
+par(mar = c(4.5,4.5,1,1))
+plot(apply(ppdat_exp, 2, median) ~ apply(ppdat_obs, 2, median), xlab = "Observed Qg", ylab = "Expected Qg")
+abline(a = 0, b = 1, col = "red", lwd = 2)
+legend("topleft", legend = "1:1", lwd = 2, col = "red", bty = "n")
+```
+
+
+
+
+
+
+
+
+Site-specific posterior predictive check:
+
+
+
+
+
+
+
+```{r fig.width=7, fig.height=7, eval = FALSE, echo=FALSE}
+tibble(obs = apply(ppdat_obs, 2, median), exp = apply(ppdat_exp, 2, median), sitecd = dat_wb2$site_name) %>% ggplot(aes(x = obs, y = exp)) + geom_point() + geom_smooth(method = "lm") + geom_abline(intercept = 0, slope = 1, color = "red") + facet_wrap(~sitecd)
+```
+
+
+
+
+
+
+
+
+
+#### Plot model output
+
+##### Slope-int. correlation
+
+Slopes and intercepts are negatively correlated (this is not unexpected, and explains the attenuation). If we wanted to predict new sites (to understand the "complete" range of G-g response), would need to add a slope-intercept correlation structure to the model (pgs. 362 and 376 in Gelman and Hill, 2007). As noted in Gelman and Hill, the strength of the correlation between slopes and intercepts is sensitive to how the data is centered (or not). Currently, data span 0 (in log space), so this isn't really an artifact of the issues mentioned in Gelman and Hill (although if we mean centered the data this relationship does weaken slightly). It may actually make the most sense to force the intercept to be at the lowest value of log(G) (i.e., add min(log(G)) to all data, G and g). Intercepts would then represent the maximum expected variation in g during periods of lowest water availability. 
+
+
+
+
+
+
+
+```{r, fig.width=6, fig.height=4}
+sitib <- tibble(site_name = factor(levels(dat_wb2$site_name), levels = levels(dat_wb2$site_name)),
+                slopes = param.summary_0[str_subset(rownames(param.summary_0), pattern = "^beta")[1:9],5],
+                intercepts = param.summary_0[str_subset(rownames(param.summary_0), pattern = "^alpha")[1:9],5]) 
+
+# plot
+sitib %>% ggplot(aes(x = slopes, y = intercepts, color = site_name)) + geom_point(size = 3) + theme_bw()
+
+# correlation
+cor.test(sitib$intercepts, sitib$slopes)
+```
+
+
+
+
+
+
+
+
+##### Effect of G on g
+
+Here, I plot the results of the fitted model: site-specific effects of Big G yield on little g yield.
+
+
+
+
+
+
+
+```{r}
+# control panel
+nvals <- 100
+nsim <- dim(Mcmcdat_0)[1]
+nsites <- length(unique(dat_wb2$site_name_cd))
+x_seq <- seq(from = min(dat_wb2$yield_big_vol_log), to = max(dat_wb2$yield_big_vol_log), length.out = nvals)
+
+# predict from model
+pred_arr <- array(NA, dim = c(nsim, nvals, nsites))
+pred_arr_summ <- array(NA, dim = c(nvals, 3, nsites))
+for (k in 1:nsites) {
+  for (j in 1:nsim) {
+    pred_arr[j,,k] <- Mcmcdat_0[j,paste("alpha[", k, "]", sep = "")] + Mcmcdat_0[j,paste("beta[", k, "]", sep = "")] * x_seq
+  }
+  pred_arr_summ[,1,k] <- apply(pred_arr[,,k], 2, quantile, probs = 0.025)
+  pred_arr_summ[,2,k] <- apply(pred_arr[,,k], 2, quantile, probs = 0.5)
+  pred_arr_summ[,3,k] <- apply(pred_arr[,,k], 2, quantile, probs = 0.975)
+}
+```
+
+```{r, fig.width=7, fig.height=5}
+#| fig-cap: "Effect of (log) volumetric yield at Big G on (log) volumetric yield at little g."
+par(mar = c(5,5,1,11), mfrow = c(1,1))
+gg_color_hue <- function(n) { 
+  hues = seq(15, 375, length = n + 1) 
+  hcl(h = hues, l = 65, c = 100)[1:n] }
+mycols <- gg_color_hue(9)
+
+# combined
+plot(seq(from = range(pred_arr)[1], to = range(pred_arr)[2], length.out = nvals) ~ x_seq, type = "n", xlab = "(log) volumetric yield at Big G", ylab = "(log) volumetric yield at little g")
+for (k in 1:nsites) { 
+  polygon(x = c(x_seq, rev(x_seq)), y = c(pred_arr_summ[,1,k], rev(pred_arr_summ[,3,k])), col = alpha(mycols[k], 0.2), border = NA)
+  lines(pred_arr_summ[,2,k] ~ x_seq, lwd = 2, col = mycols[k])
+  points(yield_little_vol_log ~ yield_big_vol_log, data = dat_wb2 %>% filter(site_name_cd == k), col = mycols[k])
+  }
+abline(a = 0, b = 1, lty = 2)
+legend("topleft", legend = "1:1", lty = 2, bty = "n")
+par(xpd = TRUE)
+legend("topright", inset = c(-0.55, 0), legend = levels(dat_wb2$site_name), fill = alpha(mycols, 0.5), bty = "n")
+```
+
+
+
+
+
+
+
+
+##### Within-site variation
+
+Here, I plot the effect of Big G yield on site-level variation in little g (i.e., sigma). How does site-specific variation in little g response to big G attenuate with increasing Big G?
+
+
+
+
+
+
+
+```{r, fig.width=5, fig.height=5, eval = F, echo=FALSE}
+#| fig-cap: "Increasing water availability decreases site-level heterogeneity in little g response to Big G. Lines represent 50 randomn MCMC draws for each site (color)."
+
+# control panel
+nvals <- 100
+nsim <- 50
+nsites <- length(unique(dat_wb2$site_name_cd))
+x_seq <- seq(from = min(dat_wb2$yield_big_vol_log), to = max(dat_wb2$yield_big_vol_log), length.out = nvals)
+
+# predict from model
+# pred_arr <- matrix(NA, nrow = nsim, ncol = nvals)
+# pred_arr_summ <- matrix(NA, nrow = nvals, ncol = 3)
+# for (j in 1:nsim) { pred_arr[j,] <- exp(Mcmcdat_0[j,"alpha.sig"] + Mcmcdat_0[j,"beta.sig"] * x_seq) }
+# for (j in 1:nvals) { pred_arr_summ[j,] <- quantile(pred_arr[,j], probs = c(0.025, 0.5, 0.95))}
+pred_arr <- array(NA, dim = c(nsim, nvals, nsites))
+pred_arr_summ <- array(NA, dim = c(3, nvals, nsites))
+for (k in 1:nsites) {
+  for (j in 1:nsim) {
+    pred_arr[j,,k] <- exp(Mcmcdat_0[j,paste("sig.alpha[", k, "]", sep = "")] + Mcmcdat_0[j,paste("sig.beta[", k, "]", sep = "")] * x_seq)
+  }
+  for (i in 1:nvals) {
+    pred_arr_summ[1,i,k] <- quantile(pred_arr[,i,k], probs = 0.025)
+    pred_arr_summ[2,i,k] <- quantile(pred_arr[,i,k], probs = 0.5)
+    pred_arr_summ[3,i,k] <- quantile(pred_arr[,i,k], probs = 0.975)
+  }
+}
+
+par(mar = c(5,5,1,1), mfrow = c(1,1))
+gg_color_hue <- function(n) { 
+  hues = seq(15, 375, length = n + 1) 
+  hcl(h = hues, l = 65, c = 100)[1:n] }
+mycols <- gg_color_hue(9)
+
+# site-specific
+# many lines
+plot(seq(from = 0, to = range(pred_arr)[2], length.out = nvals) ~ x_seq, type = "n", xlab = "(log) volumetric yield at Big G", ylab = "sigma")
+for (k in 1:nsites) { for (j in 1:nsim) { lines(pred_arr[j,,k] ~ x_seq, col = alpha(mycols[k], 0.3)) }}
+```
+
+```{r, fig.width=7, fig.height=5}
+#| fig-cap: "Increasing water availability decreases site-level heterogeneity in little g response to Big G. Lines and polygons represent the median and 95% credible interval of the relationship for each site (color)."
+
+# control panel
+nvals <- 100
+nsim <- dim(Mcmcdat_0)[1]
+nsites <- length(unique(dat_wb2$site_name_cd))
+x_seq <- seq(from = min(dat_wb2$yield_big_vol_log), to = max(dat_wb2$yield_big_vol_log), length.out = nvals)
+
+pred_arr <- array(NA, dim = c(nsim, nvals, nsites))
+pred_arr_summ <- array(NA, dim = c(3, nvals, nsites))
+for (k in 1:nsites) {
+  for (j in 1:nsim) {
+    pred_arr[j,,k] <- exp(Mcmcdat_0[j,paste("sig.alpha[", k, "]", sep = "")] + Mcmcdat_0[j,paste("sig.beta[", k, "]", sep = "")] * x_seq)
+  }
+  for (i in 1:nvals) {
+    pred_arr_summ[1,i,k] <- quantile(pred_arr[,i,k], probs = 0.025)
+    pred_arr_summ[2,i,k] <- quantile(pred_arr[,i,k], probs = 0.5)
+    pred_arr_summ[3,i,k] <- quantile(pred_arr[,i,k], probs = 0.975)
+  }
+}
+
+par(mar = c(5,5,1,11), mfrow = c(1,1))
+gg_color_hue <- function(n) { 
+  hues = seq(15, 375, length = n + 1) 
+  hcl(h = hues, l = 65, c = 100)[1:n] }
+mycols <- gg_color_hue(9)
+
+# polygons as 95% CIs
+plot(seq(from = 0, to = range(pred_arr_summ)[2], length.out = nvals) ~ x_seq, type = "n", xlab = "(log) volumetric yield at Big G", ylab = "Within-site variation in little g (sigma)")
+for (k in 1:nsites) { 
+  polygon(x = c(x_seq, rev(x_seq)), y = c(pred_arr_summ[1,,k], rev(pred_arr_summ[3,,k])), col = alpha(mycols[k], 0.2), border = NA)
+  lines(pred_arr_summ[2,,k] ~ x_seq, col = mycols[k], lwd = 2)
+}
+par(xpd = TRUE)
+legend("topright", inset = c(-0.55, 0), legend = levels(dat_wb2$site_name), fill = alpha(mycols, 0.5), bty = "n")
+```
+
+
+
+
+
+
+
+
+
+##### Among-site variation
+
+Here, I plot the effect of Big G yield on global (i.e., among-site) variation in little g from the site-agnostic model. How does among-site variation in little g response to big G attenuate with increasing Big G? Note that this only considers the sites we have data for, not all possible locations in the river network. This could potentially be achieved by simulating data for new sites (see pg. 362 in Gelman and Hill, 2007), but would likely need to add slope-intercept correlation structure to the model to ensure that attenuation in preserved (see pg. 376 in Gelman and Hill).
+
+
+
+
+
+
+
+
+```{r, fig.width=5, fig.height=5}
+# control panel
+nvals <- 100
+nsim <- dim(Mcmcdat_0)[1]
+nsites <- length(unique(dat_wb2$site_name_cd))
+x_seq <- seq(from = min(dat_wb2$yield_big_vol_log), to = max(dat_wb2$yield_big_vol_log), length.out = nvals)
+
+# predict from model
+pred_arr <- matrix(NA, nrow = nsim, ncol = nvals)
+pred_arr_summ <- matrix(NA, nrow = nvals, ncol = 3)
+for (j in 1:nsim) { pred_arr[j,] <- exp(Mcmcdat_0[j,"ag.sig.alpha"] + Mcmcdat_0[j,"ag.sig.beta"] * x_seq) }
+for (j in 1:nvals) { pred_arr_summ[j,] <- quantile(pred_arr[,j], probs = c(0.025, 0.5, 0.95))}
+
+# plot
+par(mar = c(5,5,1,1), mfrow = c(1,1))
+plot(seq(from = 0, to = range(pred_arr_summ)[2], length.out = nvals) ~ x_seq, type = "n", xlab = "(log) volumetric yield at Big G", ylab = "Among-site variation in little g (ag.sigma)")
+polygon(x = c(x_seq, rev(x_seq)), y = c(pred_arr_summ[,1], rev(pred_arr_summ[,3])), col = alpha("black", 0.2), border = NA)
+lines(pred_arr_summ[,2] ~ x_seq, col = "black", lwd = 2)
+```
+
+```{r eval=FALSE, echo=FALSE}
+nsim <- dim(Mcmcdat_0)[1]
+pred_arr <- array(NA, dim = c(nsim, ndiff))
+for (k in 1:nsim) {
+  for (j in 1:ndiff) {
+    pred_arr[k,j] <- sd(c(Mcmcdat_0[k,paste("predlg[1,", j, "]", sep = "")],
+                          Mcmcdat_0[k,paste("predlg[2,", j, "]", sep = "")],
+                          Mcmcdat_0[k,paste("predlg[3,", j, "]", sep = "")],
+                          Mcmcdat_0[k,paste("predlg[4,", j, "]", sep = "")],
+                          Mcmcdat_0[k,paste("predlg[5,", j, "]", sep = "")],
+                          Mcmcdat_0[k,paste("predlg[6,", j, "]", sep = "")],
+                          Mcmcdat_0[k,paste("predlg[7,", j, "]", sep = "")],
+                          Mcmcdat_0[k,paste("predlg[8,", j, "]", sep = "")],
+                          Mcmcdat_0[k,paste("predlg[9,", j, "]", sep = "")]))
+  }
+}
+pred_arr_summ <- tibble(low = apply(pred_arr, 2, quantile, probs = 0.025),
+                        med = apply(pred_arr, 2, quantile, probs = 0.5),
+                        upp = apply(pred_arr, 2, quantile, probs = 0.975))
+```
+
+```{r, fig.width=5, fig.height=5,  eval=FALSE, echo=FALSE}
+#| fig-cap: "Increasing water availability decreases among-site heterogeneity in little g response to Big G. Line and polygon represent the median and 95% credible interval of the relationship."
+par(mar = c(5,5,1,1), mfrow = c(1,1))
+plot(seq(0, max(pred_arr_summ), length.out = ndiff) ~ QGvec, type = "n", xlab = "(log) volumetric yield at Big G", ylab = "Among-site variation in little g (derived)")
+polygon(x = c(QGvec, rev(QGvec)), y = c(pred_arr_summ$low, rev(pred_arr_summ$upp)), col = "grey80", border = NA)
+lines(pred_arr_summ$med ~ QGvec, lwd = 2)
+```
+
+
+
+
+
+
+
+
+
+We can visualize this another way, as site-specific differences between little g and Big G at different levels of water availability/Big G flow. This is ~equivalent to the plot above, but provides a site-level examination of Qg variation around QG and how those change over the range of Big G flow.
+
+
+
+
+
+
+
+```{r fig.width=5, fig.height = 5}
+# control panel
+nsites <- length(unique(dat_wb2$site_name_cd))
+x_seq <- seq(-2.5, 2.5, length.out = 10)
+mylabs <- c("Min. G", "Med. G", "Max. G")
+ctr <- 1
+par(mfrow = c(1,3), mar = c(4,1,1.5,1), oma = c(0,2,0,0), mgp = c(1,0.75,0))
+for (j in c(1,50,100)) {
+  plot(x_seq ~ seq(0, 1, length.out = 10), type = "n", ylab = "", xlab = "", main = mylabs[ctr], axes = FALSE)
+  axis(2)
+  box(bty = "o")
+  for (i in 1:nsites) {
+    dens <- density(Mcmcdat_0[,paste("diff[", i, ",", j, "]", sep = "")])
+    dens$y2 <- dens$y/max(dens$y)
+    l <- min(which(dens$x >= hdi(dens, credMass = 0.95)[1]))
+    h <- max(which(dens$x < hdi(dens, credMass = 0.95)[2]))
+    polygon(y = c(dens$x[c(l,l:h,h)]), x = c(0,dens$y2[l:h],0), col = alpha(mycols[i], 0.3), lty = 0)
+    lines(dens$x ~ dens$y2, col = mycols[i], lwd = 2)
+  }
+  abline(h = 0, lty = 2)
+  ctr <- ctr+1
+}
+mtext("Mean difference from Big G", side = 2, line = 1, outer = TRUE, cex = 0.8)
+mtext("Posterior density", side = 1, line = -2, outer = TRUE, cex = 0.8,)
+```
+
+```{r fig.width=5, fig.height = 5, eval=FALSE, echo=FALSE}
+# control panel
+nvals <- 100
+nsim <- dim(Mcmcdat_0)[1]
+nsites <- length(unique(dat_wb2$site_name_cd))
+x_seq <- seq(from = min(dat_wb2$yield_big_vol_log), to = max(dat_wb2$yield_big_vol_log), length.out = nvals)
+
+# predict from model
+pred_arr <- array(NA, dim = c(nsim, nvals, nsites))
+pred_arr_summ <- array(NA, dim = c(nvals, 3, nsites))
+for (k in 1:nsites) {
+  for (j in 1:nsim) {
+    pred_arr[j,,k] <- Mcmcdat_0[j,paste("alpha[", k, "]", sep = "")] + Mcmcdat_0[j,paste("beta[", k, "]", sep = "")] * x_seq + dnorm(nvals, 0, exp(Mcmcdat_0[j,paste("sig.alpha[", k, "]", sep = "")] + Mcmcdat_0[j,paste("sig.beta[", k, "]", sep = "")] * x_seq)) - x_seq
+  }
+}
+
+# control panel
+nsites <- length(unique(dat_wb2$site_name_cd))
+x_seq <- seq(-2.5, 2.5, length.out = 10)
+mylabs <- c("Min. G", "Med. G", "Max. G")
+ctr <- 1
+par(mfrow = c(1,3), mar = c(4,1,1.5,1), oma = c(0,2,0,0), mgp = c(1,0.75,0))
+for (j in c(1,50,100)) {
+  plot(x_seq ~ seq(0, 1, length.out = 10), type = "n", ylab = "", xlab = "", main = mylabs[ctr], axes = FALSE)
+  axis(2)
+  box(bty = "o")
+  for (i in 1:nsites) {
+    dens <- density(pred_arr[,j,i])
+    dens$y2 <- dens$y/max(dens$y)
+    l <- min(which(dens$x >= hdi(dens, credMass = 0.95)[1]))
+    h <- max(which(dens$x < hdi(dens, credMass = 0.95)[2]))
+    polygon(y = c(dens$x[c(l,l:h,h)]), x = c(0,dens$y2[l:h],0), col = alpha(mycols[i], 0.3), lty = 0)
+    lines(dens$x ~ dens$y2, col = mycols[i], lwd = 2)
+  }
+  abline(h = 0, lty = 2)
+  ctr <- ctr+1
+}
+mtext("Mean difference from Big G", side = 2, line = 1, outer = TRUE, cex = 0.8)
+mtext("Posterior density", side = 1, line = -2, outer = TRUE, cex = 0.8,)
+
+```
+
+
+
+
+
+
+
+
+
+
+##### Porfolio strength
+
+
+
+
+
+
+
+```{r, fig.width=5, fig.height=5}
+# control panel
+nsim <- dim(Mcmcdat_0)[1]
+x_seq <- seq(from = min(dat_wb2$yield_big_vol_log), to = max(dat_wb2$yield_big_vol_log), length.out = ndiff)
+
+# get derived values
+pred_arr_p1 <- matrix(NA, nrow = nsim, ncol = nvals)
+pred_arr_p3 <- matrix(NA, nrow = nsim, ncol = nvals)
+pred_arr_p1_summ <- matrix(NA, nrow = ndiff, ncol = 3)
+pred_arr_p3_summ <- matrix(NA, nrow = ndiff, ncol = 3)
+for (j in 1:nsim) { 
+  pred_arr_p1[j,] <- Mcmcdat_0[j, str_subset(colnames(Mcmcdat_0), pattern = "portfolio1")] 
+  pred_arr_p3[j,] <- Mcmcdat_0[j, str_subset(colnames(Mcmcdat_0), pattern = "portfolio3")] 
+  }
+for (j in 1:ndiff) { 
+  pred_arr_p1_summ[j,] <- quantile(pred_arr_p1[,j], probs = c(0.025, 0.5, 0.95))
+  pred_arr_p3_summ[j,] <- quantile(pred_arr_p3[,j], probs = c(0.025, 0.5, 0.95))
+  }
+
+# plot
+par(mar = c(5,5,1,1), mfrow = c(1,1))
+plot(seq(from = range(c(pred_arr_p1_summ, pred_arr_p3_summ))[1], to = range(c(pred_arr_p1_summ, pred_arr_p3_summ))[2], length.out = ndiff) ~ QGvec, type = "n", xlab = "(log) volumetric yield at Big G", ylab = "Portfolio strength")
+# portfolio 1
+polygon(x = c(QGvec, rev(QGvec)), y = c(pred_arr_p1_summ[,1], rev(pred_arr_p1_summ[,3])), col = alpha("black", 0.2), border = NA)
+lines(pred_arr_p1_summ[,2] ~ QGvec, col = "black", lwd = 2)
+# portfolio 3
+polygon(x = c(QGvec, rev(QGvec)), y = c(pred_arr_p3_summ[,1], rev(pred_arr_p3_summ[,3])), col = alpha("blue", 0.2), border = NA)
+lines(pred_arr_p3_summ[,2] ~ QGvec, col = "blue", lwd = 2)
+# reference line and legend
+abline(h = 1, lty = 2)
+legend("topright", legend = c("1. No within- or among-site diversity",
+                              "3. No among-site diversity"),
+       fill = c(alpha("black", 0.3), alpha("blue", 0.3)), bty = "n")
+```
+
+
+
+
+
+
+
+
+#### Attenuation strength
+
+
+
+
+
+
+
+
+```{r fig.width=6, fig.height=4}
+par(mar = c(5,5,1,1), mfrow = c(1,1))
+plot(seq(from = 0, to = 1, length.out = 100) ~ seq(from = 0, to = 7, length.out = 100), type = "n", xlab = "Attenuation strength", ylab = "Density")
+
+# observed among-site attenuation strength
+obs_den <- density(Mcmcdat_0[,"attenObs"])
+obs_den$y2 <- obs_den$y / max(obs_den$y)
+obs_l <- min(which(obs_den$x >= hdi(obs_den, credMass = 0.95)[1]))
+obs_h <- max(which(obs_den$x < hdi(obs_den, credMass = 0.95)[2]))
+polygon(x = c(obs_den$x[c(obs_l,obs_l:obs_h,obs_h)]), y = c(0,obs_den$y2[obs_l:obs_h],0), col = alpha("darkgreen", 0.3), lty = 0)
+lines(obs_den$y2 ~ obs_den$x, col = "darkgreen", lwd = 2)
+
+# expected among-site attenuation strength
+exp_den <- density(Mcmcdat_0[,"atten3"])
+exp_den$y2 <- exp_den$y / max(exp_den$y)
+exp_l <- min(which(exp_den$x >= hdi(exp_den, credMass = 0.95)[1]))
+exp_h <- max(which(exp_den$x < hdi(exp_den, credMass = 0.95)[2]))
+polygon(x = c(exp_den$x[c(exp_l,exp_l:exp_h,exp_h)]), y = c(0,exp_den$y2[exp_l:exp_h],0), col = alpha("blue", 0.3), lty = 0)
+lines(exp_den$y2 ~ exp_den$x, col = "blue", lwd = 2)
+
+legend("topright", legend = c("Observed", "Scen. 3"), fill = c(alpha("darkgreen", 0.3), alpha("blue", 0.3)), bty = "n")
+abline(v = 1, lty = 2)
+```
+
+
+
+
+
+
+
+
+
+
+## OLD
+
+#### Null model simulations
+
+How much among-site variation in little G response to Big G might we expect assuming homogeneity in flow regimes? This is the null hypotheses. Although I'm not sure this is the proper way to do this...for each of n sites, I randomly sample from the posterior distributions of alpha.mu and beta.mu to generate site-specific relationships that all follow the global parameters/relationships.
+
+
+
+
+
+
+
+```{r fig.width=5, fig.height=5, eval=FALSE, echo=FALSE}
+nsims <- 1000
+nsites <- length(unique(dat_wb2$site_name_cd))
+sig_mat <- matrix(NA, nrow = ndiff, ncol = nsims)
+
+par(mar = c(5,5,1,1), mfrow = c(1,1))
+plot(seq(from = 0, to = 1.1, length.out = ndiff) ~ QGvec, type = "n", xlab = "(log) volumetric yield at Big G", ylab = "Simulated among-site variation in little g")
+for (j in 1:nsims) {
+  myrows <- sample(x = 1:dim(Mcmcdat_0)[1], size = nsites, replace = TRUE)
+  myalphas <- Mcmcdat_0[myrows, "alpha.mu"]
+  mybetas <- Mcmcdat_0[myrows, "beta.mu"]
+  pred_mat <- matrix(NA, nrow = ndiff, ncol = nsites)
+  for (i in 1:nsites) { pred_mat[,i] <- myalphas[i] + mybetas[i]*QGvec }
+  sim_sigma <- apply(pred_mat, 1, sd)
+  sig_mat[,j] <- sim_sigma
+  lines(sim_sigma ~ QGvec, col = alpha("grey", 0.2))
+}
+lines(apply(sig_mat, 1, quantile, probs = 0.025) ~ QGvec, col = "blue", lty = 2)
+lines(apply(sig_mat, 1, quantile, probs = 0.5) ~ QGvec, col = "blue", lwd = 2)
+lines(apply(sig_mat, 1, quantile, probs = 0.975) ~ QGvec, col = "blue", lty = 2)
+
+lines(sim_sigma ~ QGvec, col = "red", lty = 3)
+
+legend("topleft", legend = c("Simulations", "Median", "95% CI"), lty = c(1,1,2), lwd = c(1,2,1), col = c(alpha("grey", 0.75), "blue", "blue"), bty = "n")
+```
+
+
+
+
+
+
+
+
+Here's an example of an individual simulation...
+
+
+
+
+
+
+
+```{r fig.width=5, fig.height=5, eval=FALSE, echo=FALSE}
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n] }
+mycols <- gg_color_hue(9)
+
+par(mar = c(5,5,1,1), mfrow = c(1,1))
+plot(seq(from = range(pred_mat)[1], to = range(pred_mat)[2], length.out = ndiff) ~ QGvec, type = "n", xlab = "(log) volumetric yield at Big G", ylab = "(log) volumetric yield at little g")
+abline(a = 0, b = 1, lty = 2)
+for (i in 1:nsites) { lines(pred_mat[,i] ~ QGvec, lwd = 2, col = mycols[i]) }
+```
+
+
+
+
+
+
+
+
+##### Portfolio strength
+
+There are probably better ways to do this, but here I'm quantifying/visualizing what I'm calling "portfolio strength", or the degree of heterogeneity in streamflow regimes across the network, as a function of water availability (big G flow). Portfolio strength is calculated as the (median) observed among-site variation in little G divided by the (median) expected/simulated among site variation in little g assuming flow homogeneity. Thus, values >1 and <1 indicate greater and less heterogeneity in streamflow than expected under the assumption of homogeneity, respectively. I think this would be a good way to compare/standardize among basins. 
+
+
+
+
+
+
+
+```{r fig.width=5, fig.height=5, eval=FALSE, echo=FALSE}
+par(mar = c(5,5,1,1), mfrow = c(1,1))
+plot(pred_arr_summ$med / apply(sig_mat, 1, quantile, probs = 0.5) ~ QGvec, type = "l", lwd = 2, xlab = "(log) volumetric yield at Big G", ylab = "Portfolio strength")
+abline(a = 1, b = 0, lty = 2)
+```
+
+
+
+
+
+
+
+
+
+Alternatively, portfolio strength can be defined as the ratio between among-site variation in little g at low vs. high values of Big G (sensu Chezik et al. 2017)...so we get distributions for observed and expected values, where a value of 1 indicates no portfolio behavior (no streamflow diversity at different levels of Big G). I don't think this makes sense because the whole point is the evaluation how diversity in flow regimes (i.e., portfolio strength) changes with water availability.
+
+
+
+
+
+
+
+```{r fig.width=6, fig.height=4, eval=FALSE, echo=FALSE}
+par(mar = c(5,5,1,1), mfrow = c(1,1))
+plot(seq(from = 0, to = 1, length.out = 100) ~ seq(from = 0, to = 6, length.out = 100), type = "n", xlab = "Porfolio strength", ylab = "Density")
+
+# observed among-site attenuation strength
+obs_den <- density(pred_arr[,1] / pred_arr[,dim(pred_arr)[2]])
+obs_den$y2 <- obs_den$y / max(obs_den$y)
+obs_l <- min(which(obs_den$x >= hdi(obs_den, credMass = 0.95)[1]))
+obs_h <- max(which(obs_den$x < hdi(obs_den, credMass = 0.95)[2]))
+polygon(x = c(obs_den$x[c(obs_l,obs_l:obs_h,obs_h)]), y = c(0,obs_den$y2[obs_l:obs_h],0), col = alpha("black", 0.3), lty = 0)
+lines(obs_den$y2 ~ obs_den$x, col = "black", lwd = 2)
+
+# expected among-site attenuation strength
+exp_den <- density(sig_mat[1,] / sig_mat[dim(sig_mat)[1],])
+exp_den$y2 <- exp_den$y / max(exp_den$y)
+exp_l <- min(which(exp_den$x >= hdi(exp_den, credMass = 0.95)[1]))
+exp_h <- max(which(exp_den$x < hdi(exp_den, credMass = 0.95)[2]))
+polygon(x = c(exp_den$x[c(exp_l,exp_l:exp_h,exp_h)]), y = c(0,exp_den$y2[exp_l:exp_h],0), col = alpha("blue", 0.3), lty = 0)
+lines(exp_den$y2 ~ exp_den$x, col = "blue", lwd = 2)
+
+legend("topright", legend = c("Observed", "Expected"), fill = c(alpha("black", 0.3), alpha("blue", 0.3)), bty = "n")
+abline(v = 1, lty = 2)
+```
+
+
+
+
+
+
+
+
+
+### Agnostic to sites
+
+This model evaluates the G-g relationship and the effect of G on sigma, but ignores site groupings. With respect to the sigma~G relationship, this is essentially what I am trying to reconstruct above using derived values. 
+
+
+
+
+
+
+
+```{r, eval=FALSE, echo=FALSE}
+cat("model {
+
+##--- LIKELIHOOD ---------------------------------------------------##
+
+for (i in 1:nObs) {
+  Qg[i] ~ dnorm(mu[i], pow(sigma[i], -2))
+  mu[i] <- alpha + beta * QG[i]
+  
+  # effect of Big G yield on global process error
+  log(sigma[i]) <- alpha.sig + beta.sig * QG[i]
+  
+  # Log-likelihood
+  loglik[i] <- logdensity.norm(Qg[i], mu[i], pow(sigma[i], -2))
+  }
+
+
+##--- PRIORS --------------------------------------------------------##
+
+# process error
+alpha.sig ~ dnorm(0, pow(10, -2))
+beta.sig ~ dnorm(0, pow(10, -2))
+    
+# global intercept and slope
+alpha ~ dnorm(0, pow(10, -2))
+beta ~ dnorm(0, pow(10, -2))
+
+    
+##--- DERIVED VALUES ------------------------------------------------##
+
+# # expected deviation from Big G
+# for (j in 1:nSites) { 
+#   for (k in 1:nDiff) {
+#     diff[j,k] <- (alpha[j] + beta[j] * QGvec[k]) - QGvec[k]
+#   }}
+
+
+}", file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod_Events_3.txt")
+```
+
+
+
+
+
+
+
+
+#### Fit the JAGS model
+
+
+
+
+
+
+
+```{r, eval=FALSE, echo=FALSE}
+# gather data for JAGS
+jags.data <- list("nObs" = dim(dat_wb2)[1], "nSites" = length(unique(dat_wb2$site_name_cd)), 
+                  "sites" = dat_wb2$site_name_cd, #"indev" = dat_wb2$isevent,
+                  "Qg" = dat_wb2$yield_little_vol_log, "QG" = dat_wb2$yield_big_vol_log)
+
+# parameters to monitor
+jags.params <- c("alpha", "beta", "alpha.sig", "beta.sig", "loglik", "mu", "Qg")
+
+# run in jags
+mod_test <- jags.parallel(data = jags.data, inits = NULL, parameters.to.save = jags.params,
+                       model.file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/GgMod_Events_3.txt",
+                       n.chains = 10, n.thin = 20, n.burnin = 1000, n.iter = 5000, DIC = FALSE)
+# saveRDS(mod_0, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Big G Little g/JAGS Models/Fitted models/GgMod_Events.rds")
+```
+
+
+
+
+
+
+
+
+Get MCMC samples and summary
+
+
+
+
+
+
+
+```{r, eval=FALSE, echo=FALSE}
+top_mod <- mod_test
+# generate MCMC samples and store as an array
+modelout <- top_mod$BUGSoutput
+McmcList <- vector("list", length = dim(modelout$sims.array)[2])
+for(i in 1:length(McmcList)) { McmcList[[i]] = as.mcmc(modelout$sims.array[,i,]) }
+# rbind MCMC samples from 10 chains 
+Mcmcdat_test <- rbind(McmcList[[1]], McmcList[[2]], McmcList[[3]], McmcList[[4]], McmcList[[5]], McmcList[[6]], McmcList[[7]], McmcList[[8]], McmcList[[9]], McmcList[[10]])
+param.summary_test <- modelout$summary
+head(param.summary_test)
+```
+
+
+
+
+
+
+
+
+#### View traceplots
+
+
+
+
+
+
+
+```{r, eval=FALSE, echo=FALSE}
+MCMCtrace(mod_test, ind = TRUE, params = c("alpha", "beta", "alpha.sig", "beta.sig"), pdf = FALSE)
+```
+
+
+
+
+
+
+
+
+
+#### Effect of G on sigma
+
+Here, I plot the effects of Big G yield on among-site variation in little g (i.e., sigma). This describes the effect of water availability on network-wide heterogeneity in streamflow.
+
+
+
+
+
+
+
+```{r, eval=FALSE, echo=FALSE}
+# control panel
+nvals <- 100
+nsim <- 100
+nsites <- length(unique(dat_wb2$site_name_cd))
+x_seq <- seq(from = min(dat_wb2$yield_big_vol_log), to = max(dat_wb2$yield_big_vol_log), length.out = nvals)
+
+# predict from model
+pred_arr <- matrix(NA, nrow = nsim, ncol = nvals)
+pred_arr_summ <- matrix(NA, nrow = nvals, ncol = 3)
+for (j in 1:nsim) { pred_arr[j,] <- exp(Mcmcdat_test[j,"alpha.sig"] + Mcmcdat_test[j,"beta.sig"] * x_seq) }
+for (j in 1:nvals) { pred_arr_summ[j,] <- quantile(pred_arr[,j], probs = c(0.025, 0.5, 0.95))}
+```
+
+```{r, fig.width=5, fig.height=5, eval=FALSE, echo=FALSE}
+par(mar = c(5,5,1,1), mfrow = c(1,1))
+# among sites
+plot(seq(from = 0, to = range(pred_arr_summ)[2], length.out = nvals) ~ x_seq, type = "n", xlab = "(log) volumetric yield at Big G", ylab = "sigma")
+# variable sigma
+polygon(x = c(x_seq, rev(x_seq)), y = c(pred_arr_summ[,1], rev(pred_arr_summ[,3])), col = alpha("black", 0.2), border = NA)
+lines(pred_arr_summ[,2] ~ x_seq, col = "black", lwd = 2)
+```
+

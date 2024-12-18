@@ -21,6 +21,7 @@ library(MCMCvis)
 library(loo)
 library(HDInterval)
 library(lme4)
+library(zoo)
 ```
 
 ## Data
@@ -107,7 +108,7 @@ It is not actually necessary to do this separately, as baseflow separation is co
 dat_wb <- dat %>% filter(site_name %in% c("West Brook NWIS", "West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook"))
 dat_wb_bf <- dat_wb %>% 
   filter(!is.na(Yield_filled_mm)) %>% 
-  select(site_name, basin, subbasin, WaterYear, date, Yield_filled_mm) %>%
+  select(site_name, basin, subbasin, WaterYear, date, Yield_filled_mm, flow_mean_filled_cms, area_sqkm) %>%
   group_by(site_name) %>%
   mutate(bf = baseflowB(Yield_filled_mm)$bf, bfi = baseflowB(Yield_filled_mm)$bfi) %>%
   ungroup()
@@ -151,6 +152,7 @@ dat_little <- dat_wb_bf %>% filter(site_name != "West Brook NWIS")
 Identify events at Big G:
 ```{r}
 events <- eventBaseflow(dat_big$Yield_filled_mm, BFI_Th = 0.75)
+events <- events %>% mutate(len = end - srt + 1)
 head(events)
 ```
 
@@ -197,7 +199,7 @@ dat_big <- dat_big %>%
          big_event_yield = ifelse(isevent_vec == 1, Yield_filled_mm, NA),
          big_nonevent_yield = ifelse(isevent_vec == 2, Yield_filled_mm, NA),
          big_event_quick = big_event_yield - bf) %>%
-  rename(big_yield = Yield_filled_mm, big_bf = bf, big_bfi = bfi)
+  rename(big_yield = Yield_filled_mm, big_bf = bf, big_bfi = bfi, big_flow = flow_mean_filled_cms, big_area_sqkm = area_sqkm)
 (dat_big)
 ```
 
@@ -268,17 +270,30 @@ Ultimately, does this matter given that we are simply using this as a method to 
 dat_wb2 <- dat_little %>% 
   filter(date >= min(dat_big$date) & date <= max(dat_big$date)) %>%
   left_join(dat_big %>% select(-site_name)) %>% 
-  group_by(site_name, basin, subbasin, WaterYear, agneventid) %>% 
-  summarise(mindate = min(date),
+  group_by(site_name, basin, subbasin, agneventid) %>% 
+  summarise(eventlen = n(),
+            mindate = min(date),
             isevent = unique(isevent), 
-            yield_little_vol = sum(Yield_filled_mm+0.01),
-            yield_big_vol = sum(big_yield+0.01),
-            yield_little_vol_log = log(yield_little_vol),
-            yield_big_vol_log = log(yield_big_vol)) %>%
+            yield_little_cum = sum(Yield_filled_mm+0.01),
+            yield_big_cum = sum(big_yield+0.01),
+            yield_little_cum_log = log(yield_little_cum),
+            yield_big_cum_log = log(yield_big_cum),
+            xxx_little = sum(flow_mean_filled_cms * 86400 * (1/unique(area_sqkm)) * (1/1000000) * 1000),
+            yyy_little = sum(flow_mean_filled_cms * 86400) * (1/unique(area_sqkm)) * (1/1000000) * 1000,
+            yield_little_mean_log = mean(log(Yield_filled_mm+0.01)),
+            yield_big_mean_log = mean(log(big_yield+0.01))) %>%
   ungroup() %>%
   mutate(site_name = factor(site_name, levels = c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook")),
          site_name_cd = as.numeric(site_name),
-         z_yield_big_vol_log = as.numeric(scale(yield_big_vol_log, center = TRUE, scale = TRUE)))
+         z_yield_big_cum_log = as.numeric(scale(yield_big_cum_log, center = TRUE, scale = TRUE)),
+         z_yield_big_mean_log = as.numeric(scale(yield_big_mean_log, center = TRUE, scale = TRUE)))
+
+plot(yield_little_cum ~ xxx_little, dat_wb2, main = "cumulative yield derived using fasstr ~ by-hand")
+abline(a = 0, b = 1, col = "red")
+plot(yyy_little ~ xxx_little, dat_wb2, main = "cumulative yield derived from cumulative flow ~ summed daily yield")
+abline(a = 0, b = 1, col = "red")
+plot(yield_little_mean_log ~ yield_little_cum_log, dat_wb2, main = "mean log yield ~ cumulative log yield")
+abline(a = 0, b = 1, col = "red")
 
 # write to file
 write_csv(dat_wb2, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Event Delineation/EcoDrought_Data_EventNonEvent_WestBrookonly.csv")
@@ -287,42 +302,80 @@ write_csv(dat_wb2, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/E
 
 View relationship between Big G and little g, color by site, facet by event/non-event.
 ```{r, fig.height=4, fig.width=9}
-#| fig-cap: "Effect of (log) volumetric yield at Big G on (log) volumetric yield at little g during baseflow and event periods."
+#| fig-cap: "Effect of (log) cumulative yield at Big G on (log) cumulative yield at little g during baseflow and event periods."
 dat_wb2 %>% 
   mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
-  ggplot(aes(x = yield_big_vol_log, y = yield_little_vol_log, group = site_name, color = site_name)) + 
+  ggplot(aes(x = yield_big_cum_log, y = yield_little_cum_log, group = site_name, color = site_name)) + 
   geom_point() + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
   geom_smooth(method = "lm", se = F) + facet_wrap(~isevent)
 ```
 
-View relationship between Big G and little g, color by event/non-event, facet by site. For most sites (except may Obear Brook), G-g relationships are identical between events and non-event.
-```{r, fig.height=7, fig.width=8}
-#| fig-cap: "Effect of (log) volumetric yield at Big G on (log) volumetric yield at little g during baseflow and event periods."
+```{r, fig.height=4, fig.width=9}
+#| fig-cap: "Effect of mean (log) yield at Big G on mean (log) yield at little g during baseflow and event periods."
 dat_wb2 %>% 
   mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
-  ggplot(aes(x = yield_big_vol_log, y = yield_little_vol_log, group = isevent, color = isevent)) + 
+  ggplot(aes(x = yield_big_mean_log, y = yield_little_mean_log, group = site_name, color = site_name)) + 
+  geom_point() + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + facet_wrap(~isevent)
+```
+
+
+View relationship between Big G and little g, color by event/non-event, facet by site. For most sites (except may Obear Brook), G-g relationships are identical between events and non-event.
+```{r, fig.height=7, fig.width=8}
+#| fig-cap: "Effect of (log) cumulative yield at Big G on (log) cumulative yield at little g during baseflow and event periods."
+dat_wb2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_cum_log, y = yield_little_cum_log, group = isevent, color = isevent)) + 
   geom_point() + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
   geom_smooth(method = "lm") + facet_wrap(~site_name)
 ```
 
-Plot derived G-g differences as a function of Big G yield, by site, facet by events/non-events.
-```{r, fig.height=4, fig.width=9}
-#| fig-cap: "Effect of (log) volumetric yield at Big G on G-g difference (log volumetric yield) during baseflow and event periods."
+```{r, fig.height=7, fig.width=8}
+#| fig-cap: "Effect of mean (log) yield at Big G on mean (log) yield at little g during baseflow and event periods."
 dat_wb2 %>% 
-  mutate(diff = yield_little_vol_log - yield_big_vol_log, 
-         isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
-  ggplot(aes(x = yield_big_vol_log, y = diff, group = site_name, color = site_name)) + 
-  geom_point() + geom_abline(intercept = 0, slope = 0, linetype = "dashed") + 
-  geom_smooth(method = "lm", se = F) + facet_wrap(~isevent)
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_mean_log, y = yield_little_mean_log, group = isevent, color = isevent)) + 
+  geom_point() + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm") + facet_wrap(~site_name)
 ```
 
-Plot derived G-g differences as a function of Big G yield, color by events/non-events.
-```{r, fig.height=5, fig.width=6}
-#| fig-cap: "Effect of (log) volumetric yield at Big G on G-g difference (log volumetric yield) during baseflow and event periods."
+
+View relationship between Big G and little g, color by site, all together
+```{r, fig.height=4, fig.width=6}
+#| fig-cap: "Effect of (log) cumulative yield at Big G on (log) cumulative yield at little g."
 dat_wb2 %>% 
-  mutate(diff = yield_little_vol_log - yield_big_vol_log, 
-         isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
-  ggplot(aes(x = yield_big_vol_log, y = diff, group = isevent, color = isevent)) + 
-  geom_point() + geom_abline(intercept = 0, slope = 0, linetype = "dashed") 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_cum_log, y = yield_little_cum_log, group = site_name, color = site_name)) + 
+  geom_point() + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = T)
 ```
 
+```{r, fig.height=4, fig.width=6}
+#| fig-cap: "Effect of mean (log) yield at Big G on mean (log) yield at little g."
+dat_wb2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_mean_log, y = yield_little_mean_log, group = site_name, color = site_name)) + 
+  geom_point() + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = T)
+```
+
+View relationship between Big G and among-site/event-specific standard deviation in little g.
+```{r}
+#| fig-cap: "Derived from log cumulative yield"
+dat_wb2 %>% 
+  select(agneventid, yield_big_cum_log, yield_little_cum_log) %>% 
+  group_by(agneventid) %>% 
+  summarize(unq_big = unique(yield_big_cum_log),
+            sd_little = sd(yield_little_cum_log)) %>% 
+  ggplot(aes(x = unq_big, y = sd_little)) + geom_point() + geom_smooth() + ylim(0,1.5)
+```
+
+```{r}
+#| fig-cap: "Derived from mean log yield"
+dat_wb2 %>% 
+  select(agneventid, yield_big_mean_log, yield_little_mean_log) %>% 
+  group_by(agneventid) %>% 
+  summarize(unq_big = unique(yield_big_mean_log),
+            sd_little = sd(yield_little_mean_log)) %>% 
+  ggplot(aes(x = unq_big, y = sd_little)) + geom_point() + geom_smooth() + ylim(0,1.5)
+```
