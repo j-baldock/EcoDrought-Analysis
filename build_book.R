@@ -28,7 +28,7 @@ quarto::quarto_render("Event Delineation/HydroEvents.qmd",
                       output_format = "html")
 
 quarto::quarto_render("Big G Little g/WedgeModel.qmd", 
-                      #cache_refresh = TRUE, # default is FALSE
+                      cache_refresh = TRUE, # default is FALSE
                       output_format = "html")
 
 
