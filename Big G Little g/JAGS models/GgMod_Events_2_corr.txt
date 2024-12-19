@@ -10,6 +10,11 @@ for (i in 1:nObs) {
   
   # Log-likelihood
   loglik[i] <- logdensity.norm(Qg[i], mu[i], pow(sigma[i], -2))
+  
+  ## SITE AGNOSTIC
+  Qg2[i] ~ dnorm(ag.mu[i], pow(ag.sigma[i], -2))
+  ag.mu[i] <- ag.alpha + ag.beta * QG[i]
+  log(ag.sigma[i]) <- ag.sig.alpha + ag.sig.beta * QG[i]  
   }
 
 
@@ -49,6 +54,13 @@ sig.alpha.sigma ~ dunif(0.001, 100)
 sig.beta.sigma ~ dunif(0.001, 100)
 
 
+## SITE AGNOSTIC
+ag.alpha ~ dnorm(0, pow(10, -2))
+ag.beta ~ dnorm(0, pow(10, -2))
+ag.sig.alpha ~ dnorm(0, pow(10, -2))
+ag.sig.beta ~ dnorm(0, pow(10, -2))
+
+
 ##--- DERIVED VALUES ------------------------------------------------##
 
 # expected deviation from Big G
@@ -63,22 +75,26 @@ for (j in 1:nSites) {
 for (i in 1:nDiff) {
 
   # observed population variance, conditional on x
-  VpObs[i] <- (beta.mu^2) * varx + (alpha.sigma^2) + (QGvec[i]^2) * (beta.sigma^2) + 2 * QGvec[i] * (rho * alpha.sigma * beta.sigma) + (exp(sig.alpha.mu + sig.beta.mu * QGvec[i]))^2
+  VpObs[i] <- ((beta.mu^2) * varx) + ((alpha.sigma^2) + ((QGvec[i]^2) * (beta.sigma^2)) + (2 * QGvec[i] * (rho * alpha.sigma * beta.sigma))) + ((exp(sig.alpha.mu + sig.beta.mu * QGvec[i]))^2)
   
   # expected population variance, no within or among-site diversity
-  VpScen1[i] <- (beta.mu^2) * varx + (exp(sig.alpha.mu))^2
+  VpScen1[i] <- ((beta.mu^2) * varx) + ((exp(sig.alpha.mu))^2)
   
   # expected population variance, no within-site diversity
-  VpScen2[i] <- (beta.mu^2) * varx + (alpha.sigma^2) + (QGvec[i]^2) * (beta.sigma^2) + 2 * QGvec[i] * (rho * alpha.sigma * beta.sigma) + (exp(sig.alpha.mu))^2
+  VpScen2[i] <- ((beta.mu^2) * varx) + ((alpha.sigma^2) + ((QGvec[i]^2) * (beta.sigma^2)) + (2 * QGvec[i] * (rho * alpha.sigma * beta.sigma))) + ((exp(sig.alpha.mu))^2)
   
   # expected population variance, no among-size diversity
-  VpScen3[i] <- (beta.mu^2) * varx + (exp(sig.alpha.mu + sig.beta.mu * QGvec[i]))^2
+  VpScen3[i] <- ((beta.mu^2) * varx) + ((exp(sig.alpha.mu + sig.beta.mu * QGvec[i]))^2)
   
   # portfolio strength: how much more diversity in streamflow do we observe at the little g gages than expected under alternative (null) hypotheses?
   port1[i] <- VpObs[i] / VpScen1[i]
   port2[i] <- VpObs[i] / VpScen2[i]
   port3[i] <- VpObs[i] / VpScen3[i]
+  
+  # variance in raw response values, agnostic to site (i.e., variance in the sample)
+  VarAg[i] <- (exp(ag.sig.alpha + ag.sig.beta * QGvec[i]))^2
 }
+
 
 # attenuation strength: how much more diversity in streamflow (among little g gages) do we observe at low vs. high flows?
 attenObs <- VpObs[1] / VpObs[nDiff]
