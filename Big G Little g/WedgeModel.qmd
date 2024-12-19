@@ -259,7 +259,12 @@ for (i in 1:nDiff) {
   
   # variance in raw response values, agnostic to site (i.e., variance in the sample)
   VarAg[i] <- (exp(ag.sig.alpha + ag.sig.beta * QGvec[i]))^2
+  
+  Vf[i] <- (beta.mu^2) * varx
+  Vix[i] <- (alpha.sigma^2) + ((QGvec[i]^2) * (beta.sigma^2)) + (2 * QGvec[i] * (rho * alpha.sigma * beta.sigma))
+  Vr[i] <- (exp(sig.alpha.mu + sig.beta.mu * QGvec[i]))^2
 }
+
 
 
 # attenuation strength: how much more diversity in streamflow (among little g gages) do we observe at low vs. high flows?
@@ -289,7 +294,7 @@ jags.params <- c("alpha", "beta", "alpha.mu", "beta.mu", "alpha.sigma", "beta.si
                  "sig.alpha", "sig.beta", "sig.alpha.mu", "sig.beta.mu", "sig.alpha.sigma", "sig.beta.sigma", 
                  "rho", "diff", "predlg", "loglik", "mu", "Qg", 
                  "VpObs", "VpScen1", "VpScen2", "VpScen3", "port1", "port2", "port3", "attenObs", "atten1", "atten2", "atten3",
-                 "VarAg")
+                 "VarAg", "Vf", "Vix", "Vr")
 
 # initial values
 myinits <- function() {
@@ -511,7 +516,7 @@ nsim <- dim(Mcmcdat_0)[1]
 # get derived values
 pred_arr <- matrix(NA, nrow = nsim, ncol = ndiff)
 pred_arr_summ <- matrix(NA, nrow = ndiff, ncol = 3)
-for (j in 1:nsim) { pred_arr[j,] <- sqrt(Mcmcdat_0[j, str_subset(colnames(Mcmcdat_0), pattern = "VpObs")]) }
+for (j in 1:nsim) { pred_arr[j,] <- (Mcmcdat_0[j, str_subset(colnames(Mcmcdat_0), pattern = "VpObs")]) }
 for (j in 1:ndiff) { pred_arr_summ[j,] <- quantile(pred_arr[,j], probs = c(0.025, 0.5, 0.95)) }
 ```
 
@@ -519,23 +524,62 @@ for (j in 1:ndiff) { pred_arr_summ[j,] <- quantile(pred_arr[,j], probs = c(0.025
 #| fig-cap: "Increasing water availability decreases among-site heterogeneity in little g response to Big G. Line and polygon represent the median and 95% credible interval of the relationship."
 
 par(mar = c(4,4,0.5,0.5), mgp = c(2.5,1,0))
-plot(seq(from = 0, to = 2.5, length.out = ndiff) ~ QGvec, type = "n", xlab = "(log) cumulative yield at Big G", ylab = expression(paste("Among-site variation in little g,  ", sqrt(VpObs), sep = "")))
+plot(seq(from = 0, to = 6, length.out = ndiff) ~ QGvec, type = "n", xlab = "(log) cumulative yield at Big G", ylab = "Global variance, VpObs")
 polygon(x = c(QGvec, rev(QGvec)), y = c(pred_arr_summ[,1], rev(pred_arr_summ[,3])), col = alpha("black", 0.2), border = NA)
 lines(pred_arr_summ[,2] ~ QGvec, col = "black", lwd = 2)
 ```
 
 
-Visually comparing the figure above with the data/regression fits figure, it seems like there is not as much variation in VpObs with x in the plot above as there "should" be. In the plot below, I directly compare the population standard deviation (sqrt(VpObs)) with the sample standard deviation (sqrt(VarAg), derived from the site-agnostic model). While Schielzeth and Nakagawa (2022) state that the population and sample standard deviations (variances) may "differ slightly" (pg. 1216), the difference as plotted below seems quite large, which leads me to wonder if the variance decomposition model is specified correctly...
+Visually comparing the figure above with the data/regression fits figure, it seems like there is not as much variation in VpObs with x in the plot above as there "should" be. In the plot below, I directly compare the population variance (VpObs) with the sample variance (VarAg), derived from the site-agnostic model). While Schielzeth and Nakagawa (2022) state that the population and sample standard deviations (variances) may "differ slightly" (pg. 1216), the difference as plotted below seems quite large, which leads me to wonder if the variance decomposition model is specified correctly...
 ```{r, fig.width=5, fig.height=5}
 par(mar = c(4,4,0.5,0.5), mgp = c(2.5,1,0))
 nsim <- 100
-plot(seq(from = 0, to = 3, length.out = ndiff) ~ QGvec, type = "n", xlab = "(log) cumulative yield at Big G", ylab = "")
-for (i in 1:nsim) { lines(sqrt(Mcmcdat_0[i, str_subset(colnames(Mcmcdat_0), pattern = "VpObs")]) ~ QGvec, col = alpha("black", 0.3), lwd = 0.5) }
-for (i in 1:nsim) { lines(sqrt(Mcmcdat_0[i, str_subset(colnames(Mcmcdat_0), pattern = "VarAg")]) ~ QGvec, col = alpha("blue", 0.3), lwd = 0.5) }
-legend("topright", legend = c(expression(sqrt(VpObs)), expression(sqrt(VarAg))), lty = 1, col = c("black", "blue"), bty = "n")
+plot(seq(from = 0, to = 6, length.out = ndiff) ~ QGvec, type = "n", xlab = "(log) cumulative yield at Big G", ylab = "")
+for (i in 1:nsim) { lines((Mcmcdat_0[i, str_subset(colnames(Mcmcdat_0), pattern = "VpObs")]) ~ QGvec, col = alpha("black", 0.3), lwd = 0.5) }
+for (i in 1:nsim) { lines((Mcmcdat_0[i, str_subset(colnames(Mcmcdat_0), pattern = "VarAg")]) ~ QGvec, col = alpha("blue", 0.3), lwd = 0.5) }
+legend("topright", legend = c("VpObs", "VarAg"), lty = 1, col = c("black", "blue"), bty = "n")
 
 ```
 
+
+So what drives this difference? Below I plot the three components of Vp: Vf, Vix, and Vr, and the sum of Vix and Vr. The difference in VpObs and VarAg in the plot of above is driven in large part by the constant Vf, the variance explained by the fixed effects. Note that VarAg is the *residual variance* from the site-agnostic model, and thus does not include variance explained by fixed effects. For the site-aware model, the best approximation of VarAg is Vix + Vr, the between/somg-site variance plus the residual variance (within site).
+```{r, fig.width=8, fig.height=8}
+par(mar = c(4,4,0.5,0.5), mgp = c(2.5,1,0), mfrow = c(2,2))
+nsim <- 100
+
+# Vf
+plot(seq(from = 0, to = 4, length.out = ndiff) ~ QGvec, type = "n", xlab = "(log) cumulative yield at Big G", ylab = "Vf")
+for (i in 1:nsim) { lines((Mcmcdat_0[i, str_subset(colnames(Mcmcdat_0), pattern = "Vf")]) ~ QGvec, col = alpha("black", 0.3), lwd = 0.5) }
+for (i in 1:nsim) { lines((Mcmcdat_0[i, str_subset(colnames(Mcmcdat_0), pattern = "VarAg")]) ~ QGvec, col = alpha("blue", 0.3), lwd = 0.5) }
+legend("topright", legend = c("Vf", "VarAg"), lty = 1, col = c("black", "blue"), bty = "n")
+
+# Vix
+plot(seq(from = 0, to = 4, length.out = ndiff) ~ QGvec, type = "n", xlab = "(log) cumulative yield at Big G", ylab = "Vix")
+for (i in 1:nsim) { lines((Mcmcdat_0[i, str_subset(colnames(Mcmcdat_0), pattern = "Vix")]) ~ QGvec, col = alpha("black", 0.3), lwd = 0.5) }
+for (i in 1:nsim) { lines((Mcmcdat_0[i, str_subset(colnames(Mcmcdat_0), pattern = "VarAg")]) ~ QGvec, col = alpha("blue", 0.3), lwd = 0.5) }
+legend("topright", legend = c("Vix", "VarAg"), lty = 1, col = c("black", "blue"), bty = "n")
+
+# Vr
+plot(seq(from = 0, to = 4, length.out = ndiff) ~ QGvec, type = "n", xlab = "(log) cumulative yield at Big G", ylab = "Vr")
+for (i in 1:nsim) { lines((Mcmcdat_0[i, str_subset(colnames(Mcmcdat_0), pattern = "Vr")]) ~ QGvec, col = alpha("black", 0.3), lwd = 0.5) }
+for (i in 1:nsim) { lines((Mcmcdat_0[i, str_subset(colnames(Mcmcdat_0), pattern = "VarAg")]) ~ QGvec, col = alpha("blue", 0.3), lwd = 0.5) }
+legend("topright", legend = c("Vr", "VarAg"), lty = 1, col = c("black", "blue"), bty = "n")
+
+# Vix + Vr
+plot(seq(from = 0, to = 4, length.out = ndiff) ~ QGvec, type = "n", xlab = "(log) cumulative yield at Big G", ylab = "Vix + Vr")
+for (i in 1:nsim) { lines((Mcmcdat_0[i, str_subset(colnames(Mcmcdat_0), pattern = "Vix")]) + (Mcmcdat_0[i, str_subset(colnames(Mcmcdat_0), pattern = "Vr")]) ~ QGvec, col = alpha("black", 0.3), lwd = 0.5) }
+for (i in 1:nsim) { lines((Mcmcdat_0[i, str_subset(colnames(Mcmcdat_0), pattern = "VarAg")]) ~ QGvec, col = alpha("blue", 0.3), lwd = 0.5) }
+legend("topright", legend = c("Vix + Vr", "VarAg"), lty = 1, col = c("black", "blue"), bty = "n")
+```
+
+Why does this matter? 
+
+* The best way to compare the plot of within-site variation in little g (sigma ~ G) and among-site variation in little g is probably to use the sum of Vix and Vr, ignoring Vf, as within-site variation (sigma) also effectively ignores fixed effect variance. 
+* For calculation of portfolio effects, it likely does not matter as all variance scenarios contain the constant and thus the constant is divided out
+* But for calculation of attenuation strength, it appears to lead to substantial underestimates of attenuation, i.e., "wedginess". Attenuation strength is a ratio between variation at low vs high levels of G, so when a constant is added to both the numerator and denominator, the absolute difference is the same but the relative difference can be quite different
+  + Consider the following. 4 / 2 = 2 and 3 / 1 = 3. In both cases the absolute difference is the same (1) but the relative difference changes (2 vs. 3).
+  
+  
 
 ### Portfolio strength
 

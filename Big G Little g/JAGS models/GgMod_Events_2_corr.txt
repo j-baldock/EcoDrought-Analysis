@@ -93,7 +93,12 @@ for (i in 1:nDiff) {
   
   # variance in raw response values, agnostic to site (i.e., variance in the sample)
   VarAg[i] <- (exp(ag.sig.alpha + ag.sig.beta * QGvec[i]))^2
+  
+  Vf[i] <- (beta.mu^2) * varx
+  Vix[i] <- (alpha.sigma^2) + ((QGvec[i]^2) * (beta.sigma^2)) + (2 * QGvec[i] * (rho * alpha.sigma * beta.sigma))
+  Vr[i] <- (exp(sig.alpha.mu + sig.beta.mu * QGvec[i]))^2
 }
+
 
 
 # attenuation strength: how much more diversity in streamflow (among little g gages) do we observe at low vs. high flows?
