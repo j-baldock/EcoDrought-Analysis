@@ -139,6 +139,59 @@ wbnwis2 <- wbnwis2 %>% mutate(flow_mean_cms = flow*0.02831683199881, area_sqkm =
 ```
 
 
+#### 15 min data BF
+```{r}
+wbnwis2b <- wbnwis2 %>% 
+  filter(!is.na(Yield_mm)) %>% 
+  mutate(bf = baseflowB(Yield_mm, alpha = alp, passes = 15)$bf, 
+         bfi = baseflowB(Yield_mm, alpha = alp, passes = 15)$bfi)
+
+dat_big <- wbnwis2b
+events <- eventBaseflow(dat_big$Yield_mm, BFI_Th = thresh, bfi = dat_big$bfi)
+events <- events %>% mutate(len = end - srt + 1)
+
+# define positions of non-events
+srt <- c(1)
+end <- c(events$srt[1]-1)
+for (i in 2:(dim(events)[1])) {
+  srt[i] <- events$end[i-1]+1
+  end[i] <- events$srt[i]-1
+}
+nonevents <- data.frame(tibble(srt, end) %>% mutate(len = end - srt) %>% filter(len >= 0) %>% select(-len) %>% add_row(srt = events$end[dim(events)[1]]+1, end = dim(dat_big)[1]))
+
+# create vectors of binary event/non-event and event IDs
+isevent_vec <- rep(2, times = dim(dat_big)[1])
+eventid_vec <- rep(NA, times = dim(dat_big)[1])
+for (i in 1:dim(events)[1]) { 
+  isevent_vec[c(events[i,1]:events[i,2])] <- 1 
+  eventid_vec[c(events[i,1]:events[i,2])] <- i
+}
+
+# create vector of non-event IDs
+noneventid_vec <- rep(NA, times = dim(dat_big)[1])
+for (i in 1:dim(nonevents)[1]) { noneventid_vec[c(nonevents[i,1]:nonevents[i,2])] <- i }
+
+# create vector of "agnostic events": combined hydro events and non-events
+agnevents <- rbind(events %>% select(srt, end) %>% mutate(event = 1), nonevents %>% mutate(event = 0)) %>% arrange((srt))
+agneventid_vec <- c()
+for (i in 1:dim(agnevents)[1]){ agneventid_vec[c(agnevents[i,1]:agnevents[i,2])] <- i }
+
+# add event/non-event vectors to Big G data
+dat_big <- dat_big %>% 
+  mutate(isevent = isevent_vec, 
+         eventid = eventid_vec,
+         noneventid = noneventid_vec,
+         agneventid = agneventid_vec,
+         big_event_yield = ifelse(isevent_vec == 1, Yield_mm, NA),
+         big_nonevent_yield = ifelse(isevent_vec == 2, Yield_mm, NA),
+         big_event_quick = big_event_yield - bf) %>%
+  rename(big_yield = Yield_mm, big_bf = bf, big_bfi = bfi, big_flow = Yield_mm)
+
+dat_big %>% select(datetime, big_flow, big_bf, big_event_yield, big_nonevent_yield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Hourly yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+
+```
+
+
 #### Baseflow separation
 Summarize at hourly time-step and perform baseflow separation.
 ```{r}
