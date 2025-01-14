@@ -1,0 +1,371 @@
+---
+title: "Explore Sub-Daily Data"
+---
+
+Purpose: Explore data at sub-daily temporal resolutions (e.g., 15-min and 1-hour time steps).
+
+* Visualize 15-min and 1-hour data and note diversity in timing of peak flows during events
+* Use event pairing to explore the mean and variation in time lags between peak flows at Big G and little g's
+* Fit basic wedge model to the 15-min and 1-hour *unaligned* data...do the results change so much that we need to align time series when working with sub-daily data?
+* Explore use of dynamic time warping to align time series data
+
+
+```{r echo=FALSE, message=FALSE}
+library(tidyverse)
+library(sf)
+library(mapview)
+library(knitr)
+library(dygraphs)
+library(hydroEvents)
+library(zoo)
+library(dataRetrieval)
+library(ggpubr)
+library(dtw)
+```
+
+## Data
+
+### Load data
+
+Bring in site info and sub-daily data
+```{r}
+# site information and locations
+siteinfo <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv")
+siteinfo_sp <- st_as_sf(siteinfo, coords = c("long", "lat"), crs = 4326)
+mapview(siteinfo_sp, zcol = "designation")
+
+# flow/yield (and temp) data 
+dat_sub <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_Raw.csv") %>%
+  filter(!site_name %in% c("WoundedBuckCreek", "Brackett Creek"))
+
+dat_little <- dat_sub %>% 
+  filter(site_name %in% c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook")) %>% 
+  select(site_name, datetime, flow, area_sqmi)
+```
+
+Download 15-min NWIS data for big G (West Brook NWIS)
+```{r}
+wbnwis <- tibble(readNWISdata(sites = "01171100", service = "uv", startDate = "1980-01-01", endDate = Sys.Date(), tz = "America/New_York"))
+wbnwis2 <- wbnwis[,c(2,3,4)]
+names(wbnwis2) <- c("station_no", "datetime", "flow") 
+dat_big <- wbnwis2 %>% 
+  left_join(siteinfo %>% filter(site_name == "West Brook NWIS")) %>% 
+  select(site_name, datetime, flow, area_sqmi)
+```
+
+Organize 15-min and 1-hour datasets, load daily data
+```{r}
+dat_15min <- bind_rows(dat_little, dat_big) %>%
+  mutate(site_name = factor(site_name, levels = c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook", "West Brook NWIS"))) %>%
+  mutate(flow_cms = flow*0.02831683199881, area_sqkm = area_sqmi*2.58999) %>%
+  mutate(yield = flow_cms * 900 * (1/(area_sqkm)) * (1/1000000) * 1000)
+
+
+dat_1hr <- bind_rows(dat_little, dat_big) %>%
+  mutate(site_name = factor(site_name, levels = c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook", "West Brook NWIS"))) %>%
+  filter(!is.na(flow)) %>% 
+  mutate(datetime = floor_date(datetime, unit = "hour")) %>%
+  group_by(site_name, datetime) %>% 
+  summarise(flow = mean(flow), area_sqmi = unique(area_sqmi)) %>%
+  ungroup() %>%
+  mutate(flow_cms = flow*0.02831683199881, area_sqkm = area_sqmi*2.58999) %>%
+  mutate(yield = flow_cms * 3600 * (1/(area_sqkm)) * (1/1000000) * 1000)
+
+dat_1day <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv") %>%
+  filter(site_name %in% c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook", "West Brook NWIS")) %>%
+  mutate(site_name = factor(site_name, levels = c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook", "West Brook NWIS")))
+```
+
+### View 15-min data
+
+Plot 15 min time series data
+```{r}
+dat_15min %>% select(datetime, site_name, yield) %>% spread(key = site_name, value = yield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Yield (mm)") %>% dyOptions(colors = c(hcl.colors(9, "Zissou 1"), "black")) %>% dyHighlight() 
+```
+
+### View 1-hour data
+
+Plot 1-hour time series data
+```{r}
+dat_1hr %>% select(datetime, site_name, yield) %>% spread(key = site_name, value = yield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Yield (mm)") %>% dyOptions(colors = c(hcl.colors(9, "Zissou 1"), "black")) %>% dyHighlight() 
+```
+
+### View 1-day data
+
+Plot 1-day/daily time series data
+```{r}
+dat_1day %>% select(date, site_name, Yield_filled_mm) %>% spread(key = site_name, value = Yield_filled_mm) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Yield (mm)") %>% dyOptions(colors = c(hcl.colors(9, "Zissou 1"), "black")) %>% dyHighlight() 
+```
+
+
+## Event pairing
+
+Conduct event pairing using hydroEvents package to understand lag time between peak flows at big and little g's
+
+### Hourly data
+
+#### Conduct event pairing
+```{r}
+# baseflow separation and event delineation parameters
+alp <- 0.925
+numpass <- 9
+thresh <- 0.5
+
+# sites
+sites <- unique(dat_1hr$site_name)[1:9]
+
+# empty list to store output
+outlist <- list()
+
+for (j in 1:length(sites)) {
+  # grab big and little g data and combine into a single tibble
+  littleg <- dat_1hr %>% filter(site_name == sites[j])
+  bigg <- dat_1hr %>% filter(site_name == "West Brook NWIS")
+  mytib <- bigg %>% select(datetime, yield) %>% rename(yield_big = yield) %>% left_join(littleg %>% select(datetime, yield) %>% rename(yield_little = yield))
+  
+  # baseflow separation
+  mytib_bf <- mytib %>% 
+  filter(!is.na(yield_big), !is.na(yield_little)) %>% 
+  mutate(bf_big = baseflowB(yield_big, alpha = alp, passes = numpass)$bf, 
+         bfi_big = baseflowB(yield_big, alpha = alp, passes = numpass)$bfi,
+         bf_little = baseflowB(yield_little, alpha = alp, passes = numpass)$bf, 
+         bfi_little = baseflowB(yield_little, alpha = alp, passes = numpass)$bfi)
+  
+  # delineate events
+  events_little <- eventBaseflow(mytib_bf$yield_little, BFI_Th = thresh, bfi = mytib_bf$bfi_little)
+  events_big <- eventBaseflow(mytib_bf$yield_big, BFI_Th = thresh, bfi = mytib_bf$bfi_big)
+  
+  # event matching
+  mypairs <- pairEvents(events_little, events_big, lag = 5, type = 1)
+  mypairs_com <- mypairs[complete.cases(mypairs),]
+  
+  # get matched event info
+  matchpeaktib <- tibble(datetime_little = rep(NA, times = dim(mypairs_com)[1]), datetime_big = rep(NA, times = dim(mypairs_com)[1]),
+                         yield_little = rep(NA, times = dim(mypairs_com)[1]), yield_big = rep(NA, times = dim(mypairs_com)[1]))
+  for (i in 1:dim(mypairs_com)[1]) {
+    matchpeaktib$datetime_little[i] <- mytib_bf$datetime[events_little$which.max[events_little$srt == mypairs_com$srt[i]]]
+    matchpeaktib$datetime_big[i] <- mytib_bf$datetime[events_big$which.max[events_big$srt == mypairs_com$matched.srt[i]]]
+    matchpeaktib$yield_little[i] <- events_little$max[events_little$srt == mypairs_com$srt[i]]
+    matchpeaktib$yield_big[i] <- events_big$max[events_big$srt == mypairs_com$matched.srt[i]]
+    }
+  matchpeaktib <- matchpeaktib %>% mutate(datetime_little = as_datetime(datetime_little),
+                                          datetime_big = as_datetime(datetime_big),
+                                          timediff_hrs = as.numeric(difftime(datetime_big, datetime_little), units = "hours"),
+                                          site_name = sites[j])
+  
+  # store output in list
+  outlist[[j]] <- matchpeaktib
+}
+matchpeaktib <- do.call(rbind, outlist)
+(matchpeaktib)
+```
+
+
+#### Plot output 
+
+##### Distribution of lags
+
+Constrain lag times to realistic values (>=0 and <= 24) as event pairing is not perfect, and view histograms by site
+```{r}
+matchpeaktib %>% filter(timediff_hrs >= 0 & timediff_hrs <= 24) %>% ggplot() + geom_histogram(aes(x = timediff_hrs)) + facet_wrap(~site_name)
+```
+
+View distributions summarized as boxplots. Sites are ordered from closest to Big G (bottom) to furthest (top). Interestingly, there is not a strong pattern of longer lag times for further sites. 
+```{r}
+matchpeaktib %>% filter(timediff_hrs >= 0 & timediff_hrs <= 24) %>% ggplot() + geom_boxplot(aes(x = site_name, y = timediff_hrs)) + coord_flip()
+```
+
+##### Lag by yield
+
+Does lag time depend on the magnitude of yield at big G? Under high flows when water is moving more quickly, we might expect the lag to be shorter (negative relationship).
+
+View global relationship
+```{r}
+matchpeaktib %>% filter(timediff_hrs >= 0 & timediff_hrs <= 24) %>% ggplot(aes(x = yield_big, y = jitter(timediff_hrs))) + geom_point() + geom_smooth()
+```
+
+View by site
+```{r fig.height=7, fig.width=7}
+matchpeaktib %>% filter(timediff_hrs >= 0 & timediff_hrs <= 24) %>% ggplot(aes(x = yield_big, y = jitter(timediff_hrs))) + geom_point() + geom_smooth() + facet_wrap(~ site_name)
+```
+
+There appears to be some evidence for shorter lag times with increasing flow, but this relationship is only evident for very low flows. What is more apparent is the overall attenuation in variability in lag time as flows increase: at very low flows, lags are highly variable, but less variable (and intermediate in magnitude) under high flows. 
+
+
+##### Lag by time
+
+Does lag time change over time? Perhaps lag time is seasonal and changes with antecedant conditions. *Note that this is not the best way to get at the question of importance of antecedant conditions.*
+
+View global relationship
+```{r}
+matchpeaktib %>% filter(timediff_hrs >= 0 & timediff_hrs <= 24) %>% mutate(doy = yday(datetime_little)) %>% ggplot(aes(x = doy, y = jitter(timediff_hrs))) + geom_point() + geom_smooth()
+```
+
+View by site
+```{r fig.height=7, fig.width=7}
+matchpeaktib %>% filter(timediff_hrs >= 0 & timediff_hrs <= 24) %>% mutate(doy = yday(datetime_little)) %>% ggplot(aes(x = doy, y = jitter(timediff_hrs))) + geom_point() + geom_smooth() + facet_wrap(~ site_name)
+```
+
+There does not appear to be any consistent pattern (within or among sites) in how lag times change with time of year
+
+
+### Daily data
+
+#### Conduct event pairing
+```{r}
+# baseflow separation and event delineation parameters
+alp <- 0.925
+numpass <- 3
+thresh <- 0.5
+
+# sites
+sites <- unique(dat_1day$site_name)[1:9]
+
+# empty list to store output
+outlist <- list()
+
+for (j in 1:length(sites)) {
+  # grab big and little g data and combine into a single tibble
+  littleg <- dat_1day %>% filter(site_name == sites[j])
+  bigg <- dat_1day %>% filter(site_name == "West Brook NWIS")
+  mytib <- bigg %>% select(date, Yield_filled_mm) %>% rename(yield_big = Yield_filled_mm) %>% left_join(littleg %>% select(date, Yield_filled_mm) %>% rename(yield_little = Yield_filled_mm))
+  
+  # baseflow separation
+  mytib_bf <- mytib %>% 
+  filter(!is.na(yield_big), !is.na(yield_little)) %>% 
+  mutate(bf_big = baseflowB(yield_big, alpha = alp, passes = numpass)$bf, 
+         bfi_big = baseflowB(yield_big, alpha = alp, passes = numpass)$bfi,
+         bf_little = baseflowB(yield_little, alpha = alp, passes = numpass)$bf, 
+         bfi_little = baseflowB(yield_little, alpha = alp, passes = numpass)$bfi)
+  
+  # delineate events
+  events_little <- eventBaseflow(mytib_bf$yield_little, BFI_Th = thresh, bfi = mytib_bf$bfi_little)
+  events_big <- eventBaseflow(mytib_bf$yield_big, BFI_Th = thresh, bfi = mytib_bf$bfi_big)
+  
+  # event matching
+  mypairs <- pairEvents(events_little, events_big, lag = 5, type = 1)
+  mypairs_com <- mypairs[complete.cases(mypairs),]
+  
+  # get matched event info
+  matchpeaktib <- tibble(datetime_little = rep(NA, times = dim(mypairs_com)[1]), datetime_big = rep(NA, times = dim(mypairs_com)[1]),
+                         yield_little = rep(NA, times = dim(mypairs_com)[1]), yield_big = rep(NA, times = dim(mypairs_com)[1]))
+  for (i in 1:dim(mypairs_com)[1]) {
+    matchpeaktib$datetime_little[i] <- mytib_bf$date[events_little$which.max[events_little$srt == mypairs_com$srt[i]]]
+    matchpeaktib$datetime_big[i] <- mytib_bf$date[events_big$which.max[events_big$srt == mypairs_com$matched.srt[i]]]
+    matchpeaktib$yield_little[i] <- events_little$max[events_little$srt == mypairs_com$srt[i]]
+    matchpeaktib$yield_big[i] <- events_big$max[events_big$srt == mypairs_com$matched.srt[i]]
+    }
+  matchpeaktib <- matchpeaktib %>% mutate(datetime_little = as_date(datetime_little),
+                                          datetime_big = as_date(datetime_big),
+                                          timediff_dys = as.numeric(difftime(datetime_big, datetime_little), units = "days"),
+                                          site_name = sites[j])
+  
+  # store output in list
+  outlist[[j]] <- matchpeaktib
+}
+matchpeaktib <- do.call(rbind, outlist)
+(matchpeaktib)
+```
+
+#### Plot output
+
+##### Distribution of lags
+
+Constrain lag times to realistic values (>=0 and <= 24) as event pairing is not perfect, and view histograms by site
+```{r}
+matchpeaktib %>% filter(timediff_dys >= 0 & timediff_dys <= 1) %>% ggplot() + geom_histogram(aes(x = timediff_dys)) + facet_wrap(~site_name)
+```
+
+View distributions summarized as means. Sites are ordered from closest to Big G (bottom) to furthest (top). There is general pattern of longer lag times for further sites. 
+```{r}
+matchpeaktib %>% filter(timediff_dys >= 0 & timediff_dys <= 1) %>% group_by(site_name) %>% summarize(diffmean = mean(timediff_dys), diffsd = sd(timediff_dys)) %>% ggplot() + 
+  geom_point(aes(x = site_name, y = diffmean)) + 
+  #geom_errorbar(aes(x = site_name, ymin = diffmean - diffsd, ymax = diffmean + diffsd)) + 
+  coord_flip()
+```
+
+##### Lag by yield
+
+Does lag time depend on the magnitude of yield at big G? Under high flows when water is moving more quickly, we might expect the lag to be shorter (negative relationship).
+
+View global relationship
+```{r}
+matchpeaktib %>% filter(timediff_dys >= 0 & timediff_dys <= 1) %>% ggplot(aes(x = yield_big, y = jitter(timediff_dys))) + geom_point() + geom_smooth()
+```
+
+View by site
+```{r fig.height=7, fig.width=7}
+matchpeaktib %>% filter(timediff_dys >= 0 & timediff_dys <= 1)  %>% ggplot(aes(x = yield_big, y = jitter(timediff_dys))) + geom_point() + geom_smooth() + facet_wrap(~ site_name)
+```
+
+As with the hourly data, there appears to be some evidence for shorter lag times with increasing flow, but this relationship is only evident for very low flows. Although we note that 1-day lags are very rare (16% of all observations)
+
+
+##### Lag by time
+
+Does lag time change over time? Perhaps lag time is seasonal and changes with antecedant conditions. *Note that this is not the best way to get at the question of importance of antecedant conditions.*
+
+View global relationship
+```{r}
+matchpeaktib %>% filter(timediff_dys >= 0 & timediff_dys <= 1) %>% mutate(doy = yday(datetime_little)) %>% ggplot(aes(x = doy, y = jitter(timediff_dys))) + geom_point() + geom_smooth()
+```
+
+View by site
+```{r fig.height=7, fig.width=7}
+matchpeaktib %>% filter(timediff_dys >= 0 & timediff_dys <= 1) %>% mutate(doy = yday(datetime_little)) %>% ggplot(aes(x = doy, y = (timediff_dys))) + geom_point() + geom_smooth() + facet_wrap(~ site_name)
+```
+
+The prevalence of 1-day lags in peak flow generally peaks in mid summer (July) when flows are low 
+
+
+```{r eval=FALSE, include=FALSE}
+# plot matched peaks
+test <- matchpeaktib %>% mutate(paircode = c(1:dim(matchpeaktib)[1])) %>% select(paircode, datetime_little, yield_little) %>% rename(datetime = datetime_little, yield = yield_little) %>% bind_rows(matchpeaktib %>% mutate(paircode = c(1:dim(matchpeaktib)[1])) %>% select(paircode, datetime_big, yield_big) %>% rename(datetime = datetime_big, yield = yield_big)) %>% arrange(paircode) 
+# test$datetime[52] <- test$datetime[52] + seconds(1)
+# test <- test %>% spread(key = paircode, value = yield)
+# test$datetime[51] <- test$datetime[51] - seconds(1)
+
+mytib_bf %>% select(datetime, yield_big, yield_little) %>% left_join(test) %>% dygraph() %>% dyRangeSelector(retainDateWindow = TRUE) %>% dyAxis("y", label = "Yield (mm)") %>% dyOptions(colors = c("darkgreen", "purple", rep("black", times = dim(test)[2]-1)), drawPoints = TRUE, pointSize = 2, connectSeparatedPoints = TRUE) %>% dySeries(name = "yield_big", drawPoints = FALSE) %>% dySeries(name = "yield_little", drawPoints = FALSE) #%>% dyLegend(show = "never")
+```
+
+
+## Dynamic time warping
+
+Explore the use of dynamic time warping (Giorgino 2009) to align hourly time series data.
+
+### Select data
+
+Trim to restricted period b/c DTW cannot handle very large datasets
+```{r}
+littleg <- dat_1hr %>% filter(site_name == "Avery Brook", datetime >= as_datetime("2020-03-01 00:00:00") & datetime <= as_datetime("2020-06-01 00:00:00"))
+bigg <- dat_1hr %>% filter(site_name == "West Brook NWIS", datetime >= as_datetime("2020-03-01 00:00:00") & datetime <= as_datetime("2020-06-01 00:00:00"))
+
+mytib <- bigg %>% select(datetime, yield) %>% rename(yield_big = yield) %>% left_join(littleg %>% select(datetime, yield) %>% rename(yield_little = yield))
+mytib %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Yield (mm)")
+```
+
+
+### Align data
+```{r}
+align1hr <- dtw(x = unlist(littleg %>% select(yield)), y = unlist(bigg %>% select(yield)), step = asymmetric, keep = TRUE)
+str(align1hr)
+```
+
+View index alignment
+```{r}
+plot(align1hr, type = "threeway")
+```
+
+Show aligned values
+```{r fig.height=5, fig.width=15}
+plot(align1hr, type = "twoway", offset = - 1)
+```
+
+View aligned timeseries using dyGraphs. Clearly, this is not a great approach as it matches multiple query data points to the same reference index, i.e., the result is multiple little g flow readings at a single time point. As seen in the plots above, it also does not align the series correctly. 
+```{r}
+aligneddata <- tibble(datetime = bigg$datetime[align1hr$index2], query = littleg$yield[align1hr$index1], reference = bigg$yield[align1hr$index2])
+aligneddata %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Yield (mm)")
+```
+
+
+
