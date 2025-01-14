@@ -97,6 +97,9 @@ for (i in 1:nDiff) {
   Vf[i] <- (beta.mu^2) * varx
   Vix[i] <- (alpha.sigma^2) + ((QGvec[i]^2) * (beta.sigma^2)) + (2 * QGvec[i] * (rho * alpha.sigma * beta.sigma))
   Vr[i] <- (exp(sig.alpha.mu + sig.beta.mu * QGvec[i]))^2
+  
+  Vf.sig[i] <- (sig.beta.mu^2) * varx
+  Vix.sig[i] <- (sig.alpha.sigma^2) + ((QGvec[i]^2) * (sig.beta.sigma^2))
 }
 
 
