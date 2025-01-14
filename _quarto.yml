@@ -21,6 +21,7 @@ book:
       chapters:
         - Data Availability/CollateData.qmd
         - Explore Data/ExploreData.qmd
+        - Explore Data/TemporalResolution.qmd
     - part: "Big G-Little g"   
       chapters:
         - Big G Little g/GgStoryPlots.qmd
