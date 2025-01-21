@@ -2,11 +2,11 @@
 title: "Explore Sub-Daily Data"
 ---
 
-Purpose: Explore data at sub-daily temporal resolutions (e.g., 15-min and 1-hour time steps).
+Purpose: Explore data at sub-daily temporal resolutions (e.g., 15-min and 1-hour time steps) and compare outputs to daily data. Are we missing anything by aggregating and analyzing streamflow data at daily timescales? (Note limited analysis of 15-min data as Montana and Wyoming data is collected at the hourly timescale).
 
-* Visualize 15-min and 1-hour data and note diversity in timing of peak flows during events
-* Use event pairing to explore the mean and variation in time lags between peak flows at Big G and little g's
-* Fit basic wedge model to the 15-min and 1-hour *unaligned* data...do the results change so much that we need to align time series when working with sub-daily data?
+* Visualize 15-min and 1-hour data and note diversity in timing of peak flows during events; compare to daily data.
+* Use event pairing to explore the mean and variation in time lags between peak flows at Big G and little g's; compare hourly and daily data
+* Fit basic wedge model to the 1-hour *unaligned* data...do the results change so much that we need to align time series when working with sub-daily data? Compare to daily data.
 * Explore use of dynamic time warping to align time series data
 
 
@@ -98,11 +98,11 @@ dat_1day %>% select(date, site_name, Yield_filled_mm) %>% spread(key = site_name
 ```
 
 
-## Event pairing
+## Hourly data
+
+### Event pairing
 
 Conduct event pairing using hydroEvents package to understand lag time between peak flows at big and little g's
-
-### Hourly data
 
 #### Conduct event pairing
 ```{r}
@@ -209,7 +209,146 @@ matchpeaktib %>% filter(timediff_hrs >= 0 & timediff_hrs <= 24) %>% mutate(doy =
 There does not appear to be any consistent pattern (within or among sites) in how lag times change with time of year
 
 
-### Daily data
+### Gg pseudo-analysis
+
+#### Prepare data
+
+Specify big and little g data
+```{r}
+dat_big <- dat_1hr %>% filter(site_name %in% c("West Brook NWIS"))
+dat_little <- dat_1hr %>% filter(site_name %in% c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook"))
+```
+
+Conduct baseflow separation and event delineation on big g data
+```{r}
+# baseflow separation
+dat_big <- dat_big %>% 
+  filter(!is.na(yield)) %>% 
+  mutate(bf = baseflowB(yield, alpha = 0.925, passes = 9)$bf, 
+         bfi = baseflowB(yield, alpha = 0.925, passes = 9)$bfi)
+
+# event delineation
+events <- eventBaseflow(dat_big$yield, BFI_Th = 0.75, bfi = dat_big$bfi)
+events <- events %>% mutate(len = end - srt + 1)
+
+# define positions of non-events
+srt <- c(1)
+end <- c(events$srt[1]-1)
+for (i in 2:(dim(events)[1])) {
+  srt[i] <- events$end[i-1]+1
+  end[i] <- events$srt[i]-1
+}
+nonevents <- data.frame(tibble(srt, end) %>% mutate(len = end - srt) %>% filter(len >= 0) %>% select(-len) %>% add_row(srt = events$end[dim(events)[1]]+1, end = dim(dat_big)[1]))
+
+# create vectors of binary event/non-event and event IDs
+isevent_vec <- rep(2, times = dim(dat_big)[1])
+eventid_vec <- rep(NA, times = dim(dat_big)[1])
+for (i in 1:dim(events)[1]) { 
+  isevent_vec[c(events[i,1]:events[i,2])] <- 1 
+  eventid_vec[c(events[i,1]:events[i,2])] <- i
+}
+
+# create vector of non-event IDs
+noneventid_vec <- rep(NA, times = dim(dat_big)[1])
+for (i in 1:dim(nonevents)[1]) { noneventid_vec[c(nonevents[i,1]:nonevents[i,2])] <- i }
+
+# create vector of "agnostic events": combined hydro events and non-events
+agnevents <- rbind(events %>% select(srt, end) %>% mutate(event = 1), nonevents %>% mutate(event = 0)) %>% arrange((srt))
+agneventid_vec <- c()
+for (i in 1:dim(agnevents)[1]){ agneventid_vec[c(agnevents[i,1]:agnevents[i,2])] <- i }
+
+# add event/non-event vectors to Big G data
+dat_big <- dat_big %>% 
+  mutate(isevent = isevent_vec, 
+         eventid = eventid_vec,
+         noneventid = noneventid_vec,
+         agneventid = agneventid_vec,
+         big_event_yield = ifelse(isevent_vec == 1, yield, NA),
+         big_nonevent_yield = ifelse(isevent_vec == 2, yield, NA),
+         big_event_quick = big_event_yield - bf) %>%
+  rename(big_yield = yield, big_bf = bf, big_bfi = bfi)
+dat_big
+
+# plot
+dat_big %>% select(datetime, big_yield, big_bf, big_event_yield, big_nonevent_yield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Hourly yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+```
+
+
+Combine big and little g data
+```{r}
+dat_wb2 <- dat_little %>% 
+  filter(datetime >= min(dat_big$datetime) & datetime <= max(dat_big$datetime)) %>%
+  left_join(dat_big %>% select(datetime, big_yield, big_bf, big_bfi, agneventid, isevent)) %>%
+  group_by(site_name, agneventid) %>% 
+  summarise(eventlen = n(),
+            mindate = min(datetime),
+            isevent = unique(isevent), 
+            yield_little_cumul = sum(yield+0.01),
+            yield_big_cumul = sum(big_yield+0.01),
+            yield_little_cumul_log = log(yield_little_cumul),
+            yield_big_cumul_log = log(yield_big_cumul),
+            yield_little_mean_log = mean(log(yield+0.01)),
+            yield_big_mean_log = mean(log(big_yield+0.01))) %>%
+  ungroup() %>%
+  filter(!is.na(isevent)) %>%
+  mutate(site_name = factor(site_name, levels = c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook")),
+         site_name_cd = as.numeric(site_name))
+dat_wb2
+```
+
+
+#### Plot output
+
+gG relationship with data summarized as cumulative yield per event/non-event:
+```{r, fig.height=4, fig.width=9}
+#| fig-cap: "Effect of (log) cumulative yield at Big G on (log) cumulative yield at little g during baseflow and event periods."
+dat_wb2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_cumul_log, y = yield_little_cumul_log, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + facet_wrap(~isevent)
+```
+
+Facet by site
+```{r fig.height=7, fig.width=7}
+#| fig-cap: "Effect of (log) cumulative yield at Big G on (log) cumulative yield at little g during baseflow and event periods, faceted by site."
+dat_wb2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_cumul_log, y = yield_little_cumul_log, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + facet_wrap(~site_name) +
+  theme(legend.position = "none")
+```
+
+Gg relationship with data summarized as mean yield per event/non-event
+```{r, fig.height=4, fig.width=9}
+#| fig-cap: "Effect of (log) mean yield at Big G on (log) mean yield at little g during baseflow and event periods."
+dat_wb2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_mean_log, y = yield_little_mean_log, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + facet_wrap(~isevent)
+```
+
+Facet by site
+```{r fig.height=7, fig.width=7}
+#| fig-cap: "Effect of (log) mean yield at Big G on (log) mean yield at little g during baseflow and event periods, faceted by site."
+dat_wb2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_mean_log, y = yield_little_mean_log, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + facet_wrap(~site_name) +
+  theme(legend.position = "none")
+```
+
+
+## Daily data
+
+### Event pairing
 
 #### Conduct event pairing
 ```{r}
@@ -327,6 +466,144 @@ test <- matchpeaktib %>% mutate(paircode = c(1:dim(matchpeaktib)[1])) %>% select
 
 mytib_bf %>% select(datetime, yield_big, yield_little) %>% left_join(test) %>% dygraph() %>% dyRangeSelector(retainDateWindow = TRUE) %>% dyAxis("y", label = "Yield (mm)") %>% dyOptions(colors = c("darkgreen", "purple", rep("black", times = dim(test)[2]-1)), drawPoints = TRUE, pointSize = 2, connectSeparatedPoints = TRUE) %>% dySeries(name = "yield_big", drawPoints = FALSE) %>% dySeries(name = "yield_little", drawPoints = FALSE) #%>% dyLegend(show = "never")
 ```
+
+
+### Gg pseudo-analysis
+
+#### Prepare data
+
+Specify big and little g data
+```{r}
+dat_big <- dat_1day %>% filter(site_name %in% c("West Brook NWIS")) %>% rename(yield = Yield_filled_mm)
+dat_little <- dat_1day %>% filter(site_name %in% c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook")) %>% rename(yield = Yield_filled_mm)
+```
+
+Conduct baseflow separation and event delineation on big g data
+```{r}
+# baseflow separation
+dat_big <- dat_big %>% 
+  filter(!is.na(yield)) %>% 
+  mutate(bf = baseflowB(yield, alpha = 0.925, passes = 3)$bf, 
+         bfi = baseflowB(yield, alpha = 0.925, passes = 3)$bfi)
+
+# event delineation
+events <- eventBaseflow(dat_big$yield, BFI_Th = 0.75, bfi = dat_big$bfi)
+events <- events %>% mutate(len = end - srt + 1)
+
+# define positions of non-events
+srt <- c(1)
+end <- c(events$srt[1]-1)
+for (i in 2:(dim(events)[1])) {
+  srt[i] <- events$end[i-1]+1
+  end[i] <- events$srt[i]-1
+}
+nonevents <- data.frame(tibble(srt, end) %>% mutate(len = end - srt) %>% filter(len >= 0) %>% select(-len) %>% add_row(srt = events$end[dim(events)[1]]+1, end = dim(dat_big)[1]))
+
+# create vectors of binary event/non-event and event IDs
+isevent_vec <- rep(2, times = dim(dat_big)[1])
+eventid_vec <- rep(NA, times = dim(dat_big)[1])
+for (i in 1:dim(events)[1]) { 
+  isevent_vec[c(events[i,1]:events[i,2])] <- 1 
+  eventid_vec[c(events[i,1]:events[i,2])] <- i
+}
+
+# create vector of non-event IDs
+noneventid_vec <- rep(NA, times = dim(dat_big)[1])
+for (i in 1:dim(nonevents)[1]) { noneventid_vec[c(nonevents[i,1]:nonevents[i,2])] <- i }
+
+# create vector of "agnostic events": combined hydro events and non-events
+agnevents <- rbind(events %>% select(srt, end) %>% mutate(event = 1), nonevents %>% mutate(event = 0)) %>% arrange((srt))
+agneventid_vec <- c()
+for (i in 1:dim(agnevents)[1]){ agneventid_vec[c(agnevents[i,1]:agnevents[i,2])] <- i }
+
+# add event/non-event vectors to Big G data
+dat_big <- dat_big %>% 
+  mutate(isevent = isevent_vec, 
+         eventid = eventid_vec,
+         noneventid = noneventid_vec,
+         agneventid = agneventid_vec,
+         big_event_yield = ifelse(isevent_vec == 1, yield, NA),
+         big_nonevent_yield = ifelse(isevent_vec == 2, yield, NA),
+         big_event_quick = big_event_yield - bf) %>%
+  rename(big_yield = yield, big_bf = bf, big_bfi = bfi)
+dat_big
+
+# plot
+dat_big %>% select(date, big_yield, big_bf, big_event_yield, big_nonevent_yield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Hourly yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+```
+
+
+Combine big and little g data
+```{r}
+dat_wb2 <- dat_little %>% 
+  filter(date >= min(dat_big$date) & date <= max(dat_big$date)) %>%
+  left_join(dat_big %>% select(date, big_yield, big_bf, big_bfi, agneventid, isevent)) %>%
+  group_by(site_name, agneventid) %>% 
+  summarise(eventlen = n(),
+            mindate = min(date),
+            isevent = unique(isevent), 
+            yield_little_cumul = sum(yield+0.01),
+            yield_big_cumul = sum(big_yield+0.01),
+            yield_little_cumul_log = log(yield_little_cumul),
+            yield_big_cumul_log = log(yield_big_cumul),
+            yield_little_mean_log = mean(log(yield+0.01)),
+            yield_big_mean_log = mean(log(big_yield+0.01))) %>%
+  ungroup() %>%
+  filter(!is.na(isevent)) %>%
+  mutate(site_name = factor(site_name, levels = c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook")),
+         site_name_cd = as.numeric(site_name))
+dat_wb2
+```
+
+
+#### Plot output
+
+gG relationship with data summarized as cumulative yield per event/non-event:
+```{r, fig.height=4, fig.width=9}
+#| fig-cap: "Effect of (log) cumulative yield at Big G on (log) cumulative yield at little g during baseflow and event periods."
+dat_wb2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_cumul_log, y = yield_little_cumul_log, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + facet_wrap(~isevent)
+```
+
+Facet by site
+```{r fig.height=7, fig.width=7}
+#| fig-cap: "Effect of (log) cumulative yield at Big G on (log) cumulative yield at little g during baseflow and event periods, faceted by site."
+dat_wb2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_cumul_log, y = yield_little_cumul_log, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + facet_wrap(~site_name) +
+  theme(legend.position = "none")
+```
+
+Gg relationship with data summarized as mean yield per event/non-event
+```{r, fig.height=4, fig.width=9}
+#| fig-cap: "Effect of (log) mean yield at Big G on (log) mean yield at little g during baseflow and event periods."
+dat_wb2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_mean_log, y = yield_little_mean_log, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + facet_wrap(~isevent)
+```
+
+Facet by site
+```{r fig.height=7, fig.width=7}
+#| fig-cap: "Effect of (log) mean yield at Big G on (log) mean yield at little g during baseflow and event periods, faceted by site."
+dat_wb2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_mean_log, y = yield_little_mean_log, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + facet_wrap(~site_name) +
+  theme(legend.position = "none")
+```
+
 
 
 ## Dynamic time warping
