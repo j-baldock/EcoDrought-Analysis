@@ -2,7 +2,9 @@
 title: "Explore Sub-Daily Data"
 ---
 
-Purpose: Explore data at sub-daily temporal resolutions (e.g., 15-min and 1-hour time steps) and compare outputs to daily data. Are we missing anything by aggregating and analyzing streamflow data at daily timescales? (Note limited analysis of 15-min data as Montana and Wyoming data is collected at the hourly timescale).
+Purpose: Explore data at sub-daily temporal resolutions (e.g., 15-min and 1-hour time steps) and compare outputs to daily data. 
+
+Given that streamflow can change so quickly in small, headwater streams, are we missing a key part of the story by using flow data summarized as daily means? Using daily mean flow reduces the range of values, particularly at the upper end (i.e., high flows), and so we may be overlooking the g~G relationship at very high flows. (Note limited analysis of 15-min data as Montana and Wyoming data is collected at the hourly timescale).
 
 * Visualize 15-min and 1-hour data and note diversity in timing of peak flows during events; compare to daily data.
 * Use event pairing to explore the mean and variation in time lags between peak flows at Big G and little g's; compare hourly and daily data
@@ -99,6 +101,12 @@ dat_1day %>% select(date, site_name, Yield_filled_mm) %>% spread(key = site_name
 
 
 ## Hourly data
+
+set baseflow separation (for the Lyne-Hollick one-parameter digital recursive filter) and event delineation paramters (as in Wasko and Guo, 2022)
+
+* *alp*: alpha filter parameter, higher values "lower" the estimated baseflow (thus making it difficult to delineate events)
+* *numpass*: number of passes. Ladson *et al*. (2013) recommend 3 passes for daily data (default in baseflowB() function) and 9 passes for hourly data
+* *thresh*: baseflow index threshold for event delineation, higher threshold values make it "easier" to delineate events
 
 ### Event pairing
 
@@ -272,6 +280,13 @@ dat_big
 # plot
 dat_big %>% select(datetime, big_yield, big_bf, big_event_yield, big_nonevent_yield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Hourly yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
 ```
+
+A few things to note:
+
+* Many delineated events are <24 hours in length
+* Much of the natural diel variation in streamflow ("stream breathing" due to diel cycle of ET) ends up being delineated as individual events
+  + When viewed at this time-scale, there also seems to be variation in terms of whether or not the "stream breathing" exists, which could be due to changes in how the data were processed and subsequently smoothed (or not)
+* WMA interpolataion becomes an issue at the sub-daily time scale. I.e., the time scale of the data changes during observed (15-min) and interpolated (4-hour) periods
 
 
 Combine big and little g data
@@ -604,6 +619,16 @@ dat_wb2 %>%
   theme(legend.position = "none")
 ```
 
+## Summary
+
+* Event delineation at sub-daily (i.e., hourly) time scale is strongly affected by data processing steps (e.g., smoothing and interpolation by WMA) and landscape processes that are not the focus of this study (i.e., diel fluctuations in flow due to ET)
+  + In some cases, changes in how WMA treats diel fluctuations may introduce further inconsistencies into downstream analyses
+* At the hourly timescale, temporal mismatches between big and little g time series data due to routing time are evident, typically in the 4-8 hour range for the West Brook.
+  + There does not appear to be any predictable relationship between lag time and flow magnitude or time of year.
+  + Because many of the event/non-event periods are very short, these mismatches may have a large effect on how reasonable it is to apply Big G events to little g data, and whether Big G events/non-events adequately encompass similar flow conditions at little g sites. 
+  + Temporal mismatches are less prevalent and more predictable for the daily data. 
+* Inferences regarding the g~G relationship derived from hourly data generally do not match those derived from daily data.
+  + the g~G relationship is more strongly affected by assumptions of temporal alignment for hourly data relative to daily data. 
 
 
 ## Dynamic time warping
