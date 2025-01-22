@@ -16,12 +16,6 @@ library(scales)
 library(dygraphs)
 library(hydroEvents)
 library(GGally)
-library(R2jags)
-library(MCMCvis)
-library(loo)
-library(HDInterval)
-library(lme4)
-library(zoo)
 library(dataRetrieval)
 library(ggpubr)
 ```
@@ -39,397 +33,76 @@ mapview(siteinfo_sp, zcol = "designation")
 dat <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv") %>%
   filter(!site_name %in% c("WoundedBuckCreek", "Brackett Creek"))
 
-# flow/yield (and temp) data 
-dat_sub <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_Raw.csv") %>%
-  filter(!site_name %in% c("WoundedBuckCreek", "Brackett Creek"))
-
 # add water/climate year variables
 dat <- add_date_variables(dat, dates = date, water_year_start = 4)
 str(dat)
 ```
 
 
-### Trim to focal site
+## West Brook
+
+### Trim to focal sites
 ```{r}
-dat_wb <- dat %>% filter(site_name == "West Brook NWIS")
+dat_wb <- dat %>% filter(site_name %in% c("West Brook NWIS", "West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook"))
 ```
 
-Raw flow at Big G
+View daily yield at Big G
 ```{r}
 #| fig-cap: "Total daily streamflow in yield (mm), over the period of record"
-dat_wb %>% select(date, Yield_filled_mm) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+dat_wb %>% filter(site_name == "West Brook NWIS") %>% select(date, Yield_filled_mm) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 
-
-## Sensitivity analyses
-
-### Missing data
-
-Many of the EcoDrought time series data are incomplete. At some sites, discharge data is available only during the summer and/or fall periods, and at other sites, time series data are interrupted due to malfunctioning sensors and/or ice formation ("ice spikes"). So how does the length of the time series affect baseflow separation (and subsequent event identification)? Wasko and Guo (2022) use a 67 day time series of flow to demonstrate the utility of the *hydroEvents* packages, suggesting digital baseflow separation techniques may be valid for relatively short time series. 
-
-Here, I perform a simple sensitivity analysis to explore the effect of time series length on the results of baseflow separation. Essentially, perform baseflow separation on increasingly smaller subsets of the data. With the default parameters, the minimum number of days/observations needed is 31. This is because the default number of points reflected at start and end of data (r) is 30. Reflection allows bf/bfi to be calculated over the entire period of record as the underlying baseflow separation equations result in "issues of "Warm-up" and "cool-down" as the recursive filter is moved forward and backward over the dataset" (Ladson et al. 2013, Australian Journal of Water Resources). *baseflowB()* uses a default reflection period of 30, which Ladson et al. (2013) found to "provide a realistic baselfow response for the start and end of the actual flow data".
+View daily yield at all sites
 ```{r}
-
-dat_wb_sens <- dat_wb %>% mutate(bf_c = baseflowB(Yield_filled_mm)$bf, bfi_c = baseflowB(Yield_filled_mm)$bfi) %>% select(date, bf_c, bfi_c) %>%
-  left_join(dat_wb[1:(365*3),] %>% mutate(bf_3y = baseflowB(Yield_filled_mm)$bf, bfi_3y = baseflowB(Yield_filled_mm)$bfi) %>% select(date, bf_3y, bfi_3y)) %>%
-  left_join(dat_wb[1:(365),] %>% mutate(bf_1y = baseflowB(Yield_filled_mm)$bf, bfi_1y = baseflowB(Yield_filled_mm)$bfi) %>% select(date, bf_1y, bfi_1y)) %>%
-  left_join(dat_wb[1:(182),] %>% mutate(bf_6m = baseflowB(Yield_filled_mm)$bf, bfi_6m = baseflowB(Yield_filled_mm)$bfi) %>% select(date, bf_6m, bfi_6m)) %>%
-  left_join(dat_wb[1:(90),] %>% mutate(bf_3m = baseflowB(Yield_filled_mm)$bf, bfi_3m = baseflowB(Yield_filled_mm)$bfi) %>% select(date, bf_3m, bfi_3m)) %>%
-  left_join(dat_wb[1:(35),] %>% mutate(bf_1m = baseflowB(Yield_filled_mm)$bf, bfi_1m = baseflowB(Yield_filled_mm)$bfi) %>% select(date, bf_1m, bfi_1m))
+dat_wb %>% filter(site_name != "West Brook NWIS") %>% select(date, site_name, Yield_filled_mm) %>% spread(key = site_name, value = Yield_filled_mm) %>% left_join(dat_wb %>% filter(site_name == "West Brook NWIS") %>% select(date, Yield_filled_mm) %>% rename(West_Brook_NWIS = Yield_filled_mm)) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Yield (mm)") %>% dyOptions(colors = c(hcl.colors(9, "Zissou 1"), "black")) 
 ```
 
-#### Compare baseflow
 
-Divergence in baseflow among datasets is a result of the reflected data of the shorter dataset not matching the actual data of the longer dataset. As a result, divergence really only occurs at the end of each time series and is generally small in magnitude. 
-```{r}
-#| fig-cap: "Time series of baseflow derived from datasets of different lengths."
-dat_wb_sens %>% select(date, bf_c, bf_3y, bf_1y, bf_6m, bf_3m, bf_1m) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily baseflow in yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
-```
+### Set parameters
 
-```{r message = FALSE, warning = FALSE}
-#| fig-cap: "Pairs plot of baseflow derrived from datasets of different lengths. Red lines are 1:1."
-ggpairs(dat_wb_sens %>% select(bf_c, bf_3y, bf_1y, bf_6m, bf_3m, bf_1m)) + geom_abline(intercept = 0, slope = 1, color = "red")
-```
-
-#### Compare baseflow index
-
-The story here is essentially the same as above: divergence is ~minimal and restricted to the end of each time series. However, we note that divergence in BFI appears to increase as absolute flow/baseflow decreases, because small differences in absolute space become much larger in relative space when absolute values are small. 
-```{r}
-#| fig-cap: "Time series of baseflow index derived from datasets of different lengths."
-dat_wb_sens %>% select(date, bfi_c, bfi_3y, bfi_1y, bfi_6m, bfi_3m, bfi_1m) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily baseflow in yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
-```
-
-```{r message = FALSE, warning = FALSE}
-#| fig-cap: "Pairs plot of baseflow derrived from datasets of different lengths. Red lines are 1:1."
-ggpairs(dat_wb_sens %>% select(bf_c, bf_3y, bf_1y, bf_6m, bf_3m, bf_1m)) + geom_abline(intercept = 0, slope = 1, color = "red")
-```
-
-### Time scale
-
-Given that streamflow can change so quickly in small, headwater streams, are we missing a key part of the story by using flow data summarized as daily means? Using daily mean flow reduces the range of values, particularly at the upper end (i.e., high flows), and so we may be overlooking the g~G relationship at very high flows.
-
-
-#### Organize data
-
-First, set baseflow separation (for the Lyne-Hollick one-parameter digital recursive filter) and event delineation paramters (as in Wasko and Guo, 2022)
+Set baseflow separation (for the Lyne-Hollick one-parameter digital recursive filter) and event delineation paramters (as in Wasko and Guo, 2022)
 
 * *alp*: alpha filter parameter, higher values "lower" the estimated baseflow (thus making it difficult to delineate events)
-* *numpass*: number of passes. Ladson *et al*. (2013) recommend 3 passes for daily data (default in baseflowB() function) and 9 passes for hourly data
+* *numpass*: number of passes. Ladson *et al*. (2013) recommend 3 passes for daily data (default in baseflowB() function)
 * *thresh*: baseflow index threshold for event delineation, higher threshold values make it "easier" to delineate events
 
 ```{r}
 alp <- 0.925
-numpass <- 9
+numpass <- 3
 thresh <- 0.75
 ```
 
-Download 15-min NWIS data for big G (West Brook NWIS)
-```{r}
-wbnwis <- tibble(readNWISdata(sites = "01171100", service = "uv", startDate = "1980-01-01", endDate = Sys.Date(), tz = "America/New_York"))
-wbnwis2 <- wbnwis[,c(2,3,4)]
-names(wbnwis2) <- c("station_no", "datetime", "flow") 
-wbnwis2 <- wbnwis2 %>% left_join(siteinfo %>% filter(site_name == "West Brook NWIS"))
-attributes(wbnwis)$siteInfo
-```
 
-Calculate yield
-```{r}
-wbnwis2 <- wbnwis2 %>% mutate(flow_mean_cms = flow*0.02831683199881, area_sqkm = area_sqmi*2.58999) %>%
-  mutate(Yield_mm = flow_mean_cms * 3600 * (1/unique(area_sqkm)) * (1/1000000) * 1000)
-```
-
-
-#### 15 min data BF
-```{r}
-wbnwis2b <- wbnwis2 %>% 
-  filter(!is.na(Yield_mm)) %>% 
-  mutate(bf = baseflowB(Yield_mm, alpha = alp, passes = 15)$bf, 
-         bfi = baseflowB(Yield_mm, alpha = alp, passes = 15)$bfi)
-
-dat_big <- wbnwis2b
-events <- eventBaseflow(dat_big$Yield_mm, BFI_Th = thresh, bfi = dat_big$bfi)
-events <- events %>% mutate(len = end - srt + 1)
-
-# define positions of non-events
-srt <- c(1)
-end <- c(events$srt[1]-1)
-for (i in 2:(dim(events)[1])) {
-  srt[i] <- events$end[i-1]+1
-  end[i] <- events$srt[i]-1
-}
-nonevents <- data.frame(tibble(srt, end) %>% mutate(len = end - srt) %>% filter(len >= 0) %>% select(-len) %>% add_row(srt = events$end[dim(events)[1]]+1, end = dim(dat_big)[1]))
-
-# create vectors of binary event/non-event and event IDs
-isevent_vec <- rep(2, times = dim(dat_big)[1])
-eventid_vec <- rep(NA, times = dim(dat_big)[1])
-for (i in 1:dim(events)[1]) { 
-  isevent_vec[c(events[i,1]:events[i,2])] <- 1 
-  eventid_vec[c(events[i,1]:events[i,2])] <- i
-}
-
-# create vector of non-event IDs
-noneventid_vec <- rep(NA, times = dim(dat_big)[1])
-for (i in 1:dim(nonevents)[1]) { noneventid_vec[c(nonevents[i,1]:nonevents[i,2])] <- i }
-
-# create vector of "agnostic events": combined hydro events and non-events
-agnevents <- rbind(events %>% select(srt, end) %>% mutate(event = 1), nonevents %>% mutate(event = 0)) %>% arrange((srt))
-agneventid_vec <- c()
-for (i in 1:dim(agnevents)[1]){ agneventid_vec[c(agnevents[i,1]:agnevents[i,2])] <- i }
-
-# add event/non-event vectors to Big G data
-dat_big <- dat_big %>% 
-  mutate(isevent = isevent_vec, 
-         eventid = eventid_vec,
-         noneventid = noneventid_vec,
-         agneventid = agneventid_vec,
-         big_event_yield = ifelse(isevent_vec == 1, Yield_mm, NA),
-         big_nonevent_yield = ifelse(isevent_vec == 2, Yield_mm, NA),
-         big_event_quick = big_event_yield - bf) %>%
-  rename(big_yield = Yield_mm, big_bf = bf, big_bfi = bfi, big_flow = Yield_mm)
-
-dat_big %>% select(datetime, big_flow, big_bf, big_event_yield, big_nonevent_yield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Hourly yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
-
-```
-
-
-#### Baseflow separation
-Summarize at hourly time-step and perform baseflow separation.
-```{r}
-wbnwis3 <- wbnwis2 %>% 
-  filter(!is.na(Yield_mm)) %>% 
-  mutate(datetime = floor_date(datetime, unit = "hour")) %>%
-  group_by(datetime) %>% summarise(Yield_mm = mean(Yield_mm)) %>%
-  ungroup() %>%
-  mutate(bf = baseflowB(Yield_mm, alpha = alp, passes = numpass)$bf, 
-         bfi = baseflowB(Yield_mm, alpha = alp, passes = numpass)$bfi)
-
-wbnwis3 %>% select(datetime, Yield_mm, bf) %>% dygraph() %>% 
-  dyRangeSelector() %>% dyAxis("y", label = "Hourly yield (mm)") %>% 
-  dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
-```
-
-
-#### Event delineation
-
-Delineate events
-```{r}
-dat_big <- wbnwis3
-events <- eventBaseflow(dat_big$Yield_mm, BFI_Th = thresh, bfi = dat_big$bfi)
-events <- events %>% mutate(len = end - srt + 1)
-head(events)
-```
-
-Wrangle delineated event data
-```{r}
-# define positions of non-events
-srt <- c(1)
-end <- c(events$srt[1]-1)
-for (i in 2:(dim(events)[1])) {
-  srt[i] <- events$end[i-1]+1
-  end[i] <- events$srt[i]-1
-}
-nonevents <- data.frame(tibble(srt, end) %>% mutate(len = end - srt) %>% filter(len >= 0) %>% select(-len) %>% add_row(srt = events$end[dim(events)[1]]+1, end = dim(dat_big)[1]))
-
-# create vectors of binary event/non-event and event IDs
-isevent_vec <- rep(2, times = dim(dat_big)[1])
-eventid_vec <- rep(NA, times = dim(dat_big)[1])
-for (i in 1:dim(events)[1]) { 
-  isevent_vec[c(events[i,1]:events[i,2])] <- 1 
-  eventid_vec[c(events[i,1]:events[i,2])] <- i
-}
-
-# create vector of non-event IDs
-noneventid_vec <- rep(NA, times = dim(dat_big)[1])
-for (i in 1:dim(nonevents)[1]) { noneventid_vec[c(nonevents[i,1]:nonevents[i,2])] <- i }
-
-# create vector of "agnostic events": combined hydro events and non-events
-agnevents <- rbind(events %>% select(srt, end) %>% mutate(event = 1), nonevents %>% mutate(event = 0)) %>% arrange((srt))
-agneventid_vec <- c()
-for (i in 1:dim(agnevents)[1]){ agneventid_vec[c(agnevents[i,1]:agnevents[i,2])] <- i }
-
-# add event/non-event vectors to Big G data
-dat_big <- dat_big %>% 
-  mutate(isevent = isevent_vec, 
-         eventid = eventid_vec,
-         noneventid = noneventid_vec,
-         agneventid = agneventid_vec,
-         big_event_yield = ifelse(isevent_vec == 1, Yield_mm, NA),
-         big_nonevent_yield = ifelse(isevent_vec == 2, Yield_mm, NA),
-         big_event_quick = big_event_yield - bf) %>%
-  rename(big_yield = Yield_mm, big_bf = bf, big_bfi = bfi, big_flow = Yield_mm)
-(dat_big)
-```
-
-View time series output...a few things to note
-
-* Many delineated events are <24 hours in length
-* Much of the natural diel variation in streamflow ("stream breathing" due to diel cycle of ET) ends up being delineated as individual events
-  + When viewed at this time-scale, there also seems to be variation in terms of whether or not the "stream breathing" exists, which could be due to changes in how the data were processed and subsequently smoothed (or not)
-* WMA interpolataion becomes an issue at the sub-daily time scale. I.e., the time scale of the data changes during observed (15-min) and interpolated (4-hour) periods
-
-```{r}
-dat_big %>% select(datetime, big_flow, big_bf, big_event_yield, big_nonevent_yield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Hourly yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
-```
-
-
-#### Gg pseudo-analysis
-
-Join big and little data
-```{r}
-dat_little <- dat_sub %>% 
-  filter(site_name %in% c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook")) %>% 
-  mutate(datetime = floor_date(datetime, unit = "hour")) %>%
-  group_by(site_name, area_sqmi, datetime) %>% summarise(flow = mean(flow)) %>%
-  ungroup() %>% mutate(flow_mean_cms = flow*0.02831683199881, area_sqkm = area_sqmi*2.58999)
-
-# sites
-sites <- unique(dat_little$site_name)
-
-# site-specific basin area in square km
-basinarea <- dat_little %>% group_by(site_name) %>% summarize(area_sqkm = unique(area_sqkm))
-
-# calculate yield
-yield_list <- list()
-for (i in 1:length(sites)) {
-  d <- dat_little %>% filter(site_name == sites[i])
-  ba <- unlist(basinarea %>% filter(site_name == sites[i]) %>% select(area_sqkm))
-  yield_list[[i]] <-  d %>% mutate(Yield_mm = flow_mean_cms * 3600 * (1/as.numeric(ba)) * (1/1000000) * 1000)
-}
-dat_little <- do.call(rbind, yield_list)
-
-# wide
-dat_wb2 <- dat_little %>% 
-  filter(datetime >= min(dat_big$datetime) & datetime <= max(dat_big$datetime)) %>%
-  left_join(dat_big) %>%
-  group_by(site_name, agneventid) %>% 
-  summarise(eventlen = n(),
-            mindate = min(datetime),
-            isevent = unique(isevent), 
-            yield_little_cumul = sum(Yield_mm+0.01),
-            yield_big_cumul = sum(big_flow+0.01),
-            yield_little_cumul_log = log(yield_little_cumul),
-            yield_big_cumul_log = log(yield_big_cumul),
-            yield_little_mean_log = mean(log(Yield_mm+0.01)),
-            yield_big_mean_log = mean(log(big_flow+0.01))) %>%
-  ungroup() %>%
-  filter(!is.na(isevent)) %>%
-  mutate(site_name = factor(site_name, levels = c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook")),
-         site_name_cd = as.numeric(site_name),
-         z_yield_big_cumul_log = as.numeric(scale(yield_big_cumul_log, center = TRUE, scale = TRUE)),
-         z_yield_big_mean_log = as.numeric(scale(yield_big_mean_log, center = TRUE, scale = TRUE)))
-```
-
-##### Alignment
-
-At the hourly time-scale, how aligned are the time series data? Typically, Big G lags behind Little G by 2-4 hours, but this depends on the site.
-```{r}
-dat_little %>% select(datetime, site_name, Yield_mm) %>% spread(key = site_name, value = Yield_mm) %>% left_join(dat_big %>% select(datetime, big_flow)) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Yield (mm)") %>% dyOptions(colors = c(hcl.colors(9, "Zissou 1"), "black")) 
-```
-
-##### Cumulative yield
-
-Gg relationship with data summarized as cumulative yield per event/non-event
-```{r, fig.height=4, fig.width=9}
-dat_wb2 %>% 
-  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
-  ggplot(aes(x = yield_big_cumul_log, y = yield_little_cumul_log, group = site_name, color = site_name)) + 
-  geom_point(alpha = 0.25) + 
-  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
-  geom_smooth(method = "lm", se = F) + facet_wrap(~isevent)
-```
-
-Facet by site
-```{r fig.height=7, fig.width=7}
-dat_wb2 %>% 
-  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
-  ggplot(aes(x = yield_big_cumul_log, y = yield_little_cumul_log, group = site_name, color = site_name)) + 
-  geom_point(alpha = 0.25) + 
-  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
-  geom_smooth(method = "lm", se = F) + facet_wrap(~site_name) +
-  theme(legend.position = "none")
-```
-
-
-##### Mean yield
-
-Gg relationship with data summarized as mean yield per event/non-event
-```{r, fig.height=4, fig.width=9}
-#| fig-cap: "Effect of mean (log) yield at Big G on mean (log) yield at little g during baseflow and event periods."
-dat_wb2 %>% 
-  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
-  ggplot(aes(x = yield_big_mean_log, y = yield_little_mean_log, group = site_name, color = site_name)) + 
-  geom_point(alpha = 0.25) + 
-  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
-  geom_smooth(method = "lm", se = F) + facet_wrap(~isevent)
-```
-
-Facet by site
-```{r fig.height=7, fig.width=7}
-dat_wb2 %>% 
-  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
-  ggplot(aes(x = yield_big_mean_log, y = yield_little_mean_log, group = site_name, color = site_name)) + 
-  geom_point(alpha = 0.25) + 
-  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
-  geom_smooth(method = "lm", se = F) + facet_wrap(~site_name) +
-  theme(legend.position = "none")
-```
-
-
-#### Summary
-
-* Event delineation at sub-daily (i.e., hourly) time scale is strongly affected by data processing steps (e.g., smoothing and interpolation by WMA) and landscape processes that are not the focus of this study (i.e., diel fluctuations in flow due to ET)
-  + In some cases, changes in how WMA treats diel fluctuations may introduce further inconsistencies into downstream analyses
-* Even in small basins such as the West Brook, temporal mismatches between big and little g time series data due to routing time are evident (2-4 hours)
-  + Because many of the event/non-event periods are very short, these mismatches may have a large effect on how reasonable it is to apply Big G events to little g data. 
-* Inferences regarding the g~G relationship derived from hourly data generally do not match those derived from daily data.
-
-
-
-## Baseflow separation
+### Baseflow separation
 
 Perform baseflow separation. See Wasko and Guo (2022, Hydrological Processes) for recommendations on parameterization, as different algorithms and alpha values can produce different results. Section 4.1: "...users should not simply use recommended filter parameter values from literature in combination with any baseflow filter code without verification of their choice of filter parameter. As the digital baseflow filter is not tied to any physical realism (Nathan and McMahon, 1990) and a larger fractional baseflow may aid identification of events—even if this is not strictly baseflow as per its definition (Linsley et al., 1958)...".
 
 It is not actually necessary to do this separately, as baseflow separation is conducted in the event delineation function internally. But it is helpful to view the results and explore how different parameterizations yield different baseflow contributions.
 
-### West Brook
 ```{r}
-dat_wb <- dat %>% filter(site_name %in% c("West Brook NWIS", "West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook"))
 dat_wb_bf <- dat_wb %>% 
   filter(!is.na(Yield_filled_mm)) %>% 
   select(site_name, basin, subbasin, WaterYear, date, Yield_filled_mm, flow_mean_filled_cms, area_sqkm) %>%
   group_by(site_name) %>%
-  mutate(bf = baseflowB(Yield_filled_mm)$bf, bfi = baseflowB(Yield_filled_mm)$bfi) %>%
+  mutate(bf = baseflowB(Yield_filled_mm, alpha = alp, passes = numpass)$bf, 
+         bfi = baseflowB(Yield_filled_mm, alpha = alp, passes = numpass)$bfi) %>%
   ungroup()
 head(dat_wb_bf)
 ```
 
 ```{r}
 #| fig-cap: "Total daily streamflow in yield (mm), baseflow in yield, and fractional baseflow index over the period of record for site West Brook NWIS"
-dat_wb_bf %>% filter(site_name == "West Brook NWIS") %>% select(date, Yield_filled_mm, bf, bfi) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
-```
-
-### Spread Creek
-
-Perform baseflow separation for spread creek, an example of a snowmelt dominated stream. Note that with the default parameters, the ~entire summer/fall period could potentially be classified as a single event 
-```{r}
-#| fig-cap: "Total daily streamflow in yield (mm), baseflow in yield, and fractional baseflow index over the period of record for site SF Spread Creek Lower NWIS"
-alp <- 0.925
-dat_sh <- dat %>% 
-  filter(site_name %in% c("SF Spread Creek Lower NWIS")) %>% 
-  filter(!is.na(Yield_filled_mm)) %>% 
-  select(site_name, basin, subbasin, WaterYear, date, Yield_filled_mm) %>%
-  group_by(site_name) %>%
-  mutate(bf = baseflowB(Yield_filled_mm, alpha = alp)$bf, bfi = baseflowB(Yield_filled_mm, alpha = alp)$bfi) %>%
-  ungroup()
-dat_sh %>% filter(site_name == "SF Spread Creek Lower NWIS") %>% select(date, Yield_filled_mm, bf, bfi) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+dat_wb_bf %>% filter(site_name == "West Brook NWIS") %>% select(date, Yield_filled_mm, bf, bfi) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 
 
-## Event identification
+### Event identification
 
 There are multiple options for methods of event identification. Section 4.2 in Wasko and Guo (2022): It can be generalized that, if the aim of the analysis is to identify independent streamflow maxima then eventMaxima() and eventMinima() work well and indeed have been traditionally employed for this task. If identifying independent small events becomes difficult, or the aim is to identify wet spells, eventBaseflow() may be preferred." In our case, small events are likely important, so we use eventBaseflow() with a ~large values for BFI_Th to capture those small events.
 
 The aim is to understand how water availability affects differences in yield between Big G and Little g during hydrologic events and the intervening periods (non-event baseflow periods). Therefore, we identify events from the Big G data, apply event/non-event time periods to the little g data, then explore G-g deviations during both events and non-events as a function of 
+
+#### Identify events
 
 Separate Big G and Little G data
 ```{r}
@@ -437,18 +110,21 @@ dat_big <- dat_wb_bf %>% filter(site_name == "West Brook NWIS")
 dat_little <- dat_wb_bf %>% filter(site_name != "West Brook NWIS")
 ```
 
-Identify events at Big G:
+Identify events at Big G
 ```{r}
-events <- eventBaseflow(dat_big$Yield_filled_mm, BFI_Th = 0.75)
+events <- eventBaseflow(dat_big$Yield_filled_mm, BFI_Th = thresh, bfi = dat_big$bfi)
 events <- events %>% mutate(len = end - srt + 1)
-head(events)
+(events)
 ```
 
 Plot Big G events using the default function
-```{r}
+```{r fig.height=4, fig.width = 9}
 #| fig-cap: "Time series of hydrologic events at Big G, identified using eventBaseflow()."
-plotEvents(dat_big$Yield_filled_mm, events = events)
+par(mar = c(3,3,1,1))
+plotEvents(dat_big$Yield_filled_mm, events = events, main = NA, xlab = "Time-step", ylab = "Yield")
 ```
+
+#### Tidy events
 
 Now add variables to the Big G time series data specifying events and non-events 
 ```{r}
@@ -493,18 +169,14 @@ dat_big <- dat_big %>%
 
 ```{r}
 #| fig-cap: "Time series of hydrologic events at Big G, identified using eventBaseflow()."
-dat_big %>% select(date, big_yield, big_bf, big_event_yield, big_nonevent_yield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+dat_big %>% select(date, big_yield, big_bf, big_event_yield, big_nonevent_yield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 
+
+#### Check congruency
 
 Applying Big G event/non-event periods to little g time series data inherently assumes that event/non-event periods would be similarly delineated for little g. If this assumption does not hold, then non-event little g flow would be included in event periods, and vice-versa. How well does this assumption hold? 
 
-At the hourly time-scale, how aligned are the time series data? Typically, Big G lags behind Little G by 2-4 hours, but this depends on the site.
-```{r}
-dat_little %>% select(date, site_name, Yield_filled_mm) %>% spread(key = site_name, value = Yield_filled_mm) %>% left_join(dat_big %>% select(date, big_flow)) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Yield (mm)") %>% dyOptions(colors = c(hcl.colors(9, "Zissou 1"), "black")) 
-```
-
-How does event delineation change?
 ```{r}
 #| fig-cap: "Time series of yield for Big G (West Brook NWIS) and one little g site (Jimmy Brook) during hydrologic events as delineated for Big G and little g, respectively. "
 sites <- c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook")
@@ -553,15 +225,18 @@ dat_little2 <- dat_little2 %>%
 dat_big %>% select(date, big_event_yield) %>% left_join(dat_little2 %>% select(date, little_event_yield)) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 
-Whether or not events alight between G and g is highly variable. In some cases, g events begin/end prior to G events, and in other cases g events begin/end later G events. In some cases g events are shorter than G events, and in other cases they are longer. In many cases, events are perfectly matched. Importantly, peaks in yield are almost always synchronous. 
+Whether or not events alighn between G and g is highly variable. In some cases, g events begin/end prior to G events, and in other cases g events begin/end later G events. In some cases g events are shorter than G events, and in other cases they are longer. In many cases, events are perfectly matched. Importantly, peaks in yield are almost always synchronous. 
 
 Ultimately, does this matter given that we are simply using this as a method to break up our data? Furthermore, the framing of the ~entire project is that Big G is the reference by which to compare all little g's. In this sense, applying event/non-event periods derived from G to g matches this persepctive. 
 
 
-## Join events to Little g
+### Join events to Little g
 
 ```{r}
-# wide
+# fudge factor to deal with 0 flow, when logged
+fudge <- 0.01
+
+# join big g events to little g and summarize by event (cumulative, mean, and quantiles)
 dat_wb2 <- dat_little %>% 
   filter(date >= min(dat_big$date) & date <= max(dat_big$date)) %>%
   left_join(dat_big %>% select(-site_name)) %>% 
@@ -569,123 +244,508 @@ dat_wb2 <- dat_little %>%
   summarise(eventlen = n(),
             mindate = min(date),
             isevent = unique(isevent), 
-            yield_little_cum = sum(Yield_filled_mm+0.01),
-            yield_big_cum = sum(big_yield+0.01),
-            yield_little_cum_log = log(yield_little_cum),
-            yield_big_cum_log = log(yield_big_cum),
-            xxx_little = sum(flow_mean_filled_cms * 86400 * (1/unique(area_sqkm)) * (1/1000000) * 1000),
-            yyy_little = sum(flow_mean_filled_cms * 86400) * (1/unique(area_sqkm)) * (1/1000000) * 1000,
-            yield_little_mean_log = mean(log(Yield_filled_mm+0.01)),
-            yield_big_mean_log = mean(log(big_yield+0.01)),
-            yield_little_q25_log = quantile(log(Yield_filled_mm+0.01), probs = 0.25),
-            yield_little_q50_log = quantile(log(Yield_filled_mm+0.01), probs = 0.50),
-            yield_little_q75_log = quantile(log(Yield_filled_mm+0.01), probs = 0.75),
-            yield_big_q25_log = quantile(log(big_yield+0.01), probs = 0.25),
-            yield_big_q50_log = quantile(log(big_yield+0.01), probs = 0.50),
-            yield_big_q75_log = quantile(log(big_yield+0.01), probs = 0.75)) %>%
+            # cumulative
+            yield_little_cumul = sum(Yield_filled_mm+fudge),
+            yield_big_cumul = sum(big_yield+fudge),
+            yield_little_cumul_log = log(yield_little_cumul),
+            yield_big_cumul_log = log(yield_big_cumul),
+            # mean
+            yield_little_mean = mean(Yield_filled_mm+fudge),
+            yield_big_mean = mean(big_yield+fudge),
+            yield_little_mean_log = mean(log(Yield_filled_mm+fudge)),
+            yield_big_mean_log = mean(log(big_yield+fudge)),
+            # quantiles
+            yield_little_q10_log = quantile(log(Yield_filled_mm+fudge), probs = 0.10),
+            yield_little_q50_log = quantile(log(Yield_filled_mm+fudge), probs = 0.50),
+            yield_little_q90_log = quantile(log(Yield_filled_mm+fudge), probs = 0.90),
+            yield_big_q10_log = quantile(log(big_yield+fudge), probs = 0.10),
+            yield_big_q50_log = quantile(log(big_yield+fudge), probs = 0.50),
+            yield_big_q90_log = quantile(log(big_yield+fudge), probs = 0.90)) %>%
   ungroup() %>%
   mutate(site_name = factor(site_name, levels = c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook")),
-         site_name_cd = as.numeric(site_name),
-         z_yield_big_cum_log = as.numeric(scale(yield_big_cum_log, center = TRUE, scale = TRUE)),
-         z_yield_big_mean_log = as.numeric(scale(yield_big_mean_log, center = TRUE, scale = TRUE)))
-
-# plot(yield_little_cum ~ xxx_little, dat_wb2, main = "cumulative yield derived using fasstr ~ by-hand")
-# abline(a = 0, b = 1, col = "red")
-# plot(yyy_little ~ xxx_little, dat_wb2, main = "cumulative yield derived from cumulative flow ~ summed daily yield")
-# abline(a = 0, b = 1, col = "red")
-# plot(yield_little_mean_log ~ yield_little_cum_log, dat_wb2, main = "mean log yield ~ cumulative log yield")
-# abline(a = 0, b = 1, col = "red")
+         site_name_cd = as.numeric(site_name)
+         # z_yield_big_cumul_log = as.numeric(scale(yield_big_cum_log, center = TRUE, scale = TRUE)),
+         # z_yield_big_mean_log = as.numeric(scale(yield_big_mean_log, center = TRUE, scale = TRUE))
+         )
+dat_wb2
 
 # write to file
-write_csv(dat_wb2, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Event Delineation/EcoDrought_Data_EventNonEvent_WestBrookonly.csv")
+write_csv(dat_wb2, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Event Delineation/Basin files/EcoDrought_Data_EventNonEvent_WestBrookonly.csv")
 ```
 
-
-View relationship between Big G and little g, color by site, facet by event/non-event.
-```{r, fig.height=4, fig.width=9}
-#| fig-cap: "Effect of (log) cumulative yield at Big G on (log) cumulative yield at little g during baseflow and event periods."
-dat_wb2 %>% 
-  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
-  ggplot(aes(x = yield_big_cum_log, y = yield_little_cum_log, group = site_name, color = site_name)) + 
-  geom_point() + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
-  geom_smooth(method = "lm", se = F) + facet_wrap(~isevent)
+View pairs plot of summary statistics, for Big G only (limit to one little g site to avoid pseudo replication):
+```{r fig.width=9, fig.height=9, results='hide'}
+myplot <- ggpairs(dat_wb2 %>% filter(site_name == "Avery Brook") %>% select(mindate, yield_big_cumul_log, yield_big_mean_log, yield_big_q10_log, yield_big_q50_log, yield_big_q90_log))
+rctib <- tibble(r = c(3,4,4,5,5,5,6,6,6,6),
+                c = c(2,2,3,2,3,4,2,3,4,5))
+for (i in 1:nrow(rctib)) {
+  myplot[rctib$r[i], rctib$c[i]] <- myplot[rctib$r[i], rctib$c[i]] + geom_abline(intercept = 0, slope = 1, color = "red")
+}
+myplot
 ```
 
-What does this look like if we use mean yield per event/non-event period?
-```{r, fig.height=4, fig.width=9}
-#| fig-cap: "Effect of mean (log) yield at Big G on mean (log) yield at little g during baseflow and event periods."
-dat_wb2 %>% 
-  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
-  ggplot(aes(x = yield_big_mean_log, y = yield_little_mean_log, group = site_name, color = site_name)) + 
-  geom_point() + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
-  geom_smooth(method = "lm", se = F) + facet_wrap(~isevent)
-```
+### Plot gG relationships
 
-What does this look like if we use different quantiles? Generally the relationships appear the be the same, just shifted up along the axes to reflect slightly higher flows. Although, note that because we do this on daily data, we are missing a certain about of within-day variability
-```{r, fig.height=4, fig.width=12}
-#| fig-cap: "Effect of mean (log) yield at Big G on mean (log) yield at little g during baseflow and event periods."
+```{r, fig.height=6, fig.width=9}
+#| fig-cap: "Relationship between yield at Big G and yield at little g, summarized during event/non-event periods with five different metrics."
+
 p1 <- dat_wb2 %>% 
-  ggplot(aes(x = yield_big_q25_log, y = yield_little_q25_log, group = site_name, color = site_name)) + 
-  geom_point() + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
-  geom_smooth(method = "lm", se = F) + xlim(-4,2) + ylim(-5,2.75) + theme(legend.position="none")
+  ggplot(aes(x = yield_big_cumul_log, y = yield_little_cumul_log, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.25) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + theme(legend.position="none")
+
 p2 <- dat_wb2 %>% 
-  ggplot(aes(x = yield_big_q50_log, y = yield_little_q50_log, group = site_name, color = site_name)) + 
-  geom_point() + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
-  geom_smooth(method = "lm", se = F) + xlim(-4,2) + ylim(-5,2.75) + theme(legend.position="none")
+  ggplot(aes(x = yield_big_mean_log, y = yield_little_mean_log, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.25) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + theme(legend.position="none")
+
 p3 <- dat_wb2 %>% 
-  ggplot(aes(x = yield_big_q75_log, y = yield_little_q75_log, group = site_name, color = site_name)) + 
-  geom_point() + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
-  geom_smooth(method = "lm", se = F) + xlim(-4,2) + ylim(-5,2.75) + theme(legend.position="none")
-ggarrange(p1, p2, p3, nrow = 1)
+  ggplot(aes(x = yield_big_q10_log, y = yield_little_q10_log, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.25) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + theme(legend.position="none")
+
+p4 <- dat_wb2 %>% 
+  ggplot(aes(x = yield_big_q50_log, y = yield_little_q50_log, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.25) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + theme(legend.position="none")
+
+p5 <- dat_wb2 %>% 
+  ggplot(aes(x = yield_big_q90_log, y = yield_little_q90_log, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.25) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + theme(legend.position="none")
+
+ggarrange(p1, p2, p3, p4, p5, nrow = 2, ncol = 3)
 ```
-
-```{r eval = FALSE, include=FALSE}
-AIC(lmer(yield_little_q50_log ~ yield_big_q50_log + (1 + yield_big_q50_log | site_name) + eventlen + yield_big_q50_log*eventlen, data = dat_wb2), lmer(yield_little_q50_log ~ yield_big_q50_log + (1 + yield_big_q50_log | site_name) + eventlen, data = dat_wb2), lmer(yield_little_q50_log ~ yield_big_q50_log + (1 + yield_big_q50_log | site_name), data = dat_wb2))
-```
-
-
 
 View relationship between Big G and little g, color by event/non-event, facet by site. For most sites (except may Obear Brook), G-g relationships are identical between events and non-event.
-```{r, fig.height=7, fig.width=8}
-#| fig-cap: "Effect of (log) cumulative yield at Big G on (log) cumulative yield at little g during baseflow and event periods."
-dat_wb2 %>% 
-  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
-  ggplot(aes(x = yield_big_cum_log, y = yield_little_cum_log, group = isevent, color = isevent)) + 
-  geom_point() + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
-  geom_smooth(method = "lm") + facet_wrap(~site_name)
-```
 
-```{r, fig.height=7, fig.width=8}
-#| fig-cap: "Effect of mean (log) yield at Big G on mean (log) yield at little g during baseflow and event periods."
-dat_wb2 %>% 
+```{r}
+myplotlist <- list()
+# cumulative 
+myplotlist[[1]] <- dat_wb2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_cumul_log, y = yield_little_cumul_log, group = isevent, color = isevent)) + 
+  geom_point(alpha = 0.5) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm") + facet_wrap(~site_name)
+# mean
+myplotlist[[2]] <- dat_wb2 %>% 
   mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
   ggplot(aes(x = yield_big_mean_log, y = yield_little_mean_log, group = isevent, color = isevent)) + 
-  geom_point() + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_point(alpha = 0.5) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm") + facet_wrap(~site_name)
+# 10% quantile
+myplotlist[[3]] <- dat_wb2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_q10_log, y = yield_little_q10_log, group = isevent, color = isevent)) + 
+  geom_point(alpha = 0.5) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm") + facet_wrap(~site_name)
+# 50% quantile
+myplotlist[[4]] <- dat_wb2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_q50_log, y = yield_little_q50_log, group = isevent, color = isevent)) + 
+  geom_point(alpha = 0.5) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm") + facet_wrap(~site_name)
+# 90% quantile
+myplotlist[[5]] <- dat_wb2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_q90_log, y = yield_little_q90_log, group = isevent, color = isevent)) + 
+  geom_point(alpha = 0.5) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
   geom_smooth(method = "lm") + facet_wrap(~site_name)
 ```
 
+::: panel-tabset
+##### Cumul.
+```{r, echo=FALSE, fig.width=8, fig.height=7}
+myplotlist[[1]]
+```
+##### Mean
+```{r, echo=FALSE, fig.width=8, fig.height=7}
+myplotlist[[2]]
+```
+##### Q10
+```{r, echo=FALSE, fig.width=8, fig.height=7}
+myplotlist[[3]]
+```
+##### Q50
+```{r, echo=FALSE, fig.width=8, fig.height=7}
+myplotlist[[4]]
+```
+##### Q90
+```{r, echo=FALSE, fig.width=8, fig.height=7}
+myplotlist[[5]]
+```
+:::
 
-View relationship between Big G and little g, color by site, all together
-```{r, fig.height=4, fig.width=6}
-#| fig-cap: "Effect of (log) cumulative yield at Big G on (log) cumulative yield at little g."
+
+#### To log or not to log?
+
+Does using log-transformed data fundamentally change nature of the relationship? What does the g~G relationship look like if we use data on the original scale? Means, for example:
+```{r}
 dat_wb2 %>% 
   mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
-  ggplot(aes(x = yield_big_cum_log, y = yield_little_cum_log, group = site_name, color = site_name)) + 
-  geom_point() + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
-  geom_smooth(method = "lm", se = T)
+  ggplot(aes(x = yield_big_mean, y = yield_little_mean, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.5) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F)
 ```
 
-```{r, fig.height=4, fig.width=6}
-#| fig-cap: "Effect of mean (log) yield at Big G on mean (log) yield at little g."
-dat_wb2 %>% 
+
+
+## Spread Creek
+
+### Trim to focal sites
+```{r}
+dat_sp <- dat %>% filter(basin == "Snake River", site_name != "Pacific Creek at Moran NWIS") %>%
+  mutate(site_name = recode(site_name, "Leidy Creek Mouth NWIS" = "Leidy Creek Mouth", "SF Spread Creek Lower NWIS" = "SF Spread Creek Lower")) %>% 
+  group_by(site_name, date) %>% summarise(Yield_filled_mm = mean(Yield_filled_mm), flow_mean_filled_cms = mean(flow_mean_filled_cms), area_sqkm = mean(area_sqkm), WaterYear = unique(WaterYear)) %>% ungroup()
+unique(dat_sp$site_name)
+```
+
+View daily yield at Big G
+```{r}
+#| fig-cap: "Total daily streamflow in yield (mm), over the period of record"
+temp <- dat_sp %>% filter(site_name == "Spread Creek Dam")
+temp <- fill_missing_dates(temp, dates = date)
+temp %>% select(date, Yield_filled_mm) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+```
+
+View daily yield at all sites
+```{r}
+dat_sp %>% filter(site_name != "Spread Creek Dam") %>% select(date, site_name, Yield_filled_mm) %>% spread(key = site_name, value = Yield_filled_mm) %>% left_join(dat_sp %>% filter(site_name == "Spread Creek Dam") %>% select(date, Yield_filled_mm) %>% rename(Spread_Creek_Dam = Yield_filled_mm)) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Yield (mm)") %>% dyOptions(colors = c(hcl.colors(9, "Zissou 1"), "black")) 
+```
+
+
+### Set parameters
+
+Set baseflow separation (for the Lyne-Hollick one-parameter digital recursive filter) and event delineation paramters (as in Wasko and Guo, 2022)
+
+* *alp*: alpha filter parameter, higher values "lower" the estimated baseflow (thus making it difficult to delineate events)
+* *numpass*: number of passes. Ladson *et al*. (2013) recommend 3 passes for daily data (default in baseflowB() function)
+* *thresh*: baseflow index threshold for event delineation, higher threshold values make it "easier" to delineate events
+
+```{r}
+alp <- 0.925
+numpass <- 3
+thresh <- 0.85
+```
+
+
+### Baseflow separation
+
+Perform baseflow separation. See Wasko and Guo (2022, Hydrological Processes) for recommendations on parameterization, as different algorithms and alpha values can produce different results. Section 4.1: "...users should not simply use recommended filter parameter values from literature in combination with any baseflow filter code without verification of their choice of filter parameter. As the digital baseflow filter is not tied to any physical realism (Nathan and McMahon, 1990) and a larger fractional baseflow may aid identification of events—even if this is not strictly baseflow as per its definition (Linsley et al., 1958)...".
+
+It is not actually necessary to do this separately, as baseflow separation is conducted in the event delineation function internally. But it is helpful to view the results and explore how different parameterizations yield different baseflow contributions.
+
+```{r}
+yrs <- unlist(unique(dat_sp %>% filter(site_name == "Spread Creek Dam", !is.na(Yield_filled_mm)) %>% select(WaterYear)))
+datlist <- list()
+for(i in 1:length(yrs)) {
+  datlist[[i]] <- dat_sp %>% 
+    filter(site_name == "Spread Creek Dam", WaterYear == yrs[i], !is.na(Yield_filled_mm)) %>%
+    mutate(bf = baseflowB(Yield_filled_mm, alpha = alp, passes = numpass)$bf, 
+           bfi = baseflowB(Yield_filled_mm, alpha = alp, passes = numpass)$bfi)
+}
+dat_sp_bf <- do.call(rbind, datlist)
+```
+
+```{r}
+#| fig-cap: "Total daily streamflow in yield (mm), baseflow in yield, and fractional baseflow index over the period of record for site Spread Creek Dam (Big G)"
+fill_missing_dates(dat_sp_bf, dates = date) %>% select(date, Yield_filled_mm, bf, bfi) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+```
+
+
+### Event identification
+
+#### Identify events
+
+Separate Big G and Little G data
+```{r}
+dat_big <- dat_sp_bf %>% filter(site_name == "Spread Creek Dam")
+dat_little <- dat_sp %>% filter(site_name != "Spread Creek Dam")
+```
+
+Identify events at Big G and tidy...loop over years, i.e., chunks of data
+```{r}
+yrs <- unlist(unique(dat_sp %>% filter(site_name == "Spread Creek Dam", !is.na(Yield_filled_mm)) %>% select(WaterYear)))
+biglist <- list()
+for (k in 1:length(yrs)) {
+  ddd <- dat_sp_bf %>% filter(WaterYear == yrs[k])
+  events <- eventBaseflow(ddd$Yield_filled_mm, BFI_Th = thresh, bfi = ddd$bfi)
+  events <- events %>% mutate(len = end - srt + 1)
+  
+  # define positions of non-events
+  srt <- c(1)
+  end <- c(events$srt[1]-1)
+  for (i in 2:(dim(events)[1])) {
+    srt[i] <- events$end[i-1]+1
+    end[i] <- events$srt[i]-1
+    }
+  nonevents <- tibble(srt, end) %>% mutate(len = end - srt) %>% filter(len >= 0) %>% select(-len)
+  if(events$end[dim(events)[1]] != dim(ddd)[1]) { nonevents <- nonevents %>% add_row(srt = events$end[dim(events)[1]]+1, end = dim(ddd)[1]) }
+  nonevents <- data.frame(nonevents)
+  
+  # create vectors of binary event/non-event and event IDs
+  isevent_vec <- rep(2, times = dim(ddd)[1])
+  eventid_vec <- rep(NA, times = dim(ddd)[1])
+  for (i in 1:dim(events)[1]) { 
+    isevent_vec[c(events[i,1]:events[i,2])] <- 1 
+    eventid_vec[c(events[i,1]:events[i,2])] <- i
+  }
+
+  # create vector of non-event IDs
+  noneventid_vec <- rep(NA, times = dim(ddd)[1])
+  for (i in 1:dim(nonevents)[1]) { noneventid_vec[c(nonevents[i,1]:nonevents[i,2])] <- i }
+
+  # create vector of "agnostic events": combined hydro events and non-events
+  agnevents <- rbind(events %>% select(srt, end) %>% mutate(event = 1), nonevents %>% mutate(event = 0)) %>% arrange((srt))
+  agneventid_vec <- c()
+  for (i in 1:dim(agnevents)[1]){ agneventid_vec[c(agnevents[i,1]:agnevents[i,2])] <- i }
+
+  # add event/non-event vectors to Big G data
+  biglist[[k]] <- ddd %>% 
+    mutate(isevent = isevent_vec, 
+           eventid = eventid_vec,
+           noneventid = noneventid_vec,
+           agneventid = agneventid_vec,
+           big_event_yield = ifelse(isevent_vec == 1, Yield_filled_mm, NA),
+           big_nonevent_yield = ifelse(isevent_vec == 2, Yield_filled_mm, NA),
+           big_event_quick = big_event_yield - bf) %>% 
+    mutate(agneventid = paste(yrs[k], "_", agneventid, sep = "")) %>%
+    rename(big_yield = Yield_filled_mm, big_bf = bf, big_bfi = bfi, big_flow = flow_mean_filled_cms, big_area_sqkm = area_sqkm)
+}
+dat_big <- do.call(rbind, biglist)
+dat_big
+```
+
+
+```{r}
+#| fig-cap: "Time series of hydrologic events at Big G, identified using eventBaseflow()."
+fill_missing_dates(dat_big, dates = date) %>% select(date, big_yield, big_bf, big_event_yield, big_nonevent_yield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+```
+
+
+### Join events to Little g
+
+```{r}
+# fudge factor to deal with 0 flow, when logged
+fudge <- 0.01
+
+# join big g events to little g and summarize by event (cumulative, mean, and quantiles)
+dat_sp2 <- dat_little %>% 
+  filter(date >= min(dat_big$date) & date <= max(dat_big$date)) %>%
+  left_join(dat_big %>% select(-site_name)) %>% 
+  group_by(site_name, agneventid) %>% 
+  summarise(eventlen = n(),
+            mindate = min(date),
+            isevent = unique(isevent), 
+            n_little = sum(!is.na(Yield_filled_mm)),
+            n_big = sum(!is.na(big_yield)),
+            # cumulative
+            yield_little_cumul = sum(Yield_filled_mm+fudge, na.rm = TRUE),
+            yield_big_cumul = sum(big_yield+fudge, na.rm = TRUE),
+            yield_little_cumul_log = log(yield_little_cumul),
+            yield_big_cumul_log = log(yield_big_cumul),
+            # mean
+            yield_little_mean = mean(Yield_filled_mm+fudge),
+            yield_big_mean = mean(big_yield+fudge),
+            yield_little_mean_log = mean(log(Yield_filled_mm+fudge), na.rm = TRUE),
+            yield_big_mean_log = mean(log(big_yield+fudge), na.rm = TRUE),
+            # quantiles
+            yield_little_q10_log = quantile(log(Yield_filled_mm+fudge), probs = 0.10, na.rm = TRUE),
+            yield_little_q50_log = quantile(log(Yield_filled_mm+fudge), probs = 0.50, na.rm = TRUE),
+            yield_little_q90_log = quantile(log(Yield_filled_mm+fudge), probs = 0.90, na.rm = TRUE),
+            yield_big_q10_log = quantile(log(big_yield+fudge), probs = 0.10, na.rm = TRUE),
+            yield_big_q50_log = quantile(log(big_yield+fudge), probs = 0.50, na.rm = TRUE),
+            yield_big_q90_log = quantile(log(big_yield+fudge), probs = 0.90, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(site_name = factor(site_name, levels = c("Rock Creek", "SF Spread Creek Lower", "Grouse Creek", "SF Spread Creek Upper", "Leidy Creek Mouth", "Leidy Creek Upper", "NF Spread Creek Lower", "NF Spread Creek Upper", "Grizzly Creek")),
+         site_name_cd = as.numeric(site_name)
+         # z_yield_big_cumul_log = as.numeric(scale(yield_big_cum_log, center = TRUE, scale = TRUE)),
+         # z_yield_big_mean_log = as.numeric(scale(yield_big_mean_log, center = TRUE, scale = TRUE))
+         ) %>%
+  filter(!is.na(agneventid))
+dat_sp2 <- dat_sp2[dat_sp2$n_little == dat_sp2$n_big,]
+
+dat_sp2
+
+# write to file
+write_csv(dat_sp2, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Event Delineation/Basin files/EcoDrought_Data_EventNonEvent_SpreadCreekonly.csv")
+```
+
+View pairs plot of summary statistics, for Big G only (limit to one little g site to avoid pseudo replication):
+```{r fig.width=9, fig.height=9, results='hide'}
+myplot <- ggpairs(dat_sp2 %>% select(mindate, yield_big_cumul_log, yield_big_mean_log, yield_big_q10_log, yield_big_q50_log, yield_big_q90_log))
+rctib <- tibble(r = c(3,4,4,5,5,5,6,6,6,6),
+                c = c(2,2,3,2,3,4,2,3,4,5))
+for (i in 1:nrow(rctib)) {
+  myplot[rctib$r[i], rctib$c[i]] <- myplot[rctib$r[i], rctib$c[i]] + geom_abline(intercept = 0, slope = 1, color = "red")
+}
+myplot
+```
+
+
+### Plot gG relationships
+
+```{r}
+dat_sp2 %>% 
   mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
-  ggplot(aes(x = yield_big_mean_log, y = yield_little_mean_log, group = site_name, color = site_name)) + 
+  ggplot(aes(x = yield_big_cumul, y = yield_little_cumul, group = site_name, color = site_name)) + 
   geom_point() + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
-  geom_smooth(method = "lm", se = T)
+  geom_smooth(method = "lm", se = F) #+ facet_wrap(~isevent)
+```
+
+
+```{r, fig.height=6, fig.width=9}
+#| fig-cap: "Relationship between yield at Big G and yield at little g, summarized during event/non-event periods with five different metrics."
+
+p1 <- dat_sp2 %>% 
+  ggplot(aes(x = yield_big_cumul_log, y = yield_little_cumul_log, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.25) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + theme(legend.position="none")
+
+p2 <- dat_sp2 %>% 
+  ggplot(aes(x = yield_big_mean_log, y = yield_little_mean_log, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.25) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + theme(legend.position="none")
+
+p3 <- dat_sp2 %>% 
+  ggplot(aes(x = yield_big_q10_log, y = yield_little_q10_log, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.25) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + theme(legend.position="none")
+
+p4 <- dat_sp2 %>% 
+  ggplot(aes(x = yield_big_q50_log, y = yield_little_q50_log, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.25) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + theme(legend.position="none")
+
+p5 <- dat_sp2 %>% 
+  ggplot(aes(x = yield_big_q90_log, y = yield_little_q90_log, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.25) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) + theme(legend.position="none")
+
+ggarrange(p1, p2, p3, p4, p5, nrow = 2, ncol = 3)
+```
+
+View relationship between Big G and little g, color by event/non-event, facet by site. For most sites (except may Obear Brook), G-g relationships are identical between events and non-event.
+
+```{r}
+myplotlist <- list()
+# cumulative 
+myplotlist[[1]] <- dat_sp2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_cumul_log, y = yield_little_cumul_log, group = isevent, color = isevent)) + 
+  geom_point(alpha = 0.5) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm") + facet_wrap(~site_name)
+# mean
+myplotlist[[2]] <- dat_sp2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_mean_log, y = yield_little_mean_log, group = isevent, color = isevent)) + 
+  geom_point(alpha = 0.5) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm") + facet_wrap(~site_name)
+# 10% quantile
+myplotlist[[3]] <- dat_sp2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_q10_log, y = yield_little_q10_log, group = isevent, color = isevent)) + 
+  geom_point(alpha = 0.5) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm") + facet_wrap(~site_name)
+# 50% quantile
+myplotlist[[4]] <- dat_sp2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_q50_log, y = yield_little_q50_log, group = isevent, color = isevent)) + 
+  geom_point(alpha = 0.5) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm") + facet_wrap(~site_name)
+# 90% quantile
+myplotlist[[5]] <- dat_sp2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_q90_log, y = yield_little_q90_log, group = isevent, color = isevent)) + 
+  geom_point(alpha = 0.5) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm") + facet_wrap(~site_name)
+```
+
+::: panel-tabset
+#### Cumul.
+```{r, echo=FALSE, fig.width=8, fig.height=7}
+myplotlist[[1]]
+```
+#### Mean
+```{r, echo=FALSE, fig.width=8, fig.height=7}
+myplotlist[[2]]
+```
+#### Q10
+```{r, echo=FALSE, fig.width=8, fig.height=7}
+myplotlist[[3]]
+```
+#### Q50
+```{r, echo=FALSE, fig.width=8, fig.height=7}
+myplotlist[[4]]
+```
+#### Q90
+```{r, echo=FALSE, fig.width=8, fig.height=7}
+myplotlist[[5]]
+```
+:::
+
+
+#### To log or not to log?
+
+Does using log-transformed data fundamentally change nature of the relationship? What does the g~G relationship look like if we use data on the original scale? Means, for example:
+```{r}
+dat_sp2 %>% 
+  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
+  ggplot(aes(x = yield_big_mean, y = yield_little_mean, group = site_name, color = site_name)) + 
+  geom_point(alpha = 0.5) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F)
+```
+
+
+
+
+## DEPRECATED
+
+## Sensitivity analyses
+
+### Missing data
+
+Many of the EcoDrought time series data are incomplete. At some sites, discharge data is available only during the summer and/or fall periods, and at other sites, time series data are interrupted due to malfunctioning sensors and/or ice formation ("ice spikes"). So how does the length of the time series affect baseflow separation (and subsequent event identification)? Wasko and Guo (2022) use a 67 day time series of flow to demonstrate the utility of the *hydroEvents* packages, suggesting digital baseflow separation techniques may be valid for relatively short time series. 
+
+Here, I perform a simple sensitivity analysis to explore the effect of time series length on the results of baseflow separation. Essentially, perform baseflow separation on increasingly smaller subsets of the data. With the default parameters, the minimum number of days/observations needed is 31. This is because the default number of points reflected at start and end of data (r) is 30. Reflection allows bf/bfi to be calculated over the entire period of record as the underlying baseflow separation equations result in "issues of "Warm-up" and "cool-down" as the recursive filter is moved forward and backward over the dataset" (Ladson et al. 2013, Australian Journal of Water Resources). *baseflowB()* uses a default reflection period of 30, which Ladson et al. (2013) found to "provide a realistic baselfow response for the start and end of the actual flow data".
+```{r eval=FALSE, include=FALSE}
+
+dat_wb_sens <- dat_wb %>% mutate(bf_c = baseflowB(Yield_filled_mm)$bf, bfi_c = baseflowB(Yield_filled_mm)$bfi) %>% select(date, bf_c, bfi_c) %>%
+  left_join(dat_wb[1:(365*3),] %>% mutate(bf_3y = baseflowB(Yield_filled_mm)$bf, bfi_3y = baseflowB(Yield_filled_mm)$bfi) %>% select(date, bf_3y, bfi_3y)) %>%
+  left_join(dat_wb[1:(365),] %>% mutate(bf_1y = baseflowB(Yield_filled_mm)$bf, bfi_1y = baseflowB(Yield_filled_mm)$bfi) %>% select(date, bf_1y, bfi_1y)) %>%
+  left_join(dat_wb[1:(182),] %>% mutate(bf_6m = baseflowB(Yield_filled_mm)$bf, bfi_6m = baseflowB(Yield_filled_mm)$bfi) %>% select(date, bf_6m, bfi_6m)) %>%
+  left_join(dat_wb[1:(90),] %>% mutate(bf_3m = baseflowB(Yield_filled_mm)$bf, bfi_3m = baseflowB(Yield_filled_mm)$bfi) %>% select(date, bf_3m, bfi_3m)) %>%
+  left_join(dat_wb[1:(35),] %>% mutate(bf_1m = baseflowB(Yield_filled_mm)$bf, bfi_1m = baseflowB(Yield_filled_mm)$bfi) %>% select(date, bf_1m, bfi_1m))
+```
+
+#### Compare baseflow
+
+Divergence in baseflow among datasets is a result of the reflected data of the shorter dataset not matching the actual data of the longer dataset. As a result, divergence really only occurs at the end of each time series and is generally small in magnitude. 
+```{r eval=FALSE, include=FALSE}
+#| fig-cap: "Time series of baseflow derived from datasets of different lengths."
+dat_wb_sens %>% select(date, bf_c, bf_3y, bf_1y, bf_6m, bf_3m, bf_1m) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily baseflow in yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+```
+
+```{r message = FALSE, warning = FALSE,  eval=FALSE, include=FALSE}
+#| fig-cap: "Pairs plot of baseflow derrived from datasets of different lengths. Red lines are 1:1."
+ggpairs(dat_wb_sens %>% select(bf_c, bf_3y, bf_1y, bf_6m, bf_3m, bf_1m)) + geom_abline(intercept = 0, slope = 1, color = "red")
+```
+
+#### Compare baseflow index
+
+The story here is essentially the same as above: divergence is ~minimal and restricted to the end of each time series. However, we note that divergence in BFI appears to increase as absolute flow/baseflow decreases, because small differences in absolute space become much larger in relative space when absolute values are small. 
+```{r eval=FALSE, include=FALSE}
+#| fig-cap: "Time series of baseflow index derived from datasets of different lengths."
+dat_wb_sens %>% select(date, bfi_c, bfi_3y, bfi_1y, bfi_6m, bfi_3m, bfi_1m) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily baseflow in yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+```
+
+```{r message = FALSE, warning = FALSE,  eval=FALSE, include=FALSE}
+#| fig-cap: "Pairs plot of baseflow derrived from datasets of different lengths. Red lines are 1:1."
+ggpairs(dat_wb_sens %>% select(bf_c, bf_3y, bf_1y, bf_6m, bf_3m, bf_1m)) + geom_abline(intercept = 0, slope = 1, color = "red")
 ```
 
 View relationship between Big G and among-site/event-specific standard deviation in little g.
-```{r}
+```{r eval=FALSE, include=FALSE}
 #| fig-cap: "Derived from log cumulative yield"
 dat_wb2 %>% 
   select(agneventid, yield_big_cum_log, yield_little_cum_log) %>% 
@@ -695,7 +755,7 @@ dat_wb2 %>%
   ggplot(aes(x = unq_big, y = sd_little)) + geom_point() + geom_smooth() + ylim(0,1.5)
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 #| fig-cap: "Derived from mean log yield"
 dat_wb2 %>% 
   select(agneventid, yield_big_mean_log, yield_little_mean_log) %>% 

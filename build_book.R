@@ -19,6 +19,10 @@ quarto::quarto_render("Explore Data/ExploreData.qmd",
                       #cache_refresh = TRUE, # default is FALSE
                       output_format = "html")
 
+quarto::quarto_render("Explore Data/TemporalResolution.qmd", 
+                      cache_refresh = TRUE, # default is FALSE
+                      output_format = "html")
+
 quarto::quarto_render("Big G Little g/GgStoryPlots.qmd", 
                       #cache_refresh = TRUE, # default is FALSE
                       output_format = "html", cache = FALSE)
