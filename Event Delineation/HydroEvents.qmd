@@ -585,15 +585,6 @@ myplot
 
 ### Plot gG relationships
 
-```{r}
-dat_sp2 %>% 
-  mutate(isevent = dplyr::recode(isevent, "1" = "Event", "2" = "Baseflow")) %>% 
-  ggplot(aes(x = yield_big_cumul, y = yield_little_cumul, group = site_name, color = site_name)) + 
-  geom_point() + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
-  geom_smooth(method = "lm", se = F) #+ facet_wrap(~isevent)
-```
-
-
 ```{r, fig.height=6, fig.width=9}
 #| fig-cap: "Relationship between yield at Big G and yield at little g, summarized during event/non-event periods with five different metrics."
 
