@@ -91,7 +91,7 @@ sites <- c("01169900", # South River at Conway, Massachusetts
 siteinfo_nwis <- tibble(readNWISsite(sites)[,c(2:3,7,8,20,30)]) # get site info
 names(siteinfo_nwis) <- c("station_no", "site_name", "lat", "long", "elev_ft", "area_sqmi") # rename columns
 siteinfo_nwis <- siteinfo_nwis %>% mutate(site_name = c("South River Conway NWIS", 
-                                                        "Avery Broook NWIS", 
+                                                        "Avery Brook NWIS", 
                                                         "West Brook NWIS", 
                                                         "Dugout Creek NWIS", 
                                                         "Shields River ab Smith NWIS", 
@@ -108,7 +108,7 @@ siteinfo_nwis <- siteinfo_nwis %>% mutate(site_name = c("South River Conway NWIS
                                                         "Little Blizten River NWIS",
                                                         "Donner Blitzen nr Burnt Car NWIS",
                                                         "Donner Blitzen ab Fish NWIS",
-                                                        "Fish Creek"),
+                                                        "Fish Creek NWIS"),
                                           site_id = c("SRC", "AVB", "WBR", "DUG", "SRS", "SRL", "DBF", "HAL", "BIG", "NFF", "PCM", "LEI", "SFS", "DBI", "IND", "LBL", "DBB", "DBA", "FSH"),
                                           designation = c("big", "medium", "medium", "medium", "medium", "big", "big", "medium", "medium", "big", "big", "medium", "medium", "medium", "medium", "medium", "medium", "medium", "medium"),
                                           basin = c("West Brook", "West Brook", "West Brook", "Shields River", "Shields River", "Shields River", "Donner Blitzen", "Flathead", "Flathead", "Flathead", "Snake River", "Snake River", "Snake River", "Donner Blitzen", "Donner Blitzen", "Donner Blitzen", "Donner Blitzen", "Donner Blitzen", "Donner Blitzen"),
@@ -128,6 +128,8 @@ siteinfo <- siteinfo %>% mutate(subbasin = ifelse(is.na(subbasin), basin, subbas
 siteinfo$lat[siteinfo$site_id == "SH07"] <- siteinfo$lat[siteinfo$site_id == "SRS"]
 siteinfo$long[siteinfo$site_id == "SH07"] <- siteinfo$long[siteinfo$site_id == "SRS"]
 
+# add data source 
+siteinfo$source <- ifelse(grepl("NWIS", siteinfo$site_name), "NWIS", "ECOD")
 
 # add elevation and area variables (from watershed delineation)
 areafiles <- list.files("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Area and Elevation")
@@ -148,6 +150,7 @@ Write and re-load site information
 ```{r}
 write_csv(siteinfo, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv")
 siteinfo <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv")
+head(siteinfo)
 ```
 
 View unique basin names
@@ -179,7 +182,7 @@ dat_wb <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/E
   mutate(Station_No = factor(Station_No), Site_Name = factor(Site_Name)) %>%
   rename(station_no = Station_No, site_name = Site_Name, datetime = DateTime_EST, height = GageHeight_Hobo_ft, flow = Discharge_Hobo_cfs, tempf = WaterTemperature_HOBO_DegF) %>%
   mutate(tempc = (tempf - 32)*(5/9)) %>% select(station_no, site_name, datetime, height, flow, tempc) %>%
-  left_join(siteinfo %>% select(-station_no)) %>%
+  left_join(siteinfo %>% select(-station_no) %>% filter(source == "ECOD")) %>%
   mutate(DischargeReliability = as.factor(1), TempReliability = as.factor(1))
 # set tz to local and convert to UTC
 tz(dat_wb$datetime) <- "EST"
@@ -192,7 +195,7 @@ dat_shen <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought
   mutate(Station_No = factor(Station_No), Site_ID = factor(Site_ID), Discharge_Hobo_cfs = as.numeric(Discharge_Hobo_cfs)) %>%
   rename(station_no = Station_No, site_id = Site_ID, datetime = DateTime_EST, height = GageHeight_Hobo_ft, flow = Discharge_Hobo_cfs, tempf = WaterTemperature_HOBO_DegF) %>%
   mutate(tempc = (tempf - 32)*(5/9)) %>% select(station_no, site_id, datetime, height, flow, tempc) %>%
-  left_join(siteinfo)
+  left_join(siteinfo %>% filter(source == "ECOD"))
 # set tz to local and convert to UTC
 tz(dat_shen$datetime) <- "EST"
 dat_shen$datetime <- with_tz(dat_shen$datetime, "UTC")
@@ -202,7 +205,7 @@ dat_shen_uva_q <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoD
   rename(flow = cfs)
 dat_shen_uva_t <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw data/Virg/Shen_BigG_TempEtc_hourly_UVA.csv") %>%
   select(site_id, datetime, tempc_mean) %>% rename(tempc = tempc_mean)
-dat_shen_uva <- dat_shen_uva_q %>% left_join(dat_shen_uva_t) %>% left_join(siteinfo)
+dat_shen_uva <- dat_shen_uva_q %>% left_join(dat_shen_uva_t) %>% left_join(siteinfo %>% filter(source == "ECOD"))
 # set tz to local and convert to UTC
 tz(dat_shen_uva$datetime) <- "EST"
 dat_shen_uva$datetime <- with_tz(dat_shen_uva$datetime, "UTC")
@@ -231,7 +234,7 @@ dat_flat <- bind_rows(flatlist) %>%
             DischargeReliability = unique(DischargeReliability), 
             GageReliability = unique(GageReliability), 
             TempReliability = unique(TempReliability)) %>%
-  left_join(siteinfo) %>% ungroup() %>% 
+  left_join(siteinfo %>% filter(source == "ECOD")) %>% ungroup() %>% 
   mutate(DischargeReliability = as_factor(DischargeReliability),
          GageReliability = as_factor(GageReliability),
          TempReliability = as_factor(TempReliability))
@@ -263,7 +266,7 @@ dat_gya <- bind_rows(gyalist) %>% select(datetime, depth, discharge, temperature
                             "Leidy Creek" = "Leidy Creek Mouth",
                             "Spread Creek" = "Spread Creek Dam",
                             "Shields River above Smith Creek" = "Shields River Valley Ranch")) %>%
-  left_join(siteinfo) %>% filter(tempc <= 100) %>%
+  left_join(siteinfo %>% filter(source == "ECOD")) %>% filter(tempc <= 100) %>%
   mutate(DischargeReliability = as.factor(1), TempReliability = as.factor(1))
 # set tz to local and convert to UTC
 tz(dat_gya$datetime) <- "MST"
@@ -273,11 +276,19 @@ head(dat_gya)
 
 
 Bind EcoD hourly flow/temp data with siteinfo and write to file
-
 ```{r}
-# bind together
 dat <- bind_rows(dat_wb, dat_shen, dat_flat, dat_gya)
-# unique(dat$site_name)
+```
+
+Check for duplicates
+```{r}
+dups <- dat %>% group_by(site_name, datetime) %>% filter(n()>1) %>% arrange(site_name, datetime)
+nrow(dups)/2
+unique(dups$site_name)
+```
+
+Write to file
+```{r}
 write_csv(dat, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_Raw.csv")
 dat <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_Raw.csv")
 ```
@@ -323,43 +334,43 @@ dat_wb_new <- dat_wb %>%
 
 ::: panel-tabset
 ##### Avery
-```{r}
+```{r eval=FALSE, include=FALSE}
 dat_wb_new %>% filter(site_name == "Avery Brook") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
 ```
 ##### Jimmy
-```{r}
+```{r eval=FALSE, include=FALSE}
 dat_wb_new %>% filter(site_name == "Jimmy Brook") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
 ```
 ##### Mitchell
-```{r}
+```{r eval=FALSE, include=FALSE}
 dat_wb_new %>% filter(site_name == "Mitchell Brook") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
 ```
 ##### Obear
-```{r}
+```{r eval=FALSE, include=FALSE}
 dat_wb_new %>% filter(site_name == "Obear Brook Lower") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
 ```
 ##### Sanderson
-```{r}
+```{r eval=FALSE, include=FALSE}
 dat_wb_new %>% filter(site_name == "Sanderson Brook") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
 ```
 ##### WB0
-```{r}
+```{r eval=FALSE, include=FALSE}
 dat_wb_new %>% filter(site_name == "West Brook 0") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
 ```
 ##### WB Lower
-```{r}
+```{r eval=FALSE, include=FALSE}
 dat_wb_new %>% filter(site_name == "West Brook Lower") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
 ```
 ##### WB Reservoir
-```{r}
+```{r eval=FALSE, include=FALSE}
 dat_wb_new %>% filter(site_name == "West Brook Reservoir") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
 ```
 ##### WB Upper
-```{r}
+```{r eval=FALSE, include=FALSE}
 dat_wb_new %>% filter(site_name == "West Brook Upper") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
 ```
 ##### West Whateley
-```{r}
+```{r eval=FALSE, include=FALSE}
 dat_wb_new %>% filter(site_name == "West Whately Brook") %>% select(datetime, flow) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5) %>% dyEvent(x = as_datetime("2021/10/01 00:00:00"))
 ```
 :::
@@ -371,7 +382,7 @@ mysites <- unlist(unique(dat %>% filter(basin == "Flathead") %>% select(site_nam
 
 ::: panel-tabset
 ##### BigCreekLower
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "BigCreekLower") 
 
 sub_dat_f <- sub_dat %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -385,7 +396,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% union(d
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_0", fillGraph = TRUE) %>% dySeries("flow_1", fillGraph = TRUE) %>% dySeries("temp_0", axis = "y2", fillGraph = FALSE) %>% dySeries("temp_1", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### BigCreekMiddle
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "BigCreekMiddle") 
 
 sub_dat_f <- sub_dat %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -399,7 +410,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% union(d
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_0", fillGraph = TRUE) %>% dySeries("flow_1", fillGraph = TRUE) %>% dySeries("temp_0", axis = "y2", fillGraph = FALSE) %>% dySeries("temp_1", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### BigCreekUpper
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "BigCreekUpper") 
 
 sub_dat_f <- sub_dat %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -413,7 +424,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% union(d
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_0", fillGraph = TRUE) %>% dySeries("flow_1", fillGraph = TRUE) %>% dySeries("temp_0", axis = "y2", fillGraph = FALSE) %>% dySeries("temp_1", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### CoalCreekHeadwaters
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "CoalCreekHeadwaters") 
 
 sub_dat_f <- sub_dat %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -427,7 +438,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% arrange
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_0", fillGraph = TRUE) %>% dySeries("flow_1", fillGraph = TRUE) %>% dySeries("temp_0", axis = "y2", fillGraph = FALSE) %>% dySeries("temp_1", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### CoalCreekLower
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "CoalCreekLower") 
 
 sub_dat_f <- sub_dat %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -441,7 +452,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% arrange
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_0", fillGraph = TRUE) %>% dySeries("flow_1", fillGraph = TRUE) %>% dySeries("temp_0", axis = "y2", fillGraph = FALSE) %>% dySeries("temp_1", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### CoalCreekMiddle
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "CoalCreekMiddle") 
 
 sub_dat_f <- sub_dat %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -455,7 +466,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% union(d
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_0", fillGraph = TRUE) %>% dySeries("flow_1", fillGraph = TRUE) %>% dySeries("temp_1", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### CoalCreekNorth
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "CoalCreekNorth") 
 
 sub_dat_f <- sub_dat %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -469,7 +480,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% union(d
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_0", fillGraph = TRUE) %>% dySeries("flow_1", fillGraph = TRUE) %>% dySeries("temp_0", axis = "y2", fillGraph = FALSE) %>% dySeries("temp_1", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### CycloneCreekLower
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "CycloneCreekLower") 
 
 sub_dat_f <- sub_dat %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -483,7 +494,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% union(d
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_0", fillGraph = TRUE) %>% dySeries("flow_1", fillGraph = TRUE) %>% dySeries("temp_0", axis = "y2", fillGraph = FALSE) %>% dySeries("temp_1", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### CycloneCreekMidddle
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "CycloneCreekMiddle") 
 
 sub_dat_f <- sub_dat %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -497,7 +508,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% union(d
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_0", fillGraph = TRUE) %>% dySeries("flow_1", fillGraph = TRUE) %>% dySeries("temp_0", axis = "y2", fillGraph = FALSE) %>% dySeries("temp_1", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### CycloneCreekUpper
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "CycloneCreekUpper") 
 
 sub_dat_f <- sub_dat %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -511,7 +522,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% arrange
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_0", fillGraph = TRUE) %>% dySeries("flow_1", fillGraph = TRUE) %>% dySeries("temp_0", axis = "y2", fillGraph = FALSE) %>% dySeries("temp_1", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### HallowattCreekLower
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "HallowattCreekLower") 
 
 sub_dat_f <- sub_dat %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -525,7 +536,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% arrange
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_0", fillGraph = TRUE) %>% dySeries("flow_1", fillGraph = TRUE) %>% dySeries("temp_0", axis = "y2", fillGraph = FALSE) %>% dySeries("temp_1", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### LangfordCreekLower
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "LangfordCreekLower") 
 
 sub_dat_f <- sub_dat %>% select(datetime, flow, DischargeReliability) %>% filter(!is.na(DischargeReliability)) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -539,7 +550,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% union(d
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_0", fillGraph = TRUE) %>% dySeries("flow_1", fillGraph = TRUE) %>% dySeries("temp_0", axis = "y2", fillGraph = FALSE) %>% dySeries("temp_1", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### LangfordCreekUpper
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "LangfordCreekUpper") 
 
 sub_dat_f <- sub_dat %>% select(datetime, flow, DischargeReliability) %>% filter(!is.na(DischargeReliability)) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -553,7 +564,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% union(d
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_0", fillGraph = TRUE) %>% dySeries("flow_1", fillGraph = TRUE) %>% dySeries("temp_0", axis = "y2", fillGraph = FALSE) %>% dySeries("temp_1", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### McGeeCreekLower
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "McGeeCreekLower") 
 
 sub_dat_f <- sub_dat %>% select(datetime, flow, DischargeReliability) %>% filter(!is.na(DischargeReliability)) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -567,7 +578,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% arrange
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_0", fillGraph = TRUE) %>% dySeries("flow_1", fillGraph = TRUE) %>% dySeries("temp_0", axis = "y2", fillGraph = FALSE) %>% dySeries("temp_1", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### McGeeCreekTrib
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "McGeeCreekTrib") 
 
 sub_dat_f <- sub_dat[-c(1598,10334,19070),] %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -581,7 +592,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% arrange
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_0", fillGraph = TRUE) %>% dySeries("flow_1", fillGraph = TRUE) %>% dySeries("temp_0", axis = "y2", fillGraph = FALSE) %>% dySeries("temp_1", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### McGeeCreekUpper
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "McGeeCreekUpper") 
 
 sub_dat_f <- sub_dat %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -595,7 +606,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% arrange
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_0", fillGraph = TRUE) %>% dySeries("flow_1", fillGraph = TRUE) %>% dySeries("temp_1", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### NicolaCreek
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "NicolaCreek") 
 
 sub_dat_f <- sub_dat %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -609,7 +620,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% arrange
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_0", fillGraph = TRUE) %>% dySeries("flow_1", fillGraph = TRUE) %>% dySeries("temp_0", axis = "y2", fillGraph = FALSE) %>% dySeries("temp_1", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### SkookoleelCreek
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "SkookoleelCreek") 
 
 sub_dat_f <- sub_dat %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -623,7 +634,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% arrange
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_0", fillGraph = TRUE) %>% dySeries("flow_1", fillGraph = TRUE) %>% dySeries("temp_1", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### WernerCreek
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "WernerCreek") 
 
 sub_dat_f <- sub_dat %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -637,7 +648,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% arrange
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow_0", fillGraph = TRUE) %>% dySeries("flow_1", fillGraph = TRUE) %>% dySeries("temp_0", axis = "y2", fillGraph = FALSE) %>% dySeries("temp_1", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### WoundedBuckCreek
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "WoundedBuckCreek") 
 
 sub_dat_f <- sub_dat %>% select(datetime, flow, DischargeReliability) %>% spread(key = DischargeReliability, value = flow) %>% arrange(datetime) %>% rename("flow_0" = "0", "flow_1" = "1")
@@ -659,7 +670,7 @@ mysites <- unlist(unique(dat %>% filter(basin == "Snake River") %>% select(site_
 
 ::: panel-tabset
 ##### GrizzlyCreek
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "Grizzly Creek") %>% select(datetime, flow, tempc) %>% mutate(mindiff = as.numeric(lead(datetime) - (datetime)))
 na_index <- which(sub_dat$mindiff > 1)
 ds_blank <- tibble(index = na_index + 0.5, datetime = NA, "flow" = NA, "tempc" = NA)
@@ -667,7 +678,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% union(d
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow", fillGraph = TRUE) %>% dySeries("tempc", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### GrouseCreek
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "Grouse Creek") %>% select(datetime, flow, tempc) %>% mutate(mindiff = as.numeric(lead(datetime) - (datetime)))
 na_index <- which(sub_dat$mindiff > 3600)
 ds_blank <- tibble(index = na_index + 0.5, datetime = NA, "flow" = NA, "tempc" = NA)
@@ -675,7 +686,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% union(d
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow", fillGraph = TRUE) %>% dySeries("tempc", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### LeidyCreekMouth
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "Leidy Creek Mouth") %>% select(datetime, flow, tempc) %>% mutate(mindiff = as.numeric(lead(datetime) - (datetime)))
 na_index <- which(sub_dat$mindiff > 3600)
 ds_blank <- tibble(index = na_index + 0.5, datetime = NA, "flow" = NA, "tempc" = NA)
@@ -683,7 +694,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% union(d
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow", fillGraph = TRUE) %>% dySeries("tempc", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### NorthForkLower
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "NF Spread Creek Lower") %>% select(datetime, flow, tempc) %>% mutate(mindiff = as.numeric(lead(datetime) - (datetime)))
 na_index <- which(sub_dat$mindiff > 3600)
 ds_blank <- tibble(index = na_index + 0.5, datetime = NA, "flow" = NA, "tempc" = NA)
@@ -691,7 +702,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% union(d
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow", fillGraph = TRUE) %>% dySeries("tempc", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### RockCreek
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "Rock Creek") %>% select(datetime, flow, tempc) %>% mutate(mindiff = as.numeric(lead(datetime) - (datetime)))
 na_index <- which(sub_dat$mindiff > 3600)
 ds_blank <- tibble(index = na_index + 0.5, datetime = NA, "flow" = NA, "tempc" = NA)
@@ -699,7 +710,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% union(d
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow", fillGraph = TRUE) %>% dySeries("tempc", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### SouthForkLower
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "SF Spread Creek Lower") %>% select(datetime, flow, tempc) %>% mutate(mindiff = as.numeric(lead(datetime) - (datetime)))
 na_index <- which(sub_dat$mindiff > 3600)
 ds_blank <- tibble(index = na_index + 0.5, datetime = NA, "flow" = NA, "tempc" = NA)
@@ -707,7 +718,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% union(d
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow", fillGraph = TRUE) %>% dySeries("tempc", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### SpreadCkDam
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "Spread Creek Dam") %>% select(datetime, flow, tempc) %>% mutate(mindiff = as.numeric(lead(datetime) - (datetime)))
 na_index <- which(sub_dat$mindiff > 3600)
 ds_blank <- tibble(index = na_index + 0.5, datetime = NA, "flow" = NA, "tempc" = NA)
@@ -715,7 +726,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% union(d
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow", fillGraph = TRUE) %>% dySeries("tempc", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### LeidyCreekUpper
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "Leidy Creek Upper") %>% select(datetime, flow, tempc) %>% mutate(mindiff = as.numeric(lead(datetime) - (datetime)))
 na_index <- which(sub_dat$mindiff > 3600)
 ds_blank <- tibble(index = na_index + 0.5, datetime = NA, "flow" = NA, "tempc" = NA)
@@ -723,7 +734,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% union(d
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow", fillGraph = TRUE) %>% dySeries("tempc", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### NorthForkUpper
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "NF Spread Creek Upper") %>% select(datetime, flow, tempc) %>% mutate(mindiff = as.numeric(lead(datetime) - (datetime)))
 na_index <- which(sub_dat$mindiff > 3600)
 ds_blank <- tibble(index = na_index + 0.5, datetime = NA, "flow" = NA, "tempc" = NA)
@@ -731,7 +742,7 @@ sub_dat <- sub_dat %>% select(-mindiff) %>% rowid_to_column("index") %>% union(d
 sub_dat %>% dygraph() %>% dyRangeSelector() %>% dySeries("flow", fillGraph = TRUE) %>% dySeries("tempc", axis = "y2", fillGraph = FALSE) %>% dyAxis("y", label = "flow (cfs)") %>% dyAxis("y2", label = "temp (C)") %>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5)
 ```
 ##### SouthForkUpper
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE, include=FALSE}
 sub_dat <- dat %>% filter(site_name == "SF Spread Creek Upper") %>% select(datetime, flow, tempc) %>% mutate(mindiff = as.numeric(lead(datetime) - (datetime)))
 na_index <- which(sub_dat$mindiff > 3600)
 ds_blank <- tibble(index = na_index + 0.5, datetime = NA, "flow" = NA, "tempc" = NA)
@@ -758,12 +769,13 @@ for (i in 1:length(sites)) {
 nwis_subdaily <- do.call(bind_rows, nwis_list)
 nwis_subdaily <- nwis_subdaily %>% select(-1)
 names(nwis_subdaily) <- c("station_no", "datetime", "flowcfs", "flowcfs_appcd", "tz", "tempc", "tempc_appcd")
-nwis_subdaily <- nwis_subdaily %>% left_join(siteinfo)
+nwis_subdaily <- nwis_subdaily %>% left_join(siteinfo %>% filter(source == "NWIS"))
 write_csv(nwis_subdaily, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_NWIS_FlowTempData_Raw_SubDaily.csv")
 ```
 
 ```{r}
-nwis_subdaily <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_NWIS_FlowTempData_Raw_SubDaily.csv")
+nwis_subdaily <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_NWIS_FlowTempData_Raw_SubDaily.csv") %>% 
+  mutate(site_name = dplyr::recode(site_name, "Fish Creek" = "Fish Creek NWIS", "Avery Broook NWIS" = "Avery Brook NWIS")) %>% filter(grepl("NWIS", site_name))
 
 tz(nwis_subdaily$datetime) <- "UTC"
 nwis_subdaily$datetime <- with_tz(nwis_subdaily$datetime, "UTC")
@@ -846,6 +858,13 @@ dat_full <- bind_rows(dat %>% mutate(tz = tz(datetime)), nwis_subdaily %>% renam
 head(dat_full)
 ```
 
+Check for duplicates
+```{r}
+dups <- dat_full %>% group_by(site_name, datetime) %>% filter(n()>1) %>% arrange(site_name, datetime)
+nrow(dups)/2
+unique(dups$site_name)
+```
+
 Write data to file
 ```{r}
 write_csv(dat_full, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_Raw_ECODandNWIS.csv")
@@ -879,6 +898,14 @@ View daily mean time series data, for example, site_name = CoalCreekLower. Notic
 ```{r}
 dat_daily %>% filter(site_name == "CoalCreekLower") %>% select(date, flow_mean) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Mean daily flow (cfs)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
 ```
+
+Check for duplicates
+```{r}
+dups <- dat_daily %>% group_by(site_name, date) %>% filter(n()>1) %>% arrange(site_name, date)
+nrow(dups)/2
+unique(dups$site_name)
+```
+
 
 ## Interpolate missing data
 
@@ -962,7 +989,9 @@ dat_daily_fill_wyield <- dat_daily_fill_wyield %>%
 ```
 
 
-## View daily time series data by sub-basin (little and medium g's only)
+## View daily data
+
+View daily time series data by sub-basin (little and medium g's only)
 
 ::: panel-tabset
 #### Big Creek
