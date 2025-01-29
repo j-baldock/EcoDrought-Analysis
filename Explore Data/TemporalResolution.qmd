@@ -2,6 +2,10 @@
 title: "Explore Sub-Daily Data"
 ---
 
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(cache = TRUE, warning = FALSE, message = FALSE, cache.lazy = FALSE)
+```
+
 Purpose: Explore data at sub-daily temporal resolutions (e.g., 15-min and 1-hour time steps) and compare outputs to daily data. 
 
 Given that streamflow can change so quickly in small, headwater streams, are we missing a key part of the story by using flow data summarized as daily means? Using daily mean flow reduces the range of values, particularly at the upper end (i.e., high flows), and so we may be overlooking the g~G relationship at very high flows. (Note limited analysis of 15-min data as Montana and Wyoming data is collected at the hourly timescale).
@@ -37,32 +41,33 @@ siteinfo_sp <- st_as_sf(siteinfo, coords = c("long", "lat"), crs = 4326)
 mapview(siteinfo_sp, zcol = "designation")
 
 # flow/yield (and temp) data 
-dat_sub <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_Raw.csv") %>%
-  filter(!site_name %in% c("WoundedBuckCreek", "Brackett Creek"))
+dat_sub <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_Raw_ECODandNWIS.csv") 
 
 dat_little <- dat_sub %>% 
   filter(site_name %in% c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook")) %>% 
   select(site_name, datetime, flow, area_sqmi)
+
+dat_big <- dat_sub %>% filter(site_name == "West Brook NWIS") %>% select(site_name, datetime, flow, area_sqmi)
 ```
 
-Download 15-min NWIS data for big G (West Brook NWIS)
+
+Check time zones
 ```{r}
-wbnwis <- tibble(readNWISdata(sites = "01171100", service = "uv", startDate = "1980-01-01", endDate = Sys.Date(), tz = "America/New_York"))
-wbnwis2 <- wbnwis[,c(2,3,4)]
-names(wbnwis2) <- c("station_no", "datetime", "flow") 
-dat_big <- wbnwis2 %>% 
-  left_join(siteinfo %>% filter(site_name == "West Brook NWIS")) %>% 
-  select(site_name, datetime, flow, area_sqmi)
+unique(tz(dat_little$datetime))
+unique(tz(dat_big$datetime))
 ```
 
-Organize 15-min and 1-hour datasets, load daily data
+Organize 15-min data
 ```{r}
 dat_15min <- bind_rows(dat_little, dat_big) %>%
   mutate(site_name = factor(site_name, levels = c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook", "West Brook NWIS"))) %>%
   mutate(flow_cms = flow*0.02831683199881, area_sqkm = area_sqmi*2.58999) %>%
   mutate(yield = flow_cms * 900 * (1/(area_sqkm)) * (1/1000000) * 1000)
+head(dat_15min)
+```
 
-
+Organize 1-hour data
+```{r}
 dat_1hr <- bind_rows(dat_little, dat_big) %>%
   mutate(site_name = factor(site_name, levels = c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook", "West Brook NWIS"))) %>%
   filter(!is.na(flow)) %>% 
@@ -72,10 +77,15 @@ dat_1hr <- bind_rows(dat_little, dat_big) %>%
   ungroup() %>%
   mutate(flow_cms = flow*0.02831683199881, area_sqkm = area_sqmi*2.58999) %>%
   mutate(yield = flow_cms * 3600 * (1/(area_sqkm)) * (1/1000000) * 1000)
+head(dat_1hr)
+```
 
+Load daily data
+```{r}
 dat_1day <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv") %>%
   filter(site_name %in% c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook", "West Brook NWIS")) %>%
   mutate(site_name = factor(site_name, levels = c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook", "West Brook NWIS")))
+head(dat_1day)
 ```
 
 ### View 15-min data
@@ -113,6 +123,7 @@ set baseflow separation (for the Lyne-Hollick one-parameter digital recursive fi
 Conduct event pairing using hydroEvents package to understand lag time between peak flows at big and little g's
 
 #### Conduct event pairing
+
 ```{r}
 # baseflow separation and event delineation parameters
 alp <- 0.925
@@ -148,9 +159,15 @@ for (j in 1:length(sites)) {
   mypairs_com <- mypairs[complete.cases(mypairs),]
   
   # get matched event info
-  matchpeaktib <- tibble(datetime_little = rep(NA, times = dim(mypairs_com)[1]), datetime_big = rep(NA, times = dim(mypairs_com)[1]),
-                         yield_little = rep(NA, times = dim(mypairs_com)[1]), yield_big = rep(NA, times = dim(mypairs_com)[1]))
+  matchpeaktib <- tibble(index_little = rep(NA, times = dim(mypairs_com)[1]), 
+                         index_big = rep(NA, times = dim(mypairs_com)[1]),
+                         datetime_little = rep(NA, times = dim(mypairs_com)[1]), 
+                         datetime_big = rep(NA, times = dim(mypairs_com)[1]),
+                         yield_little = rep(NA, times = dim(mypairs_com)[1]), 
+                         yield_big = rep(NA, times = dim(mypairs_com)[1]))
   for (i in 1:dim(mypairs_com)[1]) {
+    matchpeaktib$index_little[i] <- events_little$which.max[events_little$srt == mypairs_com$srt[i]]
+    matchpeaktib$index_big[i] <- events_big$which.max[events_big$srt == mypairs_com$matched.srt[i]]
     matchpeaktib$datetime_little[i] <- mytib_bf$datetime[events_little$which.max[events_little$srt == mypairs_com$srt[i]]]
     matchpeaktib$datetime_big[i] <- mytib_bf$datetime[events_big$which.max[events_big$srt == mypairs_com$matched.srt[i]]]
     matchpeaktib$yield_little[i] <- events_little$max[events_little$srt == mypairs_com$srt[i]]
@@ -175,13 +192,23 @@ matchpeaktib <- do.call(rbind, outlist)
 
 Constrain lag times to realistic values (>=0 and <= 24) as event pairing is not perfect, and view histograms by site
 ```{r}
-matchpeaktib %>% filter(timediff_hrs >= 0 & timediff_hrs <= 24) %>% ggplot() + geom_histogram(aes(x = timediff_hrs)) + facet_wrap(~site_name)
+matchpeaktib %>% filter(timediff_hrs >= -5 & timediff_hrs <= 10) %>% ggplot() + geom_histogram(aes(x = timediff_hrs)) + facet_wrap(~site_name)
 ```
 
 View distributions summarized as boxplots. Sites are ordered from closest to Big G (bottom) to furthest (top). Interestingly, there is not a strong pattern of longer lag times for further sites. 
 ```{r}
-matchpeaktib %>% filter(timediff_hrs >= 0 & timediff_hrs <= 24) %>% ggplot() + geom_boxplot(aes(x = site_name, y = timediff_hrs)) + coord_flip()
+# matchpeaktib %>% filter(timediff_hrs >= -10 & timediff_hrs <= 20) %>% ggplot() + geom_boxplot(aes(x = site_name, y = timediff_hrs)) + coord_flip()
+matchpeaktib %>% filter(timediff_hrs >= -5 & timediff_hrs <= 10) %>% mutate(bigevcd = as.numeric(datetime_big)) %>% group_by(bigevcd, site_name) %>% summarize(timediff_hrs = min(timediff_hrs)) %>% ggplot() + geom_boxplot(aes(x = site_name, y = timediff_hrs)) + coord_flip()
 ```
+
+Connect specific events across sites. 
+
+* Is there consistency in lag time across sites? Generally, yes
+* is there a pattern of longer lag times with increasing distance upstream? No
+```{r}
+matchpeaktib %>% filter(timediff_hrs >= -5 & timediff_hrs <= 10) %>% mutate(bigevcd = as.factor(as.numeric(datetime_big))) %>% group_by(bigevcd, site_name) %>% summarize(timediff_hrs = min(timediff_hrs)) %>% ggplot(aes(x = site_name, y = jitter(timediff_hrs), group = bigevcd, color = bigevcd)) + geom_line() + coord_flip() + theme(legend.position = "none")
+```
+
 
 ##### Lag by yield
 
@@ -189,12 +216,12 @@ Does lag time depend on the magnitude of yield at big G? Under high flows when w
 
 View global relationship
 ```{r}
-matchpeaktib %>% filter(timediff_hrs >= 0 & timediff_hrs <= 24) %>% ggplot(aes(x = yield_big, y = jitter(timediff_hrs))) + geom_point() + geom_smooth()
+matchpeaktib %>% filter(timediff_hrs >= -5 & timediff_hrs <= 10) %>% ggplot(aes(x = yield_big, y = jitter(timediff_hrs))) + geom_point() + geom_smooth()
 ```
 
 View by site
 ```{r fig.height=7, fig.width=7}
-matchpeaktib %>% filter(timediff_hrs >= 0 & timediff_hrs <= 24) %>% ggplot(aes(x = yield_big, y = jitter(timediff_hrs))) + geom_point() + geom_smooth() + facet_wrap(~ site_name)
+matchpeaktib %>% filter(timediff_hrs >= -5 & timediff_hrs <= 10) %>% ggplot(aes(x = yield_big, y = jitter(timediff_hrs))) + geom_point() + geom_smooth() + facet_wrap(~ site_name)
 ```
 
 There appears to be some evidence for shorter lag times with increasing flow, but this relationship is only evident for very low flows. What is more apparent is the overall attenuation in variability in lag time as flows increase: at very low flows, lags are highly variable, but less variable (and intermediate in magnitude) under high flows. 
@@ -206,12 +233,12 @@ Does lag time change over time? Perhaps lag time is seasonal and changes with an
 
 View global relationship
 ```{r}
-matchpeaktib %>% filter(timediff_hrs >= 0 & timediff_hrs <= 24) %>% mutate(doy = yday(datetime_little)) %>% ggplot(aes(x = doy, y = jitter(timediff_hrs))) + geom_point() + geom_smooth()
+matchpeaktib %>% filter(timediff_hrs >= -5 & timediff_hrs <= 10) %>% mutate(doy = yday(datetime_little)) %>% ggplot(aes(x = doy, y = jitter(timediff_hrs))) + geom_point() + geom_smooth()
 ```
 
 View by site
 ```{r fig.height=7, fig.width=7}
-matchpeaktib %>% filter(timediff_hrs >= 0 & timediff_hrs <= 24) %>% mutate(doy = yday(datetime_little)) %>% ggplot(aes(x = doy, y = jitter(timediff_hrs))) + geom_point() + geom_smooth() + facet_wrap(~ site_name)
+matchpeaktib %>% filter(timediff_hrs >= -5 & timediff_hrs <= 10) %>% mutate(doy = yday(datetime_little)) %>% ggplot(aes(x = doy, y = jitter(timediff_hrs))) + geom_point() + geom_smooth() + facet_wrap(~ site_name)
 ```
 
 There does not appear to be any consistent pattern (within or among sites) in how lag times change with time of year
@@ -309,6 +336,97 @@ dat_wb2 <- dat_little %>%
   mutate(site_name = factor(site_name, levels = c("West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook")),
          site_name_cd = as.numeric(site_name))
 dat_wb2
+```
+
+#### Event-level distribution
+
+Find ~long events/non-events
+```{r}
+agntib1 <- dat_big %>% group_by(agneventid) %>% summarize(eventlen = n(), isevent = unique(isevent), mindate = min(date(datetime)), maxdate = max(date(datetime))) %>% filter(isevent == 1) %>% arrange(desc(eventlen))
+agntib2 <- dat_big %>% group_by(agneventid) %>% summarize(eventlen = n(), isevent = unique(isevent), mindate = min(date(datetime)), maxdate = max(date(datetime))) %>% filter(isevent == 2) %>% arrange(desc(eventlen))
+agntib1
+agntib2
+```
+
+
+```{r echo=FALSE}
+myevents <- c(159, 330, 308, 18)
+mytext <- agntib1 %>% filter(agneventid %in% myevents)
+
+ddd1 <- dat_little %>% 
+  filter(datetime >= min(dat_big$datetime) & datetime <= max(dat_big$datetime)) %>%
+  left_join(dat_big %>% select(datetime, big_yield, big_bf, big_bfi, agneventid, isevent)) %>%
+  filter(agneventid %in% myevents) %>%
+  mutate(log_yield = log(yield + 0.001), log_big_yield = log(big_yield + 0.001)) %>%
+  group_by(site_name, agneventid) %>%
+  arrange(desc(log_yield), .by_group = TRUE) %>%
+  mutate(exceedance = 100/length(log_yield)*1:length(log_yield)) %>%
+  ungroup() 
+
+ddd2 <- dat_little %>% 
+  filter(datetime >= min(dat_big$datetime) & datetime <= max(dat_big$datetime)) %>%
+  left_join(dat_big %>% select(datetime, big_yield, big_bf, big_bfi, agneventid, isevent)) %>%
+  filter(agneventid %in% myevents, site_name == "West Brook Lower") %>%
+  mutate(log_yield = log(yield + 0.001), log_big_yield = log(big_yield + 0.001)) %>%
+  group_by(site_name, agneventid) %>%
+  arrange(desc(log_big_yield), .by_group = TRUE) %>%
+  mutate(exceedance = 100/length(log_big_yield)*1:length(log_big_yield)) %>%
+  ungroup() 
+
+p1 <- ggplot() +
+  geom_line(data = ddd1, aes(x = exceedance, y = log_yield, group = site_name, color = site_name)) + 
+  geom_line(data = ddd2, aes(x = exceedance, y = log_big_yield), color = "black") + 
+  xlab("Exceedance probability") + ylab("ln(Yield, mm)") + labs(color = "Little g") + theme_bw() + 
+  facet_wrap(~agneventid, nrow = 1) + ylim(-7,1.5) + theme(legend.position = "none")
+x_range <- layer_scales(p1)$x$range$range
+y_range <- layer_scales(p1)$y$range$range
+p1 <- p1 + geom_text(data = mytext, 
+              x = x_range[1] - 0.1 * (diff(x_range)),
+              y = y_range[1] + 0.1 * (diff(y_range)),
+              aes(label = paste(mindate, "\n", maxdate, "\nn = ", eventlen, " hrs", sep = "")),
+              hjust = -0.3, vjust = 0.3, size = 3)
+```
+
+```{r echo=FALSE}
+myevents <- c(152, 278, 71, 205)
+mytext <- agntib2 %>% filter(agneventid %in% myevents)
+
+ddd1 <- dat_little %>% 
+  filter(datetime >= min(dat_big$datetime) & datetime <= max(dat_big$datetime)) %>%
+  left_join(dat_big %>% select(datetime, big_yield, big_bf, big_bfi, agneventid, isevent)) %>%
+  filter(agneventid %in% myevents) %>%
+  mutate(log_yield = log(yield + 0.001), log_big_yield = log(big_yield + 0.001)) %>%
+  group_by(site_name, agneventid) %>%
+  arrange(desc(log_yield), .by_group = TRUE) %>%
+  mutate(exceedance = 100/length(log_yield)*1:length(log_yield)) %>%
+  ungroup() 
+
+ddd2 <- dat_little %>% 
+  filter(datetime >= min(dat_big$datetime) & datetime <= max(dat_big$datetime)) %>%
+  left_join(dat_big %>% select(datetime, big_yield, big_bf, big_bfi, agneventid, isevent)) %>%
+  filter(agneventid %in% myevents, site_name == "West Brook Lower") %>%
+  mutate(log_yield = log(yield + 0.001), log_big_yield = log(big_yield + 0.001)) %>%
+  group_by(site_name, agneventid) %>%
+  arrange(desc(log_big_yield), .by_group = TRUE) %>%
+  mutate(exceedance = 100/length(log_big_yield)*1:length(log_big_yield)) %>%
+  ungroup() 
+
+p2 <- ggplot() +
+  geom_line(data = ddd1, aes(x = exceedance, y = log_yield, group = site_name, color = site_name)) + 
+  geom_line(data = ddd2, aes(x = exceedance, y = log_big_yield), color = "black") + 
+  xlab("Exceedance probability") + ylab("ln(Yield, mm)") + labs(color = "Little g") + theme_bw() + 
+  facet_wrap(~agneventid, nrow = 1) + ylim(-7,1.5) + theme(legend.position = "none")
+x_range <- layer_scales(p2)$x$range$range
+y_range <- layer_scales(p2)$y$range$range
+p2 <- p2 + geom_text(data = mytext, 
+              x = x_range[1] - 0.1 * (diff(x_range)),
+              y = y_range[1] + 0.1 * (diff(y_range)),
+              aes(label = paste(mindate, "\n", maxdate, "\nn = ", eventlen, " hrs", sep = "")),
+              hjust = -0.3, vjust = 0.3, size = 3)
+```
+Plot exceedance curves for selected events (top row) and baseflow periods (bottom row)
+```{r fig.width=9, fig.height=5}
+ggarrange(p1, p2, nrow = 2)
 ```
 
 
@@ -469,7 +587,6 @@ View by site
 matchpeaktib %>% filter(timediff_dys >= 0 & timediff_dys <= 1) %>% mutate(doy = yday(datetime_little)) %>% ggplot(aes(x = doy, y = (timediff_dys))) + geom_point() + geom_smooth() + facet_wrap(~ site_name)
 ```
 
-The prevalence of 1-day lags in peak flow generally peaks in mid summer (July) when flows are low 
 
 
 ```{r eval=FALSE, include=FALSE}
@@ -628,7 +745,7 @@ dat_wb2 %>%
   + Because many of the event/non-event periods are very short, these mismatches may have a large effect on how reasonable it is to apply Big G events to little g data, and whether Big G events/non-events adequately encompass similar flow conditions at little g sites. 
   + Temporal mismatches are less prevalent and more predictable for the daily data. 
 * Inferences regarding the g~G relationship derived from hourly data generally do not match those derived from daily data.
-  + the g~G relationship is more strongly affected by assumptions of temporal alignment for hourly data relative to daily data. 
+  + the g~G relationship is more strongly affected by assumptions of temporal alignment for hourly data relative to daily data.
 
 
 ## Dynamic time warping
