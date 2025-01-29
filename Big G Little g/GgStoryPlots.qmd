@@ -53,7 +53,7 @@ str(dat)
 
 View little and medium g time series data (yield), by basin and site
 ```{r}
-mysubbasins <- unique(dat$subbasin)[-c(4,7,13)]
+mysubbasins <- unique(dat$subbasin)[-c(4,5,9)]
 myplots <- list()
 for (i in 1:length(mysubbasins)) {
   myplots[[i]] <- dat %>% filter(designation %in% c("little", "medium"), subbasin == mysubbasins[i]) %>% ggplot() + geom_line(aes(x = date, y = log(Yield_filled_mm_7))) + facet_wrap(~site_name)
@@ -76,27 +76,27 @@ myplots[[3]]
 ```{r, echo=FALSE}
 myplots[[4]]
 ```
-#### Paine Run
+#### Donner Blitzen
 ```{r, echo=FALSE}
 myplots[[5]]
 ```
-#### Staunton River
+#### Paine Run
 ```{r, echo=FALSE}
 myplots[[6]]
 ```
-#### Duck Creek
+#### Staunton River
 ```{r, echo=FALSE}
 myplots[[7]]
 ```
-#### Shields River
+#### Duck Creek
 ```{r, echo=FALSE}
 myplots[[8]]
 ```
-#### Snake River
+#### Shields River
 ```{r, echo=FALSE}
 myplots[[9]]
 ```
-#### Donner Blitzen
+#### Snake River
 ```{r, echo=FALSE}
 myplots[[10]]
 ```
@@ -105,7 +105,7 @@ myplots[[10]]
 
 View little and medium g time series data (yield), by basin. Use the handles below the x-axis to change the time frame.
 ```{r}
-mysubbasins <- unique(dat$subbasin)[-c(4,7,13)]
+mysubbasins <- unique(dat$subbasin)[-c(4,5,9)]
 myplots <- list()
 for (i in 1:length(mysubbasins)) {
   myplots[[i]] <- dat %>% filter(designation %in% c("little", "medium"), subbasin == mysubbasins[i]) %>% mutate(logYield = log(Yield_filled_mm_7)) %>% select(date, site_name, logYield) %>% spread(key = site_name, value = logYield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)")
@@ -128,27 +128,27 @@ myplots[[3]]
 ```{r, echo=FALSE}
 myplots[[4]]
 ```
-#### Paine Run
+#### Donner Blitzen
 ```{r, echo=FALSE}
 myplots[[5]]
 ```
-#### Staunton River
+#### Paine Run
 ```{r, echo=FALSE}
 myplots[[6]]
 ```
-#### Duck Creek
+#### Staunton River
 ```{r, echo=FALSE}
 myplots[[7]]
 ```
-#### Shields River
+#### Duck Creek
 ```{r, echo=FALSE}
 myplots[[8]]
 ```
-#### Snake River
+#### Shields River
 ```{r, echo=FALSE}
 myplots[[9]]
 ```
-#### Donner Blitzen
+#### Snake River
 ```{r, echo=FALSE}
 myplots[[10]]
 ```
@@ -861,18 +861,6 @@ bigplotfun(mybasin = "Paine Run",
 
 ### Big Creek, Flathead
 ::: panel-tabset
-#### 2019
-```{r, echo=FALSE, fig.height=18, fig.width=10}
-bigplotfun(mybasin = "Flathead",
-           mysubbasin = "Big Creek",
-           CY = 2019,
-           little = c("BigCreekMiddle", "BigCreekUpper", "HallowattCreekLower", "WernerCreek", "Hallowat Creek NWIS", "NicolaCreek"),
-           big = "BigCreekLower",
-           super = "North Fork Flathead River NWIS",
-           mymap = p1_FLBC,
-           supergyears = c(1981:2023),
-           evalyears = c(2019:2021))
-```
 #### 2020
 ```{r, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "Flathead",
@@ -960,7 +948,7 @@ bigplotfun(mybasin = "Shields River",
 ### Donner-Blitzen
 ::: panel-tabset
 #### 2020
-```{r, echo=FALSE, fig.height=18, fig.width=10}
+```{r, eval=FALSE, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "Donner Blitzen",
            mysubbasin = "Donner Blitzen",
            CY = 2020,
@@ -972,7 +960,7 @@ bigplotfun(mybasin = "Donner Blitzen",
            evalyears = c(2020:2023))
 ```
 #### 2021
-```{r, echo=FALSE, fig.height=18, fig.width=10}
+```{r, eval=FALSE, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "Donner Blitzen",
            mysubbasin = "Donner Blitzen",
            CY = 2021,
@@ -984,7 +972,7 @@ bigplotfun(mybasin = "Donner Blitzen",
            evalyears = c(2020:2023))
 ```
 #### 2022
-```{r, echo=FALSE, fig.height=18, fig.width=10}
+```{r, eval=FALSE, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "Donner Blitzen",
            mysubbasin = "Donner Blitzen",
            CY = 2022,
@@ -996,7 +984,7 @@ bigplotfun(mybasin = "Donner Blitzen",
            evalyears = c(2020:2023))
 ```
 #### 2023
-```{r, echo=FALSE, fig.height=18, fig.width=10}
+```{r, eval=FALSE, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "Donner Blitzen",
            mysubbasin = "Donner Blitzen",
            CY = 2023,
