@@ -1,0 +1,433 @@
+---
+title: "Daily and Weekly Summaries"
+---
+
+Purpose: Generate weekly summaries to use in Gg framework
+
+```{r echo=FALSE, message=FALSE}
+library(tidyverse)
+library(sf)
+library(mapview)
+library(knitr)
+library(fasstr)
+library(RColorBrewer)
+library(scales)
+library(dygraphs)
+library(hydroEvents)
+library(GGally)
+library(dataRetrieval)
+library(ggpubr)
+```
+
+
+## Site info and daily data
+```{r}
+# site information and locations
+siteinfo <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv")
+siteinfo_sp <- st_as_sf(siteinfo, coords = c("long", "lat"), crs = 4326)
+mapview(siteinfo_sp, zcol = "designation")
+
+# flow/yield (and temp) data 
+dat <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv")
+
+# add water/climate year variables and fill missing dates
+dat <- add_date_variables(dat, dates = date, water_year_start = 4)
+dat <- fill_missing_dates(dat, dates = date, groups = site_name)
+str(dat)
+```
+
+
+
+## View daily data
+
+View daily time series data by sub-basin (little and medium g's only)
+
+::: panel-tabset
+### West Brook
+```{r, echo=FALSE}
+dat %>% filter(designation %in% c("little", "medium"), subbasin == "West Brook") %>% mutate(logYield = log(Yield_filled_mm)) %>% select(date, site_name, logYield) %>% spread(key = site_name, value = logYield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)")
+```
+### Paine Run
+```{r, echo=FALSE}
+dat %>% filter(subbasin == "Paine Run", date >= as_date("2018-11-07")) %>% mutate(logYield = log(Yield_filled_mm)) %>% select(date, site_name, logYield) %>% spread(key = site_name, value = logYield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)")
+```
+### Piney River
+```{r, echo=FALSE}
+dat %>% filter(subbasin == "Piney River") %>% mutate(logYield = log(Yield_filled_mm)) %>% select(date, site_name, logYield) %>% spread(key = site_name, value = logYield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)")
+```
+### Staunton River
+```{r, echo=FALSE}
+dat %>% filter(subbasin == "Staunton River", date >= as_date("2018-11-07")) %>% mutate(logYield = log(Yield_filled_mm)) %>% select(date, site_name, logYield) %>% spread(key = site_name, value = logYield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)")
+```
+### Big Creek
+```{r, echo=FALSE}
+dat %>% filter(designation %in% c("little", "medium"), subbasin == "Big Creek") %>% mutate(logYield = log(Yield_filled_mm)) %>% select(date, site_name, logYield) %>% spread(key = site_name, value = logYield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)")
+```
+### Coal Creek
+```{r, echo=FALSE}
+dat %>% filter(designation %in% c("little", "medium"), subbasin == "Coal Creek") %>% mutate(logYield = log(Yield_filled_mm)) %>% select(date, site_name, logYield) %>% spread(key = site_name, value = logYield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)")
+```
+### McGee Creek
+```{r, echo=FALSE}
+dat %>% filter(designation %in% c("little", "medium"), subbasin == "McGee Creek") %>% mutate(logYield = log(Yield_filled_mm)) %>% select(date, site_name, logYield) %>% spread(key = site_name, value = logYield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)")
+```
+### Snake River
+```{r, echo=FALSE}
+dat %>% filter(designation %in% c("little", "medium"), subbasin == "Snake River") %>% mutate(logYield = log(Yield_filled_mm)) %>% select(date, site_name, logYield) %>% spread(key = site_name, value = logYield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)")
+```
+### Shields River
+```{r, echo=FALSE}
+dat %>% filter(designation %in% c("little", "medium"), subbasin == "Shields River") %>% mutate(logYield = log(Yield_filled_mm)) %>% select(date, site_name, logYield) %>% spread(key = site_name, value = logYield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)")
+```
+### Duck Creek
+```{r, echo=FALSE}
+dat %>% filter(designation %in% c("little", "medium"), subbasin == "Duck Creek") %>% mutate(logYield = log(Yield_filled_mm)) %>% select(date, site_name, logYield) %>% spread(key = site_name, value = logYield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)")
+```
+### Donner Blitzen
+```{r, echo=FALSE}
+dat %>% filter(subbasin == "Donner Blitzen", date >= as_date("2019-07-23")) %>% mutate(logYield = log(Yield_filled_mm)) %>% select(date, site_name, logYield) %>% spread(key = site_name, value = logYield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)")
+```
+:::
+
+
+## Daily gG
+
+### Organize data
+
+Designate big and little g data:
+```{r}
+dat_day_big <- dat %>% filter(site_name %in% c("Donner Blitzen River nr Frenchglen NWIS", 
+                                                     "BigCreekLower", 
+                                                     "CoalCreekLower", 
+                                                     "West Brook NWIS",
+                                                     "Paine Run 10",
+                                                     "Staunton River 10"))
+
+dat_day_little <- dat %>% filter(subbasin %in% c("Donner Blitzen", 
+                                                       "Big Creek",
+                                                       "Coal Creek", 
+                                                       "West Brook", 
+                                                       "Paine Run", 
+                                                       "Staunton River"),
+                                       !site_name %in% c("Donner Blitzen River nr Frenchglen NWIS", 
+                                                         "BigCreekLower", "Big Creek NWIS",
+                                                         "CoalCreekLower", 
+                                                         "West Brook NWIS", "Avery Brook NWIS", "West Brook 0",
+                                                         "Paine Run 10",
+                                                         "Staunton River 10"))
+unique(dat_day_big$site_name)
+unique(dat_day_little$site_name)
+```
+
+Join big and little g data:
+```{r}
+fudge <- 0.001
+dat_day_join <- dat_day_little %>% 
+  select(basin, subbasin, site_name, date, Yield_filled_mm) %>% 
+  rename(site_name_little = site_name, yield_little = Yield_filled_mm) %>% 
+  left_join(dat_day_big %>% 
+              select(basin, subbasin, site_name, date, Yield_filled_mm) %>%
+              rename(site_name_big = site_name, yield_big = Yield_filled_mm)) %>%
+  filter(!is.na(yield_big)) %>%
+  mutate(yield_little_log = log(yield_little + fudge),
+         yield_big_log = log(yield_big + fudge))
+head(dat_day_join)
+```
+
+View sample size (number of days) per site:
+```{r}
+dat_day_join %>% group_by(site_name_little) %>% summarize(numdays = n()) %>% kable()
+```
+
+
+### View gG - sites combined
+
+::: panel-tabset
+#### West Brook
+```{r}
+dat_day_join %>% filter(subbasin == "West Brook") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log, group = site_name_little, color = site_name_little)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F)
+```
+#### Big Creek
+```{r}
+dat_day_join %>% filter(subbasin == "Big Creek") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log, group = site_name_little, color = site_name_little)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F)
+```
+#### Coal Creek
+```{r}
+dat_day_join %>% filter(subbasin == "Coal Creek") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log, group = site_name_little, color = site_name_little)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F)
+```
+#### Paine Run
+```{r}
+dat_day_join %>% filter(subbasin == "Paine Run") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log, group = site_name_little, color = site_name_little)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F)
+```
+#### Staunton River
+```{r}
+dat_day_join %>% filter(subbasin == "Staunton River") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log, group = site_name_little, color = site_name_little)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F)
+```
+#### Donner Blitzen
+```{r}
+dat_day_join %>% filter(subbasin == "Donner Blitzen") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log, group = site_name_little, color = site_name_little)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F)
+```
+:::
+
+
+### View gG - facet by site
+
+::: panel-tabset
+#### West Brook
+```{r fig.width=8, fig.height=7}
+dat_day_join %>% filter(subbasin == "West Brook") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) +
+  facet_wrap(~site_name_little)
+```
+#### Big Creek
+```{r fig.width=8, fig.height=7}
+dat_day_join %>% filter(subbasin == "Big Creek") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) +
+  facet_wrap(~site_name_little)
+```
+#### Coal Creek
+```{r fig.width=8, fig.height=7}
+dat_day_join %>% filter(subbasin == "Coal Creek") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) +
+  facet_wrap(~site_name_little)
+```
+#### Paine Run
+```{r fig.width=8, fig.height=7}
+dat_day_join %>% filter(subbasin == "Paine Run") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) +
+  facet_wrap(~site_name_little)
+```
+#### Staunton River
+```{r fig.width=8, fig.height=7}
+dat_day_join %>% filter(subbasin == "Staunton River") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) +
+  facet_wrap(~site_name_little)
+```
+#### Donner Blitzen
+```{r fig.width=8, fig.height=7}
+dat_day_join %>% filter(subbasin == "Donner Blitzen") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) +
+  facet_wrap(~site_name_little)
+```
+:::
+
+
+
+## Weekly gG
+
+### Organize data
+
+Summarize daily data as weekly means:
+```{r}
+dat_week <- dat %>% mutate(year = year(date), week = week(date)) %>% group_by(basin, subbasin, region, site_name, lat, long, elev_ft, area_sqmi, designation, year, week) %>% summarize(Yield_filled_mm_weekly = mean(Yield_filled_mm, na.rm = FALSE), n = n(), mindate = min(date), maxdate = max(date)) %>% ungroup() %>% filter(n == 7, !is.na(Yield_filled_mm_weekly))
+```
+
+Designate big and little g data:
+```{r}
+dat_week_big <- dat_week %>% filter(site_name %in% c("Donner Blitzen River nr Frenchglen NWIS", 
+                                                     "BigCreekLower", 
+                                                     "CoalCreekLower", 
+                                                     "West Brook NWIS",
+                                                     "Paine Run 10",
+                                                     "Staunton River 10"))
+
+dat_week_little <- dat_week %>% filter(subbasin %in% c("Donner Blitzen", 
+                                                       "Big Creek",
+                                                       "Coal Creek", 
+                                                       "West Brook", 
+                                                       "Paine Run", 
+                                                       "Staunton River"),
+                                       !site_name %in% c("Donner Blitzen River nr Frenchglen NWIS", 
+                                                         "BigCreekLower", "Big Creek NWIS",
+                                                         "CoalCreekLower", 
+                                                         "West Brook NWIS", "Avery Brook NWIS", "West Brook 0",
+                                                         "Paine Run 10",
+                                                         "Staunton River 10"))
+unique(dat_week_big$site_name)
+unique(dat_week_little$site_name)
+```
+
+Join big and little g data:
+```{r}
+fudge <- 0.001
+dat_week_join <- dat_week_little %>% 
+  select(basin, subbasin, site_name, year, week, Yield_filled_mm_weekly) %>% 
+  rename(site_name_little = site_name, yield_little = Yield_filled_mm_weekly) %>% 
+  left_join(dat_week_big %>% 
+              select(basin, subbasin, site_name, year, week, Yield_filled_mm_weekly) %>%
+              rename(site_name_big = site_name, yield_big = Yield_filled_mm_weekly)) %>%
+  filter(!is.na(yield_big)) %>%
+  mutate(yield_little_log = log(yield_little + fudge),
+         yield_big_log = log(yield_big + fudge))
+head(dat_week_join)
+```
+
+View sample size (number of weeks) per site:
+```{r}
+dat_week_join %>% group_by(site_name_little) %>% summarize(numweeks = n()) %>% kable()
+```
+
+```{r}
+unique(dat_week_join$subbasin)
+```
+
+
+### View gG - sites combined
+
+::: panel-tabset
+#### West Brook
+```{r}
+dat_week_join %>% filter(subbasin == "West Brook") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log, group = site_name_little, color = site_name_little)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F)
+```
+#### Big Creek
+```{r}
+dat_week_join %>% filter(subbasin == "Big Creek") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log, group = site_name_little, color = site_name_little)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F)
+```
+#### Coal Creek
+```{r}
+dat_week_join %>% filter(subbasin == "Coal Creek") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log, group = site_name_little, color = site_name_little)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F)
+```
+#### Paine Run
+```{r}
+dat_week_join %>% filter(subbasin == "Paine Run") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log, group = site_name_little, color = site_name_little)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F)
+```
+#### Staunton River
+```{r}
+dat_week_join %>% filter(subbasin == "Staunton River") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log, group = site_name_little, color = site_name_little)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F)
+```
+#### Donner Blitzen
+```{r}
+dat_week_join %>% filter(subbasin == "Donner Blitzen") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log, group = site_name_little, color = site_name_little)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F)
+```
+:::
+
+
+### View gG - facet by site
+
+::: panel-tabset
+#### West Brook
+```{r fig.width=8, fig.height=7}
+dat_week_join %>% filter(subbasin == "West Brook") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) +
+  facet_wrap(~site_name_little)
+```
+#### Big Creek
+```{r fig.width=8, fig.height=7}
+dat_week_join %>% filter(subbasin == "Big Creek") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) +
+  facet_wrap(~site_name_little)
+```
+#### Coal Creek
+```{r fig.width=8, fig.height=7}
+dat_week_join %>% filter(subbasin == "Coal Creek") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) +
+  facet_wrap(~site_name_little)
+```
+#### Paine Run
+```{r fig.width=8, fig.height=7}
+dat_week_join %>% filter(subbasin == "Paine Run") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) +
+  facet_wrap(~site_name_little)
+```
+#### Staunton River
+```{r fig.width=8, fig.height=7}
+dat_week_join %>% filter(subbasin == "Staunton River") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) +
+  facet_wrap(~site_name_little)
+```
+#### Donner Blitzen
+```{r fig.width=8, fig.height=7}
+dat_week_join %>% filter(subbasin == "Donner Blitzen") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log)) + 
+  geom_point(alpha = 0.25) + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm", se = F) +
+  facet_wrap(~site_name_little)
+```
+:::
+
+
+
+
+
