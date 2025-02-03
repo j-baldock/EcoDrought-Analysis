@@ -4,7 +4,10 @@ library(knitr)
 # To add a chapter to the book, or shuffle the order of chapters, first render the single chapter, then render the entire book (after updating the .yml file)
 
 # Render all
-quarto::quarto_render(output_format = "html", cache_refresh = TRUE)
+# Need to delete caches and files for the following qmd files before rendering
+#  - CollateData
+#  - TemporalResolution
+quarto::quarto_render(output_format = "html")
 
 # Render single chapter only
 quarto::quarto_render("index.qmd", 

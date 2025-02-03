@@ -22,9 +22,13 @@ book:
         - Data Availability/CollateData.qmd
         - Explore Data/ExploreData.qmd
         - Explore Data/TemporalResolution.qmd
+        - Big G Little g/GgStoryPlots.qmd
+    - part: "Covariates"   
+      chapters:        
+        - Covariates/LandscapeCovariates.qmd
     - part: "Big G-Little g"   
       chapters:
-        - Big G Little g/GgStoryPlots.qmd
+        - Event Delineation/WeeklySummary.qmd
         - Event Delineation/HydroEvents.qmd
         - Big G Little g/WedgeModel.qmd
     - part: "DEPRECATED"   
