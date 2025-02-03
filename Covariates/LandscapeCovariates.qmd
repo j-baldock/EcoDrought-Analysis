@@ -157,45 +157,6 @@ spread <- line2network(sf = st_transform(st_as_sf(streams_list[[9]]), "+proj=utm
 flow_list <- list(wesbro, paine, piney, staunt, nfflat, nfflat, nfflat, duck, shield, spread, donblit)
 ```
 
-View flowline objects
-::: panel-tabset
-### West Brook
-```{r echo=FALSE}
-plot(wesbro, main = "West Brook, MA")
-```
-### Paine Run
-```{r echo=FALSE}
-plot(paine, main = "Paine Run, VA")
-```
-### Piney River
-```{r echo=FALSE}
-plot(piney, main = "Piney River, VA")
-```
-### Staunton River
-```{r echo=FALSE}
-plot(staunt, main = "Staunton River, VA")
-```
-### Flathead
-```{r echo=FALSE}
-plot(nfflat, main = "North Fork Flathead River, MT")
-```
-### Duck Creek, MT
-```{r echo=FALSE}
-plot(duck, main = "Duck Creek, MT")
-```
-### Shields River
-```{r echo=FALSE}
-plot(shield, main = "Shields River, MT")
-```
-### Spread Creek
-```{r echo=FALSE}
-plot(spread, main = "Spread Creek, WY")
-```
-### Donner-Blitzen
-```{r echo=FALSE}
-plot(donblit, main = "Donner-Blitzen River, OR")
-```
-:::
 
 Calulate river distance between big and little g pairs in loop
 ```{r}
@@ -240,7 +201,6 @@ nlcd_list <- list()
 nlcd_files <- list.files("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Spatial data/NLCD/NLCD_2020")
 for (i in 1:length(nlcd_files)) {
   nlcd_list[[i]] <- rast(paste("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Spatial data/NLCD/NLCD_2020/", nlcd_files[i], sep = ""))
-  print(i)
 }
 nlcd <- do.call(merge, nlcd_list)
 names(nlcd) <- c("lccode")
@@ -249,7 +209,6 @@ names(nlcd) <- c("lccode")
 Reproject watershed polygons to match NLCD (Albers equal area) and trim to focal big g little g sites.
 ```{r}
 sheds_aea <- project(sheds, nlcd)
-sheds_aea %>% filter(site_name %in% siteinfo2$site_name)
 ```
 
 View NLCD rasters for each big G

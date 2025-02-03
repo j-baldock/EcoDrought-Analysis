@@ -8,6 +8,7 @@ dplyr
 stringr
 forcats
 lubridate
+sf
 terra
 tidyterra
 mapview
@@ -16,4 +17,3 @@ RColorBrewer
 scales
 GGally
 riverdist
-sf
