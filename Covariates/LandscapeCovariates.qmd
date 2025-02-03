@@ -1,0 +1,357 @@
+---
+title: "Landscape Covariates"
+---
+
+Purpose: Derive landscape/basin-level covariates to use in gG framework.
+
+```{r echo=FALSE, message=FALSE}
+library(tidyverse)
+library(sf)
+library(terra)
+library(tidyterra)
+library(mapview)
+library(knitr)
+library(RColorBrewer)
+library(scales)
+library(GGally)
+library(riverdist)
+```
+
+
+## Site info
+```{r}
+# site information and locations
+siteinfo <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv")
+siteinfo_sp <- st_as_sf(siteinfo, coords = c("long", "lat"), crs = 4326)
+mapview(siteinfo_sp, zcol = "designation")
+```
+
+
+## Spatial data
+
+### Watersheds
+```{r}
+sheds_list <- list()
+myfiles <- list.files(path = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/", pattern = ".shp")
+for (i in 1:length(myfiles)) {
+  sheds_list[[i]] <- vect(paste("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/", myfiles[i], sep = ""))
+}
+sheds <- do.call(rbind, sheds_list) %>% left_join(siteinfo)
+mapview(st_as_sf(sheds), alpha.regions = 0.2)
+```
+
+### Flowlines
+```{r}
+streams_list <- list()
+myfiles <- list.files(path = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/", pattern = ".shp")
+sheds_basins <- sheds[sheds$site_id %in% c("NFF",      # Flathead
+                                           "WBR",      # West Brook
+                                           "DBF",      # Donner Blitzen
+                                           "PI_10FL",  # Shen, Piney River
+                                           "SR_10FL",  # Shen, Staunton River
+                                           "PA_10FL",  # Shen, Paine Run
+                                           "SRS",      # Shields River
+                                           "DU01",     # Duck Creek
+                                           "SP11"),]   # Spread Creek
+myctr <- c(1,2,3,4,4,4,5,5,6)
+for (i in 1:length(myctr)) {
+  streams_list[[i]] <- crop(vect(paste("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/", myfiles[myctr[i]], sep = "")), sheds_basins[i])
+  crs(streams_list[[i]]) <- crs(sheds)
+}
+streams <- do.call(rbind, streams_list)
+mapview(st_as_sf(streams)) + mapview(siteinfo_sp, zcol = "designation")
+```
+
+
+## Define G-g clusters/sub-basins
+```{r}
+siteinfo2 <- siteinfo %>% 
+  filter(!site_name %in% c("WoundedBuckCreek", "Brackett Creek", "South River Conway NWIS", 
+                           "Shields River nr Livingston NWIS", "North Fork Flathead River NWIS", 
+                           "Pacific Creek at Moran NWIS")) %>%
+  mutate(designation = ifelse(site_name %in% c("Donner Blitzen River nr Frenchglen NWIS", 
+                                               "BigCreekLower", "CoalCreekLower", "McGeeCreekLower", 
+                                               "West Brook NWIS", "West Brook 0", 
+                                               "Paine Run 10", "Staunton River 10", "Piney River 10", 
+                                               "Shields River Valley Ranch", "Shields River ab Smith NWIS", 
+                                               "EF Duck Creek be HF",
+                                               "Spread Creek Dam"), "big", "little"))
+siteinfo2 %>% arrange(region, basin, subbasin, designation) %>% kable()
+```
+
+
+## Basin overlap
+
+Calculate area and proportional overlap between big and little g basin pairs. Proportional overlap is generally entirely correlated with absolute and relative difference in basin size (the exception being the few sites that are not nested within a Big G basin: Coal Creek and McGee Creek sites).
+```{r}
+mysubbasins <- unique(siteinfo2$subbasin)
+tib_list1 <- list()
+tib_list2 <- list()
+tib_list3 <- list()
+
+for (i in 1:length(mysubbasins)) {
+  sites_big <- siteinfo2 %>% filter(subbasin == mysubbasins[i], designation == "big")
+  sites_little <- siteinfo2 %>% filter(subbasin == mysubbasins[i], designation == "little")
+  for (j in 1:length(unique(sites_big$site_name))) {
+    basin_big <- sheds[sheds$site_name == unique(sites_big$site_name)[j]]
+    for (k in 1:length(unique(sites_little$site_name))) {
+      basin_little <- sheds[sheds$site_name == unique(sites_little$site_name)[k]]
+      intersection <- expanse(intersect(basin_big, basin_little), unit = "km")
+      shared_area_km2 <- ifelse(length(intersection) == 0, 0, intersection)
+      shared_area_prop <- shared_area_km2 / expanse(basin_big, unit = "km")
+      tib_list3[[k]] <- tibble(subbasin = mysubbasins[i],
+                               site_name_big = unique(sites_big$site_name)[j], 
+                               site_name_little = unique(sites_little$site_name)[k],
+                               shared_area_km2 = shared_area_km2, shared_area_prop = shared_area_prop)
+    }
+    tib_list2[[j]] <- do.call(rbind, tib_list3)
+    tib_list3 <- list()
+  }
+  tib_list1[[i]] <- do.call(rbind, tib_list2)
+  tib_list2 <- list()
+}
+overlap_tib <- do.call(rbind, tib_list1)
+head(overlap_tib)
+```
+
+
+## Basin size and elevation
+
+Calculate absolute and relative difference in basin size and elevation between big and little g pairs.
+```{r}
+sites_big <- siteinfo2 %>% filter(designation == "big") %>% select(subbasin, site_name, area_sqmi, elev_ft) %>% rename(site_name_big = site_name, area_sqmi_big = area_sqmi, elev_ft_big = elev_ft)
+sites_little <- siteinfo2 %>% filter(designation == "little") %>% select(subbasin, site_name, area_sqmi, elev_ft) %>% rename(site_name_little = site_name, area_sqmi_little = area_sqmi, elev_ft_little = elev_ft)
+areaelev_tib <- sites_little %>% left_join(sites_big) %>% 
+  mutate(area_sqmi_diff = (area_sqmi_little - area_sqmi_big),
+         area_sqmi_reldiff = (area_sqmi_little - area_sqmi_big) / area_sqmi_little,
+         elev_ft_diff = (elev_ft_little - elev_ft_big),
+         elev_ft_reldiff = (elev_ft_little - elev_ft_big) / elev_ft_little) %>% 
+  select(subbasin, site_name_big, site_name_little, 
+         area_sqmi_big, area_sqmi_little, elev_ft_big, elev_ft_little,
+         area_sqmi_diff, area_sqmi_reldiff, elev_ft_diff, elev_ft_reldiff)
+dim(areaelev_tib)
+head(areaelev_tib)
+```
+
+
+## River distance
+
+Get subbasins
+```{r}
+mysubbasins <- unique(siteinfo2$subbasin)
+mysubbasins
+```
+
+Convert flowline objects
+```{r}
+nfflat <- line2network(sf = st_transform(st_as_sf(streams_list[[1]]), "+proj=utm +zone=11 +ellps=GRS80 +datum=NAD83"))
+wesbro <- line2network(sf = st_transform(st_as_sf(streams_list[[2]]), "+proj=utm +zone=18 +ellps=GRS80 +datum=NAD83"))
+donblit <- line2network(sf = st_transform(st_as_sf(streams_list[[3]]), "+proj=utm +zone=11 +ellps=GRS80 +datum=NAD83"))
+paine <- line2network(sf = st_transform(st_as_sf(streams_list[[4]]), "+proj=utm +zone=17 +ellps=GRS80 +datum=NAD83"))
+piney <- line2network(sf = st_transform(st_as_sf(streams_list[[5]]), "+proj=utm +zone=17 +ellps=GRS80 +datum=NAD83"))
+staunt <- line2network(sf = st_transform(st_as_sf(streams_list[[6]]), "+proj=utm +zone=17 +ellps=GRS80 +datum=NAD83"))
+duck <- line2network(sf = st_transform(st_as_sf(streams_list[[7]]), "+proj=utm +zone=12 +ellps=GRS80 +datum=NAD83"))
+shield <- line2network(sf = st_transform(st_as_sf(streams_list[[8]]), "+proj=utm +zone=12 +ellps=GRS80 +datum=NAD83"))
+spread <- line2network(sf = st_transform(st_as_sf(streams_list[[9]]), "+proj=utm +zone=12 +ellps=GRS80 +datum=NAD83"))
+
+flow_list <- list(wesbro, paine, piney, staunt, nfflat, nfflat, nfflat, duck, shield, spread, donblit)
+```
+
+View flowline objects
+::: panel-tabset
+### West Brook
+```{r echo=FALSE}
+plot(wesbro, main = "West Brook, MA")
+```
+### Paine Run
+```{r echo=FALSE}
+plot(paine, main = "Paine Run, VA")
+```
+### Piney River
+```{r echo=FALSE}
+plot(piney, main = "Piney River, VA")
+```
+### Staunton River
+```{r echo=FALSE}
+plot(staunt, main = "Staunton River, VA")
+```
+### Flathead
+```{r echo=FALSE}
+plot(nfflat, main = "North Fork Flathead River, MT")
+```
+### Duck Creek, MT
+```{r echo=FALSE}
+plot(duck, main = "Duck Creek, MT")
+```
+### Shields River
+```{r echo=FALSE}
+plot(shield, main = "Shields River, MT")
+```
+### Spread Creek
+```{r echo=FALSE}
+plot(spread, main = "Spread Creek, WY")
+```
+### Donner-Blitzen
+```{r echo=FALSE}
+plot(donblit, main = "Donner-Blitzen River, OR")
+```
+:::
+
+Calulate river distance between big and little g pairs in loop
+```{r}
+tib_list1 <- list()
+tib_list2 <- list()
+tib_list3 <- list()
+
+utmzones <- c(18, 17, 17, 17, 11, 11, 11, 12, 12, 12, 11)
+
+for (k in 1:length(mysubbasins)) {
+  # select sites
+  sites_big <- st_transform(st_as_sf(siteinfo2, coords = c("long", "lat"), crs = 4326) %>% filter(subbasin == mysubbasins[k], designation == "big"), paste("+proj=utm +zone=", utmzones[k], " +ellps=GRS80 +datum=NAD83", sep = ""))
+  sites_little <- st_transform(st_as_sf(siteinfo2, coords = c("long", "lat"), crs = 4326) %>% filter(subbasin == mysubbasins[k], designation == "little"), paste("+proj=utm +zone=", utmzones[k], " +ellps=GRS80 +datum=NAD83", sep = ""))
+  # convert sites
+  sites_big_riv <- xy2segvert(x = st_coordinates(sites_big)[,1], y = st_coordinates(sites_big)[,2], rivers = flow_list[[k]])
+  sites_little_riv <- xy2segvert(x = st_coordinates(sites_little)[,1], y = st_coordinates(sites_little)[,2], rivers = flow_list[[k]])
+  # compute river distance in loop
+  for (i in 1:dim(sites_big)[1]) {
+    for (j in 1:dim(sites_little)[1]) {
+      tib_list3[[j]] <- tibble(site_name_big = sites_big$site_name[i],
+                               site_name_little = sites_little$site_name[j],
+                               riverdist_km = riverdistance(startseg = sites_big_riv$seg[i], startvert = sites_big_riv$vert[i],
+                                                            endseg = sites_little_riv$seg[j], endvert = sites_little_riv$vert[j], 
+                                                            rivers = flow_list[[k]]) / 1000)
+      }
+    tib_list2[[i]] <- do.call(rbind, tib_list3)
+    tib_list3 <- list()
+  }
+  tib_list1[[k]] <- do.call(rbind, tib_list2)
+  tib_list2 <- list()
+}
+rivdist_tib <- do.call(rbind, tib_list1)
+head(rivdist_tib)
+```
+
+
+## Landcover
+
+Load 2020 NLCD raster files for each region
+```{r}
+nlcd_list <- list()
+nlcd_files <- list.files("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Spatial data/NLCD/NLCD_2020")
+for (i in 1:length(nlcd_files)) {
+  nlcd_list[[i]] <- rast(paste("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Spatial data/NLCD/NLCD_2020/", nlcd_files[i], sep = ""))
+  print(i)
+}
+nlcd <- do.call(merge, nlcd_list)
+names(nlcd) <- c("lccode")
+```
+
+Reproject watershed polygons to match NLCD (Albers equal area) and trim to focal big g little g sites.
+```{r}
+sheds_aea <- project(sheds, nlcd)
+sheds_aea %>% filter(site_name %in% siteinfo2$site_name)
+```
+
+View NLCD rasters for each big G
+```{r}
+mysites <- c("West Brook NWIS", "Paine Run 10", "Piney River 10", "Staunton River 10", "BigCreekLower", "CoalCreekLower", "McGeeCreekLower", "EF Duck Creek be HF", "Shields River ab Smith NWIS", "Spread Creek Dam", "Donner Blitzen River nr Frenchglen NWIS")
+nlcd_big_list <- list()
+for (i in 1:length(mysites)) { nlcd_big_list[[i]] <- crop(nlcd, sheds_aea %>% filter(site_name == mysites[i]), mask = TRUE) }
+```
+
+::: panel-tabset
+### West Brook
+```{r echo=FALSE}
+plot(nlcd_big_list[[1]], main = "West Brook, MA")
+```
+### Paine Run
+```{r echo=FALSE}
+plot(nlcd_big_list[[2]], main = "Paine Run, VA")
+```
+### Piney River
+```{r echo=FALSE}
+plot(nlcd_big_list[[3]], main = "Piney River, VA")
+```
+### Staunton River
+```{r echo=FALSE}
+plot(nlcd_big_list[[4]], main = "Staunton River, VA")
+```
+### Big Creek
+```{r echo=FALSE}
+plot(nlcd_big_list[[5]], main = "Big Creek, Flathead, MT")
+```
+### Coal Creek
+```{r echo=FALSE}
+plot(nlcd_big_list[[6]], main = "Coal Creek, Flathead, MT")
+```
+### McGee Creek
+```{r echo=FALSE}
+plot(nlcd_big_list[[7]], main = "McGee Creek, Flathead, MT")
+```
+### Duck Creek
+```{r echo=FALSE}
+plot(nlcd_big_list[[8]], main = "Duck Creek, MT")
+```
+### Shields River
+```{r echo=FALSE}
+plot(nlcd_big_list[[9]], main = "Shields River, MT")
+```
+### Duck Creek
+```{r echo=FALSE}
+plot(nlcd_big_list[[10]], main = "Spread Creek, WY")
+```
+### Donner-Blitzen
+```{r echo=FALSE}
+plot(nlcd_big_list[[11]], main = "Donner-Blitzen River, OR")
+```
+:::
+
+
+Calculate proportional cover by each landcover class for each watershed.
+```{r}
+mysites <- siteinfo2$site_name
+tiblist <- list()
+for (i in 1:length(mysites)) {
+  bclc <- crop(nlcd, sheds_aea %>% filter(site_name == mysites[i]), mask = TRUE)
+  #plot(bclc, main = mysites[i])
+  bclc_tab <- table(values(bclc)[!is.na(values(bclc))]) / sum(!is.na(values(bclc)))
+  names(bclc_tab) <- paste("nlcd_", names(bclc_tab), sep = "")
+  tiblist[[i]] <- tibble(as.data.frame(bclc_tab)) %>% 
+    rename(class = Var1, prop_cover = Freq) %>% 
+    mutate(site_name = mysites[i]) %>% 
+    select(site_name, class, prop_cover)
+}
+nlcd_cover <- do.call(rbind, tiblist)
+```
+
+Join big G proportional dominant cover to little g's by subbasin and calculate difference. 
+```{r}
+nlcd_cover <- nlcd_cover %>% left_join(siteinfo2 %>% select(site_name, subbasin, designation))
+nlcd_cover_big <- nlcd_cover %>% filter(designation == "big") %>% group_by(subbasin, site_name) %>% filter(prop_cover == max(prop_cover)) %>% rename(site_name_big = site_name, prop_cover_big = prop_cover) %>% select(-designation)
+
+nlcd_cover_join <- nlcd_cover %>% filter(designation == "little") %>% rename(site_name_little = site_name, prop_cover_little = prop_cover) %>% select(-designation) %>% left_join(nlcd_cover_big) %>% filter(!is.na(site_name_big)) %>% mutate(prop_cover_diff = prop_cover_little - prop_cover_big)
+
+head(nlcd_cover_join)
+```
+
+
+## Join covariate data
+
+Join covariate data
+```{r}
+covariates <- overlap_tib %>% left_join(areaelev_tib) %>% left_join(rivdist_tib) %>% left_join(nlcd_cover_join)
+covariates
+```
+
+View pairs plot
+```{r fig.width=8, fig.height=8}
+ggpairs(covariates %>% select(shared_area_prop, area_sqmi_reldiff, elev_ft_reldiff, riverdist_km, prop_cover_diff))
+```
+
+Write data file
+```{r}
+write_csv(covariates, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Covariates/EcoDrought_LandscapeCovariates.csv")
+```
+
+
+
