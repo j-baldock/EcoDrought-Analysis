@@ -38,6 +38,10 @@ quarto::quarto_render("Big G Little g/WedgeModel.qmd",
                       cache_refresh = TRUE, # default is FALSE
                       output_format = "html")
 
+quarto::quarto_render("Covariates/LandscapeCovariates.qmd", 
+                      cache_refresh = TRUE, # default is FALSE
+                      output_format = "html")
+
 
 # Deprecated
 

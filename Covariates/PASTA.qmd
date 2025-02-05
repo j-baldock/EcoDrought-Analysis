@@ -1,0 +1,450 @@
+---
+title: "PASTA"
+---
+
+Purpose: use paired air-stream temperature signal analysis to estimate daily groundwater contributions to streamflow
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(cache = TRUE, warning = FALSE, message = FALSE, cache.lazy = FALSE)
+```
+
+```{r echo=FALSE}
+library(tidyverse)
+library(dygraphs)
+library(minpack.lm)
+library(broom.mixed)
+library(sf)
+library(mapview)
+library(knitr)
+```
+
+
+## Data
+
+### Site information
+```{r}
+siteinfo <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv")
+siteinfo_sp <- st_as_sf(siteinfo, coords = c("long", "lat"), crs = 4326)
+mapview(siteinfo_sp, zcol = "designation")
+```
+
+Define G-g clusters/sub-basins
+```{r}
+siteinfo2 <- siteinfo %>% 
+  filter(!site_name %in% c("WoundedBuckCreek", "Brackett Creek", "South River Conway NWIS", 
+                           "Shields River nr Livingston NWIS", "North Fork Flathead River NWIS", 
+                           "Pacific Creek at Moran NWIS")) %>%
+  mutate(designation = ifelse(site_name %in% c("Donner Blitzen River nr Frenchglen NWIS", 
+                                               "BigCreekLower", "CoalCreekLower", "McGeeCreekLower", 
+                                               "West Brook NWIS", "West Brook 0", 
+                                               "Paine Run 10", "Staunton River 10", "Piney River 10", 
+                                               "Shields River Valley Ranch", "Shields River ab Smith NWIS", 
+                                               "EF Duck Creek be HF",
+                                               "Spread Creek Dam"), "big", "little"))
+siteinfo2 %>% arrange(region, basin, subbasin, designation) %>% kable()
+```
+
+
+### Stream temp
+```{r}
+dat <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_Raw_ECODandNWIS.csv") %>% 
+  filter(site_name %in% siteinfo2$site_name) %>% 
+  mutate(datetime = floor_date(datetime, unit = "hour")) %>%
+  group_by(region, basin, subbasin, site_name, datetime) %>% 
+  summarise(tempc = mean(tempc)) %>%
+  ungroup()
+tz(dat$datetime)
+dat
+
+
+ddd <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_Raw_ECODandNWIS.csv")
+ddd %>% filter(site_name == "Jimmy Brook") %>% select(datetime, tempc) %>% dygraph() %>% dyRangeSelector() 
+```
+
+### Join air temp
+
+Apply air temperature data from a single site within each sub-basin to all water temperature/flow sites within the same sub-basin. This implicitly assumes that air temperature is homogeneous within each sub-basin, which is an oversimplification, but necessary as we only have air temperature observations at a single site within most sub-basins.
+```{r echo=FALSE}
+tibble(subbasin = c("West Brook", "Paine Run", "Staunton River", "Piney River"),
+       temp_site = c("West Brook Center", "Paine Run 10", "Staunton River 10", "Piney River 10")) %>% kable()
+```
+
+
+#### West Brook
+```{r}
+airtemp_wb <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw Data/Mass/WestBrookCentral_AirTemp_31December2019_to_7July2024.csv")
+tz(airtemp_wb$datetime_est) <- "EST"
+airtemp_wb$datetime <- with_tz(airtemp_wb$datetime_est, "UTC")
+airtemp_wb <- airtemp_wb %>% 
+  select(datetime, tempc_air) %>% 
+  mutate(datetime = floor_date(datetime, unit = "hour")) %>%
+  group_by(datetime) %>% 
+  summarise(tempc_air = mean(tempc_air)) %>%
+  ungroup()
+tz(airtemp_wb$datetime)
+# join hourly stream and air temp
+dat_wb <- dat %>% filter(subbasin == "West Brook") %>% left_join(airtemp_wb)
+head(dat_wb)
+```
+
+#### Shenandoah
+```{r}
+airtemp_shen <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw data/Virg/Shen_BigG_TempEtc_hourly_UVA.csv") %>%
+  rename(tempc_air = airtempc_mean) %>%
+  select(site_id, datetime, tempc_air) %>%
+  left_join(siteinfo %>% select(site_id, site_name, region, basin, subbasin))
+tz(airtemp_shen$datetime) <- "EST"
+airtemp_shen$datetime <- with_tz(airtemp_shen$datetime, "UTC")
+airtemp_shen <- airtemp_shen %>% 
+  mutate(datetime = floor_date(datetime, unit = "hour")) %>%
+  group_by(region, basin, subbasin, site_name, datetime) %>% 
+  summarise(tempc_air = mean(tempc_air)) %>%
+  ungroup()
+# join hourly stream and air temp
+dat_shen <- dat %>% filter(region == "Shen") %>% left_join(airtemp_shen %>% select(-site_name))
+head(dat_shen)
+```
+
+### Bind data
+```{r}
+dat_bind <- bind_rows(dat_wb, dat_shen)
+dat_bind$datetime <- with_tz(dat_bind$datetime, "EST")
+dat_bind
+```
+
+
+### View data
+
+Unique sites
+```{r}
+unique(dat_bind$site_name)
+```
+Notes:
+
+* *West Brook*
+  + Mitchell, Obear, and WB Lower have erroneous water temp readings after ~Aug. 31, 2021
+  + All WB sites have error in F to C conversion (from Aquarius)
+
+::: panel-tabset
+#### West Brook
+```{r echo=FALSE, fig.width=9, fig.height=7}
+dat_bind %>% filter(subbasin == "West Brook", !is.na(tempc)) %>% 
+  ggplot() +
+  geom_line(aes(x = datetime, y = tempc_air), color = "darkorange") +
+  geom_line(aes(x = datetime, y = tempc), color = "dodgerblue2") +
+  ylab("Temperature (deg. C)") +
+  facet_wrap(~site_name)
+```
+#### Paine Run
+```{r echo=FALSE, fig.width=9, fig.height=9}
+dat_bind %>% filter(subbasin == "Paine Run", !is.na(tempc)) %>% 
+  ggplot() +
+  geom_line(aes(x = datetime, y = tempc_air), color = "darkorange") +
+  geom_line(aes(x = datetime, y = tempc), color = "dodgerblue2") +
+  ylab("Temperature (deg. C)") +
+  facet_wrap(~site_name)
+```
+#### Staunton River
+```{r echo=FALSE, fig.width=9, fig.height=9}
+dat_bind %>% filter(subbasin == "Staunton River", !is.na(tempc)) %>% 
+  ggplot() +
+  geom_line(aes(x = datetime, y = tempc_air), color = "darkorange") +
+  geom_line(aes(x = datetime, y = tempc), color = "dodgerblue2") +
+  ylab("Temperature (deg. C)") +
+  facet_wrap(~site_name)
+```
+:::
+
+
+View single site using dyGraphs, e.g., Staunton River 10. 
+```{r}
+dat_bind %>% filter(site_name %in% "Staunton River 10") %>% select(datetime, tempc, tempc_air) %>% dygraph(main = "Staunton River 10") %>% dyRangeSelector() %>% dyAxis("y", label = "Stream temp. (deg C)") %>% dyAxis("y2", label = "Air temp. (deg C)") %>% dySeries("tempc", axis = "y", label = "Stream") %>% dySeries("tempc_air", axis = "y2", label = "Air")
+```
+
+
+### Format data for PASTA
+```{r}
+dat2 <- dat_bind %>% 
+  mutate(year = year(datetime),
+         yday = yday(datetime),
+         hour = hour(datetime)) %>%
+  rename(airTemperature = tempc_air,
+         waterTemperature = tempc) %>%
+  select(site_name, datetime, year, yday, hour, airTemperature, waterTemperature) %>%
+  filter(waterTemperature >= 1)
+range(dat2$waterTemperature)
+dat2
+```
+
+
+
+## Create functions
+
+### Curve fits
+
+Functions to model air and water temperature time series data using sine wave regression:
+```{r}
+curve_fit_air <- function(d, minDataLength = 20) {
+  # return NAs if not enough data
+  if (length(d$airTemperature) < minDataLength) { return(list(model = NA, rSquared = NA)) }
+  # convert hours to radians/circular
+  d$hour_rad <- d$hour * (2 * pi / 24)
+  # starting values
+  startAir <- list(A = -1, B = -1, C = mean(d$airTemperature, na.rm = TRUE))
+  # run sine wave regression as an NLS model
+  modelAir <- tryCatch({
+    nlsLM(airTemperature ~ A * sin(hour_rad) + B * cos(hour_rad) + C, data = d, start = startAir)
+    }, error = function(e) {
+      return(list(model = NA, rSquared = NA))
+      })
+  # rSquared calculation
+  residuals <- residuals(modelAir)
+  sst <- sum((d$airTemperature - mean(d$airTemperature))^2)
+  ssr <- sum(residuals^2)
+  rSquared <- 1 - (ssr / sst)
+  # return fitted model object and R2
+  return(list(model = modelAir, rSquared = rSquared))
+  }
+
+curve_fit_water <- function(d, minDataLength = 20) {
+  # return NAs if not enough data
+  if (length(d$waterTemperature) < minDataLength) { return(list(model = NA, rSquared = NA)) }
+  # convert hours to radians/circular
+  d$hour_rad <- d$hour * (2 * pi / 24)
+  # starting values
+  startWater <- list(A = -1, B = -1, C = mean(d$waterTemperature, na.rm = TRUE))
+  # run sine wave regression as an NLS model
+  modelWater <- tryCatch({
+    nlsLM(waterTemperature ~ A * sin(hour_rad) + B * cos(hour_rad) + C, data = d, start = startWater)
+    }, error = function(e) {
+      return(list(model = NA, rSquared = NA))
+      })
+  # rSquared calculation
+  residuals <- residuals(modelWater)
+  sst <- sum((d$waterTemperature - mean(d$waterTemperature))^2)
+  ssr <- sum(residuals^2)
+  rSquared <- 1 - (ssr / sst)
+  # return fitted model object and R2
+  return(list(model = modelWater, rSquared = rSquared))
+  }
+```
+
+### Extract parameters
+
+Function to extract model parameters from sine wave regression fits:
+```{r}
+extract_params <- function(model) {
+  if (is.null(model)) {
+    return(NULL)
+  }
+
+  params <- tryCatch({
+    broom.mixed::tidy(model)
+  }, error = function(e) {
+    NULL
+  })
+
+  return(params)
+}
+```
+
+### Get model parameters
+
+Function to fit sine wave regression models to data and grab amplitude, phase, and mean temperature parameters from fitted model objects:
+```{r}
+getParams <- function(dtHOUR, minDataLength = 20) {
+  # Models for air temperature
+  modelsAir <- dtHOUR %>%
+    group_by(site_name, year, yday) %>%
+    nest() %>%
+    mutate(dataLength = map_dbl(data, ~length(.x$airTemperature))) |>
+    filter(dataLength > minDataLength) |> # filter out daily datasets that are too short
+    mutate(
+      model0 = map(data, curve_fit_air),
+      model = map(model0, 'model'),
+      rSquared = map(model0, 'rSquared'),
+      params = map(model, extract_params)
+    ) %>%
+    unnest(c(params, rSquared)) |>
+    select(-model0, -model, -data) |>
+    mutate(tempVar = "air")
+
+  # Models for water temperature
+  modelsWater <- dtHOUR %>%
+    group_by(site_name, year, yday) %>%
+    nest() %>%
+    mutate(dataLength = map_dbl(data, ~length(.x$waterTemperature))) |>
+    filter(dataLength > minDataLength) |> # filter out daily datasets that are too short
+    mutate(
+      model0 = map(data, curve_fit_water),
+      model = map(model0, 'model'),
+      rSquared = map(model0, 'rSquared'),
+      params = map(model, extract_params)
+    ) %>%
+    unnest(c(params, rSquared)) |>
+    select(-model0, -model, -data) |>
+    mutate(tempVar = "water")
+
+  # Collect air and water models
+  models <- bind_rows(modelsAir, modelsWater) |>
+    filter(!is.na(term)) |>
+    #group_by(site_name, year, yday, tempVar) |>
+    select(-std.error, -statistic, -p.value) |> # need to lose these columns so there are no unique values remaining in non-widened cols
+    pivot_wider(names_from = term, values_from = estimate)
+  
+  # Calculate amplitude and phase for air and water data
+  params <- models |>
+    group_by(site_name, year, yday, tempVar) |>
+    mutate(
+      amplitude = sqrt(A^2 + B^2),
+      phase = ifelse(A < 0,
+        12 + (24 / (2 * pi)) * atan(B / A), #switched order of A and B per Tim's email 5/17/24
+        (24 / (2 * pi)) * atan(B / A)),
+      mean = C
+    ) |>
+    left_join(
+      dtHOUR |> select(site_name, year, yday) |> distinct(), by = c("site_name", "year", "yday")
+    ) |>
+    ungroup()
+  
+  # Return amplitude and phase parameters
+  return(params)
+}
+```
+
+### Get derived parameters
+
+Function to calculate amplitude ratio, phase lag, and mean ratio parameters from sine wave regression models fits to daily paired air-stream temperature data:  
+```{r}
+getAmpPhase <- function(paramsIn) {
+  paramsIn |>
+    select(site_name, year, yday, tempVar, amplitude, phase, mean, rSquared) |>
+    pivot_wider(
+      names_from = tempVar,
+      values_from = c(amplitude, phase, mean, rSquared)
+    ) |>
+    select(
+      site_name, year, yday,
+      starts_with("amplitude"),
+      starts_with("phase"),
+      starts_with("mean"),
+      starts_with("rSquared")
+    ) |>
+    mutate(
+      amplitudeRatio = amplitude_water / amplitude_air,
+      phaseLag = phase_water - phase_air,
+      meanRatio = mean_water / mean_air
+    )
+}
+```
+
+### Predictions
+
+Function to predict air or water temperature from fitted models: 
+```{r}
+getParamsPred <- function(paramsIn) {
+
+  uniqueValues <- paramsIn |>
+    distinct(site_name, year, yday, tempVar)
+
+  preds <- crossing(uniqueValues, hour = 0:23) %>%
+    left_join(paramsIn, by = c("site_name", "year", "yday", "tempVar")) %>%
+    mutate(
+      hour_rad = hour * (2 * pi / 24),
+      predTemp = A * sin(hour_rad) + B * cos(hour_rad) + C
+    )
+
+    return(preds)
+ }
+```
+
+
+## Perform PASTA
+
+### Get model parameters
+```{r}
+pasta <- getParams(dtHOUR = dat2)
+pasta
+```
+
+Write to file
+```{r}
+write_csv(pasta, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Covariates/pasta_daily_parameters.csv")
+```
+
+Read in
+```{r}
+pasta <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Covariates/pasta_daily_parameters.csv")
+```
+
+
+### Get derived parameters
+```{r}
+pasta_derived <- getAmpPhase(paramsIn = pasta)
+pasta_derived <- pasta_derived %>% mutate(date = parse_date_time(x = paste(year, yday), orders = "yj")) %>% relocate(date, .after = site_name)
+pasta_derived
+```
+
+### View derived time series
+
+```{r}
+unique(pasta_derived$site_name)
+```
+
+Set focal site
+```{r}
+focal_site <- "Staunton River 10"
+```
+
+View derived parameters
+```{r}
+pasta_derived %>% filter(site_name == focal_site)
+```
+
+Phase lag: phase_water - phase_air
+```{r}
+pasta_derived %>% filter(site_name == focal_site, rSquared_air >= 0.7 & rSquared_water >= 0.7) %>% select(date, phaseLag) %>% dygraph(main = focal_site) %>% dyRangeSelector() %>% dyAxis("y", label = "Phase lag (hrs)") %>% dyOptions(drawPoints = T, strokeWidth = 0, pointSize = 3) %>% dyLimit(0, color = "red") %>% dyHighlight(highlightCircleSize = 5)
+```
+
+Amplitude ratio: amplitude_water - amplitude_air
+```{r}
+pasta_derived %>% filter(site_name == focal_site, rSquared_air >= 0.7 & rSquared_water >= 0.7) %>% select(date, amplitudeRatio) %>% dygraph(main = focal_site) %>% dyRangeSelector() %>% dyAxis("y", label = "Amplitude ratio") %>% dyOptions(drawPoints = T, strokeWidth = 0, pointSize = 3) %>% dyHighlight(highlightCircleSize = 5)
+```
+
+PhaseLag ~ AmplitudeRatio, year = 2020
+```{r}
+pasta_derived %>% filter(site_name == focal_site, year == 2020, rSquared_air >= 0.7 & rSquared_water >= 0.7, phaseLag < 5) %>% ggplot() + geom_point(aes(x = amplitudeRatio, y = phaseLag)) + ggtitle(focal_site)
+```
+
+
+### Observed vs. Predicted
+
+Predict air and stream temperature from fitted sine wave regression models
+```{r}
+preds <- getParamsPred(paramsIn = pasta)
+preds <- preds %>% mutate(datetime = parse_date_time(x = paste(year, yday, hour), orders = "yjh")) %>% relocate(datetime, .after = site_name) %>% select(site_name, datetime, tempVar, rSquared, predTemp) %>% pivot_wider(names_from = tempVar, values_from = c(predTemp, rSquared))
+tz(preds$datetime) <- "EST"
+```
+
+Plot predicted air and stream temperature (orange and blue lines, respectively) over observed air and stream temperature (orange and blue points, respectively). 
+```{r}
+dat2 %>% 
+  select(site_name, datetime, airTemperature, waterTemperature) %>% 
+  filter(site_name == focal_site) %>% 
+  left_join(preds) %>% filter(site_name == focal_site, rSquared_air >= 0.7 & rSquared_water >= 0.7) %>% 
+  select(-c(site_name, rSquared_air, rSquared_water)) %>% 
+  mutate(datetime = datetime + hours(2)) %>% # need to fudge datetime b/c dyGraphs converts to local time zone
+  dygraph(main = focal_site) %>% dyRangeSelector() %>% 
+  dyAxis("y", label = "Water temp.") %>% 
+  dyAxis("y2", label = "Air temp.") %>% 
+  dySeries("waterTemperature", axis = "y", label = "Obs. water temp.", drawPoints = TRUE, strokeWidth = 0, pointSize = 3, color = "dodgerblue") %>% 
+  dySeries("airTemperature", axis = "y2", label = "Obs. air temp.", drawPoints = TRUE, strokeWidth = 0, pointSize = 3, color = "darkorange")  %>% 
+  dySeries("predTemp_water", axis = "y", label = "Pred. water temp.", color = "dodgerblue") %>% 
+  dySeries("predTemp_air", axis = "y2", label = "Pred. air temp.", color = "darkorange")
+```
+
+
+
+
+
+

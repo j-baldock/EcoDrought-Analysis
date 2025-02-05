@@ -26,6 +26,7 @@ book:
     - part: "Covariates"   
       chapters:        
         - Covariates/LandscapeCovariates.qmd
+        - Covariates/PASTA.qmd
     - part: "Big G-Little g"   
       chapters:
         - Event Delineation/WeeklySummary.qmd

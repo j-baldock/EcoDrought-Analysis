@@ -1,0 +1,16 @@
+tidyverse
+ggplot2
+tibble
+tidyr
+readr
+purrr
+dplyr
+stringr
+forcats
+lubridate
+dygraphs
+minpack.lm
+broom.mixed
+sf
+mapview
+knitr
