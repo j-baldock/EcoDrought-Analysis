@@ -7,6 +7,7 @@ library(knitr)
 # Need to delete caches and files for the following qmd files before rendering
 #  - CollateData
 #  - TemporalResolution
+#  - PASTA
 quarto::quarto_render(output_format = "html")
 
 # Render single chapter only
@@ -39,6 +40,10 @@ quarto::quarto_render("Big G Little g/WedgeModel.qmd",
                       output_format = "html")
 
 quarto::quarto_render("Covariates/LandscapeCovariates.qmd", 
+                      cache_refresh = TRUE, # default is FALSE
+                      output_format = "html")
+
+quarto::quarto_render("Covariates/PASTA.qmd", 
                       cache_refresh = TRUE, # default is FALSE
                       output_format = "html")
 

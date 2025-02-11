@@ -16,6 +16,10 @@ library(broom.mixed)
 library(sf)
 library(mapview)
 library(knitr)
+library(fasstr)
+library(zoo)
+library(mblm)
+library(DT)
 ```
 
 
@@ -27,6 +31,7 @@ siteinfo <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought
 siteinfo_sp <- st_as_sf(siteinfo, coords = c("long", "lat"), crs = 4326)
 mapview(siteinfo_sp, zcol = "designation")
 ```
+
 
 Define G-g clusters/sub-basins
 ```{r}
@@ -41,7 +46,14 @@ siteinfo2 <- siteinfo %>%
                                                "Shields River Valley Ranch", "Shields River ab Smith NWIS", 
                                                "EF Duck Creek be HF",
                                                "Spread Creek Dam"), "big", "little"))
-siteinfo2 %>% arrange(region, basin, subbasin, designation) %>% kable()
+
+datatable(siteinfo2 %>% 
+            arrange(region, basin, subbasin, designation) %>% 
+            mutate(lat = round(lat, digits = 2), 
+                   long = round(long, digits = 2), 
+                   area_sqmi = round(area_sqmi, digits = 2), 
+                   elev_ft = round(elev_ft, digits = 0)),
+          caption = "EcoDrought monitoring locations and metadata.")
 ```
 
 
@@ -51,27 +63,41 @@ dat <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoD
   filter(site_name %in% siteinfo2$site_name) %>% 
   mutate(datetime = floor_date(datetime, unit = "hour")) %>%
   group_by(region, basin, subbasin, site_name, datetime) %>% 
-  summarise(tempc = mean(tempc)) %>%
+  summarise(tempc = mean(tempc), TempReliability = min(TempReliability)) %>%
   ungroup()
 tz(dat$datetime)
 dat
-
-
-ddd <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_Raw_ECODandNWIS.csv")
-ddd %>% filter(site_name == "Jimmy Brook") %>% select(datetime, tempc) %>% dygraph() %>% dyRangeSelector() 
 ```
 
-### Join air temp
+### Air temp
 
 Apply air temperature data from a single site within each sub-basin to all water temperature/flow sites within the same sub-basin. This implicitly assumes that air temperature is homogeneous within each sub-basin, which is an oversimplification, but necessary as we only have air temperature observations at a single site within most sub-basins.
 ```{r echo=FALSE}
-tibble(subbasin = c("West Brook", "Paine Run", "Staunton River", "Piney River"),
-       temp_site = c("West Brook Center", "Paine Run 10", "Staunton River 10", "Piney River 10")) %>% kable()
+tibble(subbasin = c("West Brook", 
+                    "Paine Run", 
+                    "Staunton River", 
+                    "Piney River",
+                    "Big Creek",
+                    "Coal Creek",
+                    "McGee Creek",
+                    "Shields River",
+                    "Snake River",
+                    "Donner Blitzen"),
+       temp_site = c("West Brook Central", 
+                     "Paine Run 10", 
+                     "Staunton River 10", 
+                     "Piney River 10",
+                     "SNOTEL Emery Creek",
+                     "SNOTEL Emery Creek",
+                     "SNOTEL Emery Creek",
+                     "SNOTEL Porcupine",
+                     "SNOTEL Base Camp",
+                     "SNOTEL Silvies")) %>% kable()
 ```
 
-
-#### West Brook
+Load air temperature data
 ```{r}
+# West Brook
 airtemp_wb <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw Data/Mass/WestBrookCentral_AirTemp_31December2019_to_7July2024.csv")
 tz(airtemp_wb$datetime_est) <- "EST"
 airtemp_wb$datetime <- with_tz(airtemp_wb$datetime_est, "UTC")
@@ -80,15 +106,12 @@ airtemp_wb <- airtemp_wb %>%
   mutate(datetime = floor_date(datetime, unit = "hour")) %>%
   group_by(datetime) %>% 
   summarise(tempc_air = mean(tempc_air)) %>%
-  ungroup()
-tz(airtemp_wb$datetime)
-# join hourly stream and air temp
-dat_wb <- dat %>% filter(subbasin == "West Brook") %>% left_join(airtemp_wb)
-head(dat_wb)
-```
+  ungroup() %>%
+  mutate(basin = "West Brook", subbasin = "West Brook", source = "SOConte") %>% 
+  select(basin, subbasin, source, datetime, tempc_air)
 
-#### Shenandoah
-```{r}
+
+# Shenandoah
 airtemp_shen <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw data/Virg/Shen_BigG_TempEtc_hourly_UVA.csv") %>%
   rename(tempc_air = airtempc_mean) %>%
   select(site_id, datetime, tempc_air) %>%
@@ -99,36 +122,126 @@ airtemp_shen <- airtemp_shen %>%
   mutate(datetime = floor_date(datetime, unit = "hour")) %>%
   group_by(region, basin, subbasin, site_name, datetime) %>% 
   summarise(tempc_air = mean(tempc_air)) %>%
+  ungroup() %>%
+  select(basin, subbasin, datetime, tempc_air) %>%
+  mutate(source = "UVA")
+
+
+# Flathead
+airtemp_flat <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw data/Flathead/SNOTEL_469_EmeryCk_4340fasl_AirTemp.csv") %>%
+  mutate(datetime = mdy_hm(datetime),
+         tempc_air = (tempf - 32) * (5/9),
+         basin = "Flathead",
+         source = "SNOTEL")
+tz(airtemp_flat$datetime) <- "PST" # ALL SNOTEL DATE/TIMES ARE IN PST
+airtemp_flat$datetime <- with_tz(airtemp_flat$datetime, "UTC")
+airtemp_flat <- airtemp_flat %>% 
+  mutate(datetime = floor_date(datetime, unit = "hour")) %>%
+  group_by(basin, source, datetime) %>% 
+  summarise(tempc_air = mean(tempc_air)) %>%
   ungroup()
-# join hourly stream and air temp
-dat_shen <- dat %>% filter(region == "Shen") %>% left_join(airtemp_shen %>% select(-site_name))
-head(dat_shen)
+airtemp_flat <- bind_rows(airtemp_flat %>% mutate(subbasin = "Big Creek"),
+                          airtemp_flat %>% mutate(subbasin = "Coal Creek"),
+                          airtemp_flat %>% mutate(subbasin = "McGee Creek"))
+
+
+# Shields
+airtemp_shields <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw data/Al-Chokhachy/SNOTEL_700_Porcupine_6480fasl_AirTemp.csv") %>%
+  mutate(datetime = mdy_hm(date),
+         tempc_air = (tempf - 32) * (5/9),
+         basin = "Shields River",
+         subbasin = "Shields River",
+         source = "SNOTEL")
+tz(airtemp_shields$datetime) <- "PST" # ALL SNOTEL DATE/TIMES ARE IN PST
+airtemp_shields$datetime <- with_tz(airtemp_shields$datetime, "UTC")
+airtemp_shields <- airtemp_shields %>% 
+  mutate(datetime = floor_date(datetime, unit = "hour")) %>%
+  group_by(basin, subbasin, source, datetime) %>% 
+  summarise(tempc_air = mean(tempc_air)) %>%
+  ungroup()
+
+
+# Snake
+airtemp_snake <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw data/Al-Chokhachy/SNOTEL_314_BaseCampPacific_7040fasl_AirTemp.csv") %>%
+  mutate(datetime = mdy_hm(datetime),
+         tempc_air = (tempf - 32) * (5/9),
+         basin = "Snake River",
+         subbasin = "Snake River",
+         source = "SNOTEL")
+tz(airtemp_snake$datetime) <- "PST" # ALL SNOTEL DATE/TIMES ARE IN PST
+airtemp_snake$datetime <- with_tz(airtemp_snake$datetime, "UTC")
+airtemp_snake <- airtemp_snake %>% 
+  mutate(datetime = floor_date(datetime, unit = "hour")) %>%
+  group_by(basin, subbasin, source, datetime) %>% 
+  summarise(tempc_air = mean(tempc_air)) %>%
+  ungroup()
+
+
+# Donner-Blitzen
+airtemp_db <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw data/Oreg/SNOTEL_759_Silvies_7000fasl_AirTemp.csv") %>%
+  mutate(datetime = mdy_hm(date),
+         tempc_air = (tempf - 32) * (5/9),
+         basin = "Donner Blitzen",
+         subbasin = "Donner Blitzen",
+         source = "SNOTEL")
+tz(airtemp_db$datetime) <- "PST" # ALL SNOTEL DATE/TIMES ARE IN PST
+airtemp_db$datetime <- with_tz(airtemp_db$datetime, "UTC")
+airtemp_db <- airtemp_db %>% 
+  mutate(datetime = floor_date(datetime, unit = "hour")) %>%
+  group_by(basin, subbasin, source, datetime) %>% 
+  summarise(tempc_air = mean(tempc_air)) %>%
+  ungroup()
+
+# headers
+head(airtemp_wb)
+head(airtemp_shen)
+head(airtemp_flat)
+head(airtemp_shields)
+head(airtemp_snake)
+head(airtemp_db)
 ```
 
-### Bind data
+Check time zones (all should be UTC)
 ```{r}
-dat_bind <- bind_rows(dat_wb, dat_shen)
-dat_bind$datetime <- with_tz(dat_bind$datetime, "EST")
-dat_bind
+tz(airtemp_wb$datetime)
+tz(airtemp_shen$datetime)
+tz(airtemp_flat$datetime)
+tz(airtemp_shields$datetime)
+tz(airtemp_snake$datetime)
+tz(airtemp_db$datetime)
+```
+
+Bind basin-specific air temp and show unique subbasins
+```{r}
+airtemp <- bind_rows(airtemp_wb, airtemp_shen, airtemp_flat, airtemp_shields, airtemp_snake, airtemp_db)
+unique(airtemp$subbasin)
+str(airtemp)
+```
+
+
+### Join data
+```{r}
+dat_join <- dat %>% left_join(airtemp)
+dat_join
 ```
 
 
 ### View data
 
-Unique sites
-```{r}
-unique(dat_bind$site_name)
-```
 Notes:
 
 * *West Brook*
   + Mitchell, Obear, and WB Lower have erroneous water temp readings after ~Aug. 31, 2021
   + All WB sites have error in F to C conversion (from Aquarius)
+  + Mitchell, Obear, WB0, and WB Lower stream temp signals appear to be shifted forward in time considerably!
+* *Duck Creek*
+  + No air temperature data (yet)
+* *Shields River, Spread Creek, and Donner Blitzen:* Should compare SNOTEL air temp data against in-situ/EcoD air temp data, where available
 
 ::: panel-tabset
 #### West Brook
 ```{r echo=FALSE, fig.width=9, fig.height=7}
-dat_bind %>% filter(subbasin == "West Brook", !is.na(tempc)) %>% 
+dat_join %>% filter(subbasin == "West Brook", !is.na(tempc), TempReliability == 1) %>% 
   ggplot() +
   geom_line(aes(x = datetime, y = tempc_air), color = "darkorange") +
   geom_line(aes(x = datetime, y = tempc), color = "dodgerblue2") +
@@ -137,7 +250,7 @@ dat_bind %>% filter(subbasin == "West Brook", !is.na(tempc)) %>%
 ```
 #### Paine Run
 ```{r echo=FALSE, fig.width=9, fig.height=9}
-dat_bind %>% filter(subbasin == "Paine Run", !is.na(tempc)) %>% 
+dat_join %>% filter(subbasin == "Paine Run", !is.na(tempc), TempReliability == 1) %>% 
   ggplot() +
   geom_line(aes(x = datetime, y = tempc_air), color = "darkorange") +
   geom_line(aes(x = datetime, y = tempc), color = "dodgerblue2") +
@@ -146,31 +259,98 @@ dat_bind %>% filter(subbasin == "Paine Run", !is.na(tempc)) %>%
 ```
 #### Staunton River
 ```{r echo=FALSE, fig.width=9, fig.height=9}
-dat_bind %>% filter(subbasin == "Staunton River", !is.na(tempc)) %>% 
+dat_join %>% filter(subbasin == "Staunton River", !is.na(tempc), TempReliability == 1) %>% 
   ggplot() +
   geom_line(aes(x = datetime, y = tempc_air), color = "darkorange") +
   geom_line(aes(x = datetime, y = tempc), color = "dodgerblue2") +
   ylab("Temperature (deg. C)") +
   facet_wrap(~site_name)
 ```
+#### Big Creek
+```{r echo=FALSE, fig.width=9, fig.height=9}
+dat_join %>% filter(subbasin == "Big Creek", !is.na(tempc), TempReliability == 1) %>% 
+  ggplot() +
+  geom_line(aes(x = datetime, y = tempc_air), color = "darkorange") +
+  geom_line(aes(x = datetime, y = tempc), color = "dodgerblue2") +
+  ylab("Temperature (deg. C)") +
+  facet_wrap(~site_name)
+```
+#### Coal Creek
+```{r echo=FALSE, fig.width=9, fig.height=9}
+dat_join %>% filter(subbasin == "Coal Creek", !is.na(tempc), TempReliability == 1) %>% 
+  ggplot() +
+  geom_line(aes(x = datetime, y = tempc_air), color = "darkorange") +
+  geom_line(aes(x = datetime, y = tempc), color = "dodgerblue2") +
+  ylab("Temperature (deg. C)") +
+  facet_wrap(~site_name)
+```
+#### McGee Creek
+```{r echo=FALSE, fig.width=9, fig.height=9}
+dat_join %>% filter(subbasin == "McGee Creek", !is.na(tempc), TempReliability == 1) %>% 
+  ggplot() +
+  geom_line(aes(x = datetime, y = tempc_air), color = "darkorange") +
+  geom_line(aes(x = datetime, y = tempc), color = "dodgerblue2") +
+  ylab("Temperature (deg. C)") +
+  facet_wrap(~site_name)
+```
+#### Shields River
+```{r echo=FALSE, fig.width=9, fig.height=9}
+dat_join %>% filter(subbasin == "Shields River", !is.na(tempc), TempReliability == 1) %>% 
+  ggplot() +
+  geom_line(aes(x = datetime, y = tempc_air), color = "darkorange") +
+  geom_line(aes(x = datetime, y = tempc), color = "dodgerblue2") +
+  ylab("Temperature (deg. C)") +
+  facet_wrap(~site_name)
+```
+#### Snake River
+```{r echo=FALSE, fig.width=9, fig.height=9}
+dat_join %>% filter(subbasin == "Snake River", !is.na(tempc), TempReliability == 1) %>% 
+  ggplot() +
+  geom_line(aes(x = datetime, y = tempc_air), color = "darkorange") +
+  geom_line(aes(x = datetime, y = tempc), color = "dodgerblue2") +
+  ylab("Temperature (deg. C)") +
+  facet_wrap(~site_name)
+```
+#### Donner Blitzen
+```{r echo=FALSE, fig.width=9, fig.height=9}
+dat_join %>% filter(subbasin == "Donner Blitzen", !is.na(tempc), TempReliability == 1) %>% 
+  ggplot() +
+  geom_line(aes(x = datetime, y = tempc_air), color = "darkorange") +
+  geom_line(aes(x = datetime, y = tempc), color = "dodgerblue2") +
+  ylab("Temperature (deg. C)") +
+  facet_wrap(~site_name)
+```
+#### Duck Creek
+```{r echo=FALSE, fig.width=9, fig.height=9}
+dat_join %>% filter(subbasin == "Duck Creek", !is.na(tempc), TempReliability == 1) %>% 
+  ggplot() +
+  geom_line(aes(x = datetime, y = tempc_air), color = "darkorange") +
+  geom_line(aes(x = datetime, y = tempc), color = "dodgerblue2") +
+  ylab("Temperature (deg. C)") +
+  facet_wrap(~site_name)
+```
+
+
+
 :::
 
 
 View single site using dyGraphs, e.g., Staunton River 10. 
-```{r}
-dat_bind %>% filter(site_name %in% "Staunton River 10") %>% select(datetime, tempc, tempc_air) %>% dygraph(main = "Staunton River 10") %>% dyRangeSelector() %>% dyAxis("y", label = "Stream temp. (deg C)") %>% dyAxis("y2", label = "Air temp. (deg C)") %>% dySeries("tempc", axis = "y", label = "Stream") %>% dySeries("tempc_air", axis = "y2", label = "Air")
+```{r include=FALSE}
+dat_join %>% filter(site_name %in% "Fish Creek NWIS") %>% select(datetime, tempc, tempc_air) %>% dygraph(main = "Staunton River 10") %>% dyRangeSelector() %>% dyAxis("y", label = "Stream temp. (deg C)") %>% dyAxis("y2", label = "Air temp. (deg C)") %>% dySeries("tempc", axis = "y", label = "Stream") %>% dySeries("tempc_air", axis = "y2", label = "Air")
 ```
 
 
 ### Format data for PASTA
 ```{r}
-dat2 <- dat_bind %>% 
+dat2 <- dat_join %>% 
+  filter(TempReliability == 1) %>%
   mutate(year = year(datetime),
          yday = yday(datetime),
          hour = hour(datetime)) %>%
   rename(airTemperature = tempc_air,
          waterTemperature = tempc) %>%
-  select(site_name, datetime, year, yday, hour, airTemperature, waterTemperature) %>%
+  select(subbasin, site_name, datetime, year, yday, hour, airTemperature, waterTemperature) %>%
   filter(waterTemperature >= 1)
 range(dat2$waterTemperature)
 dat2
@@ -332,8 +512,9 @@ getAmpPhase <- function(paramsIn) {
     ) |>
     mutate(
       amplitudeRatio = amplitude_water / amplitude_air,
-      phaseLag = phase_water - phase_air,
-      meanRatio = mean_water / mean_air
+      phaseLag = ((phase_air - phase_water + 12) %% 24) - 12,#phase_water - phase_air, # Tim's equation for phase lag
+      meanRatio = mean_water / mean_air,
+      meanOffset = mean_water - mean_air
     )
 }
 ```
@@ -362,19 +543,17 @@ getParamsPred <- function(paramsIn) {
 ## Perform PASTA
 
 ### Get model parameters
-```{r}
-pasta <- getParams(dtHOUR = dat2)
-pasta
-```
 
-Write to file
-```{r}
+Perform PASTA and write output to file
+```{r, eval=FALSE}
+pasta <- getParams(dtHOUR = dat2)
 write_csv(pasta, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Covariates/pasta_daily_parameters.csv")
 ```
 
 Read in
 ```{r}
 pasta <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Covariates/pasta_daily_parameters.csv")
+head(pasta)
 ```
 
 
@@ -382,66 +561,378 @@ pasta <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/Ec
 ```{r}
 pasta_derived <- getAmpPhase(paramsIn = pasta)
 pasta_derived <- pasta_derived %>% mutate(date = parse_date_time(x = paste(year, yday), orders = "yj")) %>% relocate(date, .after = site_name)
-pasta_derived
+head(pasta_derived)
 ```
 
-### View derived time series
 
+### Predict temperature
+
+Predict air and stream temperature from fitted sine wave regression models and write predictions to file
+```{r eval=FALSE}
+preds <- getParamsPred(paramsIn = pasta)
+preds <- preds %>% mutate(datetime = parse_date_time(x = paste(year, yday, hour), orders = "yjh")) %>% relocate(datetime, .after = site_name) %>% select(site_name, datetime, tempVar, rSquared, predTemp) %>% pivot_wider(names_from = tempVar, values_from = c(predTemp, rSquared))
+write_csv(preds, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Covariates/pasta_predicted_temp.csv")
+```
+
+Read in
+```{r}
+preds <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Covariates/pasta_predicted_temp.csv")
+tz(preds$datetime) <- "UTC"
+head(preds)
+```
+
+
+## Explore PASTA output
+
+### Single site
+
+Generate interactive time series plots of PASTA output for a single focal site
 ```{r}
 unique(pasta_derived$site_name)
 ```
 
 Set focal site
 ```{r}
-focal_site <- "Staunton River 10"
+focal_site <- "Leidy Creek Mouth NWIS"
+focal_site
 ```
 
-View derived parameters
-```{r}
-pasta_derived %>% filter(site_name == focal_site)
-```
+#### Amplitude ratio
 
-Phase lag: phase_water - phase_air
-```{r}
-pasta_derived %>% filter(site_name == focal_site, rSquared_air >= 0.7 & rSquared_water >= 0.7) %>% select(date, phaseLag) %>% dygraph(main = focal_site) %>% dyRangeSelector() %>% dyAxis("y", label = "Phase lag (hrs)") %>% dyOptions(drawPoints = T, strokeWidth = 0, pointSize = 3) %>% dyLimit(0, color = "red") %>% dyHighlight(highlightCircleSize = 5)
-```
-
-Amplitude ratio: amplitude_water - amplitude_air
+Amplitude ratio: amplitude_water - amplitude_air. Generally, lower amplitude ratios (greater decoupling between air and water temperature sinusoids) are indicative of greater fractional groundwater inputs. (In Rey et al. 2024, Ar values tend to be most similar among tributary/mainstem sites during periods of high surface water input. I.e., high flows homogenize spatial variation in groundwater-surface water dynamics).
 ```{r}
 pasta_derived %>% filter(site_name == focal_site, rSquared_air >= 0.7 & rSquared_water >= 0.7) %>% select(date, amplitudeRatio) %>% dygraph(main = focal_site) %>% dyRangeSelector() %>% dyAxis("y", label = "Amplitude ratio") %>% dyOptions(drawPoints = T, strokeWidth = 0, pointSize = 3) %>% dyHighlight(highlightCircleSize = 5)
 ```
 
-PhaseLag ~ AmplitudeRatio, year = 2020
+```{r fig.width=8, fig.height=6}
+pasta_derived %>% filter(site_name == focal_site, rSquared_air >= 0.7 & rSquared_water >= 0.7) %>% ggplot(aes(x = yday, y = amplitudeRatio)) + geom_point() + ggtitle(focal_site) + geom_smooth(method = "lm", formula = y ~ poly(x, 2)) + facet_wrap(~year)
+```
+
+#### Phase lag
+
+Phase lag: phase_water - phase_air. Phase lags are likely a result of diel groundwater temperature variations that are subsequently transferred to water temperatures signals. Generally, phase lag tends to be inversely related to amplitude ratio and may provide a secondary metric of fractional groundwater contributions.  
 ```{r}
-pasta_derived %>% filter(site_name == focal_site, year == 2020, rSquared_air >= 0.7 & rSquared_water >= 0.7, phaseLag < 5) %>% ggplot() + geom_point(aes(x = amplitudeRatio, y = phaseLag)) + ggtitle(focal_site)
+pasta_derived %>% filter(site_name == focal_site, rSquared_air >= 0.7 & rSquared_water >= 0.7) %>% select(date, phaseLag) %>% dygraph(main = focal_site) %>% dyRangeSelector() %>% dyAxis("y", label = "Phase lag (hrs)") %>% dyOptions(drawPoints = T, strokeWidth = 0, pointSize = 3) %>% dyLimit(0, color = "red") %>% dyHighlight(highlightCircleSize = 5)
+```
+
+```{r fig.width=8, fig.height=6}
+pasta_derived %>% filter(site_name == focal_site, rSquared_air >= 0.7 & rSquared_water >= 0.7) %>% ggplot(aes(x = yday, y = phaseLag)) + geom_point() + ggtitle(focal_site) + geom_smooth() + facet_wrap(~year)
 ```
 
 
-### Observed vs. Predicted
+#### Mean ratio
 
-Predict air and stream temperature from fitted sine wave regression models
+Mean ratio: mean_water / mean_air. On daily timescales, mean ratio values indicate runoff/quickflow vs. local groundwater influence, with higher, more stable values at sites where hillslope drainage is reduced compared to total channel water volume (e.g., lower in network). I.e., across sites at any given time, low values indicate high fractional groundwater input and high values indicate low groundwater input. Within a site across time, gradual rise/change in Mr may be driven by changes in groundwater temperature over time as terrestrial hillslopes accumulate (spring and early summer) and/or lose (late summer and autumn) heat. Thereby indicating that groundwater flowpaths are shallow enough to be sensitive to seasonal warming/cooling. 
+
+(In Rey et al. 2024, Mr values tend to be most similar among tributary/mainstem sites during periods of high surface water input. I.e., high flows homogenize spatial variation in groundwater-surface water dynamics).
+
+Note this plot is trimmed to values [0,2] as very unreasonable values can result when daily mean air temperature is < 1. 
 ```{r}
-preds <- getParamsPred(paramsIn = pasta)
-preds <- preds %>% mutate(datetime = parse_date_time(x = paste(year, yday, hour), orders = "yjh")) %>% relocate(datetime, .after = site_name) %>% select(site_name, datetime, tempVar, rSquared, predTemp) %>% pivot_wider(names_from = tempVar, values_from = c(predTemp, rSquared))
-tz(preds$datetime) <- "EST"
+pasta_derived %>% filter(site_name == focal_site, rSquared_air >= 0.7, rSquared_water >= 0.7, meanRatio >=0, meanRatio <= 2) %>% select(date, meanRatio) %>% dygraph(main = focal_site) %>% dyRangeSelector() %>% dyAxis("y", label = "Mean ratio") %>% dyOptions(drawPoints = T, strokeWidth = 0, pointSize = 3) %>% dyHighlight(highlightCircleSize = 5)
 ```
+
+```{r fig.width=8, fig.height=6}
+pasta_derived %>% filter(site_name == focal_site, rSquared_air >= 0.7 & rSquared_water >= 0.7, meanRatio >=0, meanRatio <= 2) %>% ggplot(aes(x = yday, y = meanRatio)) + geom_point() + ggtitle(focal_site) + geom_smooth() + facet_wrap(~year)
+```
+
+#### Pl-Ar correlation
+
+In Rey et al. 2024, phase lag and amplitude ratio are often correlated. 
+```{r fig.width=8, fig.height=6}
+pasta_derived %>% filter(site_name == focal_site, rSquared_air >= 0.7 & rSquared_water >= 0.7) %>% ggplot(aes(x = amplitudeRatio, y = phaseLag)) + geom_point() + ggtitle(focal_site) + geom_smooth(method = "lm") + facet_wrap(~year)
+```
+
+
+#### Model predictions
 
 Plot predicted air and stream temperature (orange and blue lines, respectively) over observed air and stream temperature (orange and blue points, respectively). 
 ```{r}
 dat2 %>% 
   select(site_name, datetime, airTemperature, waterTemperature) %>% 
   filter(site_name == focal_site) %>% 
-  left_join(preds) %>% filter(site_name == focal_site, rSquared_air >= 0.7 & rSquared_water >= 0.7) %>% 
+  left_join(preds) %>% 
+  filter(site_name == focal_site, rSquared_air >= 0.7 & rSquared_water >= 0.7) %>% 
   select(-c(site_name, rSquared_air, rSquared_water)) %>% 
-  mutate(datetime = datetime + hours(2)) %>% # need to fudge datetime b/c dyGraphs converts to local time zone
+  mutate(datetime = datetime) %>% # need to fudge datetime b/c dyGraphs converts to local time zone
   dygraph(main = focal_site) %>% dyRangeSelector() %>% 
-  dyAxis("y", label = "Water temp.") %>% 
-  dyAxis("y2", label = "Air temp.") %>% 
+  #dyAxis("y", label = "Water temp.") %>% 
+  #dyAxis("y2", label = "Air temp.") %>% 
   dySeries("waterTemperature", axis = "y", label = "Obs. water temp.", drawPoints = TRUE, strokeWidth = 0, pointSize = 3, color = "dodgerblue") %>% 
-  dySeries("airTemperature", axis = "y2", label = "Obs. air temp.", drawPoints = TRUE, strokeWidth = 0, pointSize = 3, color = "darkorange")  %>% 
+  dySeries("airTemperature", axis = "y", label = "Obs. air temp.", drawPoints = TRUE, strokeWidth = 0, pointSize = 3, color = "darkorange")  %>% 
   dySeries("predTemp_water", axis = "y", label = "Pred. water temp.", color = "dodgerblue") %>% 
-  dySeries("predTemp_air", axis = "y2", label = "Pred. air temp.", color = "darkorange")
+  dySeries("predTemp_air", axis = "y", label = "Pred. air temp.", color = "darkorange")
 ```
+
+
+### All sites
+
+Define subbasins
+```{r}
+mysubbasins <- c("West Brook", "Paine Run", "Staunton River", "Big Creek", "Coal Creek", "McGee Creek", "Shields River", "Snake River", "Donner Blitzen")
+```
+
+#### Amplitude ratio
+
+```{r}
+myplots <- list()
+for (i in 1:length(mysubbasins)) {
+  mysites <- unlist(siteinfo2 %>% filter(site_name %in% unique(pasta_derived$site_name)) %>% filter(subbasin == mysubbasins[i]) %>% arrange(desc(area_sqmi)) %>% select(site_name))
+  myplots[[i]] <- pasta_derived %>% 
+    filter(site_name %in% mysites, rSquared_air >= 0.7 & rSquared_water >= 0.7) %>% 
+    mutate(year = factor(year), site_name = factor(site_name, levels = mysites)) %>% 
+    ggplot(aes(x = yday, y = amplitudeRatio, color = year)) + 
+    geom_point(alpha = 0.2) + 
+    geom_smooth(se = FALSE) + #geom_smooth(method = "lm", formula = y ~ poly(x, 2)) + 
+    ggtitle(mysubbasins[i]) + ylim(0,1) + 
+    facet_wrap(~site_name, ncol = 3)
+}
+```
+
+:::panel-tabset
+##### West Brook
+```{r fig.width=8, fig.height=10}
+myplots[[1]]
+```
+##### Paine Run
+```{r fig.width=8, fig.height=6}
+myplots[[2]]
+```
+##### Staunton River
+```{r fig.width=8, fig.height=6}
+myplots[[3]]
+```
+##### Big Creek
+```{r fig.width=8, fig.height=8}
+myplots[[4]]
+```
+##### Coal Creek
+```{r fig.width=8, fig.height=8}
+myplots[[5]]
+```
+##### McGee Creek
+```{r fig.width=8, fig.height=3}
+myplots[[6]]
+```
+##### Shields River
+```{r fig.width=8, fig.height=8}
+myplots[[7]]
+```
+##### Snake River
+```{r fig.width=8, fig.height=10}
+myplots[[8]]
+```
+##### Donner Blitzen
+```{r fig.width=8, fig.height=8}
+myplots[[9]]
+```
+:::
+
+
+#### Phase lag
+
+```{r}
+myplots <- list()
+for (i in 1:length(mysubbasins)) {
+  mysites <- unlist(siteinfo2 %>% filter(site_name %in% unique(pasta_derived$site_name)) %>% filter(subbasin == mysubbasins[i]) %>% arrange(desc(area_sqmi)) %>% select(site_name))
+  myplots[[i]] <- pasta_derived %>% 
+    filter(site_name %in% mysites, rSquared_air >= 0.7 & rSquared_water >= 0.7) %>% 
+    mutate(year = factor(year), site_name = factor(site_name, levels = mysites)) %>% 
+    ggplot(aes(x = yday, y = phaseLag, color = year)) + 
+    geom_point(alpha = 0.2) + 
+    geom_smooth(se = FALSE) + #geom_smooth(method = "lm", formula = y ~ poly(x, 2)) + 
+    ggtitle(mysubbasins[i]) + #ylim(0,1) + 
+    geom_abline(slope = 0, intercept = 0, linetype = "dashed") +
+    facet_wrap(~site_name, ncol = 3)
+}
+```
+
+:::panel-tabset
+##### West Brook
+```{r fig.width=8, fig.height=10}
+myplots[[1]]
+```
+##### Paine Run
+```{r fig.width=8, fig.height=6}
+myplots[[2]]
+```
+##### Staunton River
+```{r fig.width=8, fig.height=6}
+myplots[[3]]
+```
+##### Big Creek
+```{r fig.width=8, fig.height=8}
+myplots[[4]]
+```
+##### Coal Creek
+```{r fig.width=8, fig.height=8}
+myplots[[5]]
+```
+##### McGee Creek
+```{r fig.width=8, fig.height=3}
+myplots[[6]]
+```
+##### Shields River
+```{r fig.width=8, fig.height=8}
+myplots[[7]]
+```
+##### Snake River
+```{r fig.width=8, fig.height=10}
+myplots[[8]]
+```
+##### Donner Blitzen
+```{r fig.width=8, fig.height=8}
+myplots[[9]]
+```
+:::
+
+
+#### Mean ratio
+
+```{r}
+myplots <- list()
+for (i in 1:length(mysubbasins)) {
+  mysites <- unlist(siteinfo2 %>% filter(site_name %in% unique(pasta_derived$site_name)) %>% filter(subbasin == mysubbasins[i]) %>% arrange(desc(area_sqmi)) %>% select(site_name))
+  myplots[[i]] <- pasta_derived %>% 
+    filter(site_name %in% mysites, rSquared_air >= 0.7 & rSquared_water >= 0.7, meanRatio >=0, meanRatio <= 2) %>% 
+    mutate(year = factor(year), site_name = factor(site_name, levels = mysites)) %>% 
+    ggplot(aes(x = yday, y = meanRatio, color = year)) + 
+    geom_point(alpha = 0.2) + 
+    geom_smooth(se = FALSE) + #geom_smooth(method = "lm", formula = y ~ poly(x, 2)) + 
+    ggtitle(mysubbasins[i]) + #ylim(0,1) + 
+    facet_wrap(~site_name, ncol = 3)
+}
+```
+
+:::panel-tabset
+##### West Brook
+```{r fig.width=8, fig.height=10}
+myplots[[1]]
+```
+##### Paine Run
+```{r fig.width=8, fig.height=6}
+myplots[[2]]
+```
+##### Staunton River
+```{r fig.width=8, fig.height=6}
+myplots[[3]]
+```
+##### Big Creek
+```{r fig.width=8, fig.height=8}
+myplots[[4]]
+```
+##### Coal Creek
+```{r fig.width=8, fig.height=8}
+myplots[[5]]
+```
+##### McGee Creek
+```{r fig.width=8, fig.height=3}
+myplots[[6]]
+```
+##### Shields River
+```{r fig.width=8, fig.height=8}
+myplots[[7]]
+```
+##### Snake River
+```{r fig.width=8, fig.height=10}
+myplots[[8]]
+```
+##### Donner Blitzen
+```{r fig.width=8, fig.height=8}
+myplots[[9]]
+```
+:::
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## OLD
+
+##### West Brook
+```{r eval=FALSE, include=FALSE}
+mysites <- unlist(siteinfo2 %>% filter(site_name %in% unique(pasta_derived$site_name)) %>% filter(subbasin == "West Brook") %>% arrange(desc(area_sqmi)) %>% select(site_name))
+myplots <- list()
+for (i in 1:length(mysites)) {
+  myplots[[i]] <- pasta_derived %>% filter(site_name == mysites[i], rSquared_air >= 0.7 & rSquared_water >= 0.7) %>% ggplot(aes(x = yday, y = amplitudeRatio)) + geom_point() + ggtitle(mysites[i]) + geom_smooth(method = "lm", formula = y ~ poly(x, 2)) + facet_wrap(~year)
+}
+```
+:::panel-tabset
+###### WB0
+```{r eval=FALSE, include=FALSE}
+myplots[[1]]
+```
+###### WB Lower
+```{r eval=FALSE, include=FALSE}
+myplots[[2]]
+```
+###### WB Upper
+```{r eval=FALSE, include=FALSE}
+myplots[[3]]
+```
+###### WB Reservoir
+```{r eval=FALSE, include=FALSE}
+myplots[[4]]
+```
+###### Avery
+```{r eval=FALSE, include=FALSE}
+myplots[[5]]
+```
+###### Sanderson
+```{r eval=FALSE, include=FALSE}
+myplots[[6]]
+```
+###### Jimmy
+```{r eval=FALSE, include=FALSE}
+myplots[[7]]
+```
+###### obear
+```{r eval=FALSE, include=FALSE}
+myplots[[8]]
+```
+###### West Whately
+```{r eval=FALSE, include=FALSE}
+myplots[[9]]
+```
+###### Mitchell
+```{r eval=FALSE, include=FALSE}
+myplots[[10]]
+```
+:::
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
