@@ -376,6 +376,15 @@ myplotlist[[5]]
 ```
 :::
 
+Means, as above, but color by year. 
+```{r fig.width=8, fig.height=7}
+dat_wb2 %>% 
+  mutate(year = as.factor(year(mindate))) %>% 
+  ggplot(aes(x = yield_big_mean_log, y = yield_little_mean_log, group = year, color = year)) + 
+  geom_point(alpha = 0.5) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm") + facet_wrap(~site_name)
+```
+
 
 #### To log or not to log?
 
@@ -674,6 +683,16 @@ myplotlist[[4]]
 myplotlist[[5]]
 ```
 :::
+
+
+Means, as above, but color by year. 
+```{r fig.width=8, fig.height=7}
+dat_sp2 %>% 
+  mutate(year = as.factor(year(mindate))) %>% 
+  ggplot(aes(x = yield_big_mean_log, y = yield_little_mean_log, group = year, color = year)) + 
+  geom_point(alpha = 0.5) + geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  geom_smooth(method = "lm") + facet_wrap(~site_name)
+```
 
 
 #### To log or not to log?
