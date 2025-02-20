@@ -690,6 +690,7 @@ head(pasta)
 pasta_derived <- getAmpPhase(paramsIn = pasta)
 pasta_derived <- pasta_derived %>% mutate(date = parse_date_time(x = paste(year, yday), orders = "yj")) %>% relocate(date, .after = site_name)
 head(pasta_derived)
+write_csv(pasta_derived, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Covariates/pasta_derived_parameters_daily.csv")
 ```
 
 
@@ -1260,85 +1261,325 @@ myplots[[10]]
 
 
 
+## Summarize output
+
+### Rolling mean
+
+#### Summarize
+
+Summarize PASTA output as 7-day rolling means for use in the Wedge Model and elsewhere, per Rey *et al.* (2024)
+
+Interpolate short gaps and calulate 7-day rolling mean
+```{r}
+# Drop poor fits then fill missing dates
+pasta_derived_filled <- fill_missing_dates(pasta_derived %>% filter(rSquared_air >= 0.7 & rSquared_water >= 0.7), dates = date, groups = site_name) #%>% group_by(site_name) %>% arrange(site_name, date) 
+
+# get rid of crazy mean ratio values
+pasta_derived_filled <- pasta_derived_filled %>%
+  mutate(meanRatio = ifelse(meanRatio < 0, NA,
+                            ifelse(meanRatio > 2, NA, meanRatio)))
+
+# Interpolate short gaps (<=3 days) and calculate 7-day rolling mean as in Rey et al. (2024)
+datalist <- list()
+mysites <- unique(pasta_derived_filled$site_name)
+for (i in 1:length(mysites)) { 
+  datalist[[i]] <- pasta_derived_filled %>% 
+    filter(site_name == mysites[i]) %>% 
+    mutate(amplitudeRatio_fill = na.approx(amplitudeRatio, maxgap = 3, na.rm = FALSE),
+           phaseLag_fill = na.approx(phaseLag, maxgap = 3, na.rm = FALSE),
+           meanRatio_fill = na.approx(meanRatio, maxgap = 3, na.rm = FALSE)) %>%
+    mutate(amplitudeRatio_fill_roll7 = rollapply(amplitudeRatio_fill, FUN = mean, width = 7, align = "center", fill = NA),
+           phaseLag_fill_roll7 = rollapply(phaseLag_fill, FUN = mean, width = 7, align = "center", fill = NA),
+           meanRatio_fill_roll7 = rollapply(meanRatio_fill, FUN = mean, width = 7, align = "center", fill = NA))
+}
+pasta_derived_filled <- do.call(rbind, datalist)
+```
+
+Write to file
+```{r}
+write_csv(pasta_derived_filled, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Covariates/pasta_derived_parameters_7daymean.csv")
+```
+
+Set focal site
+```{r}
+focal_site <- "McGeeCreekUpper"
+print(focal_site)
+```
+View focal data
+```{r}
+pasta_derived_filled %>% 
+  filter(site_name == focal_site, rSquared_air >= 0.7 & rSquared_water >= 0.7) 
+```
+
+Amplitude Ratio
+```{r fig.width=8, fig.height=6}
+pasta_derived_filled %>% 
+  filter(site_name == focal_site, rSquared_air >= 0.7 & rSquared_water >= 0.7) %>% 
+  ggplot() + 
+  geom_point(aes(x = yday, y = amplitudeRatio), color = "black") + ggtitle(focal_site) + 
+  geom_point(aes(x = yday, y = amplitudeRatio_fill_roll7), color = "red") + ggtitle(focal_site) + 
+  #geom_smooth(method = "lm", formula = y ~ poly(x, 2)) + 
+  facet_wrap(~year)
+```
+
+Phase Lag
+```{r fig.width=8, fig.height=6}
+pasta_derived_filled %>% 
+  filter(site_name == focal_site, rSquared_air >= 0.7 & rSquared_water >= 0.7) %>% 
+  ggplot() + 
+  geom_point(aes(x = yday, y = phaseLag), color = "black") + ggtitle(focal_site) + 
+  geom_point(aes(x = yday, y = phaseLag_fill_roll7), color = "red") + ggtitle(focal_site) + 
+  #geom_smooth(method = "lm", formula = y ~ poly(x, 2)) + 
+  facet_wrap(~year)
+```
+
+Mean Ratio
+```{r fig.width=8, fig.height=6}
+pasta_derived_filled %>% 
+  filter(site_name == focal_site, rSquared_air >= 0.7 & rSquared_water >= 0.7) %>% 
+  ggplot() + 
+  geom_point(aes(x = yday, y = meanRatio), color = "black") + ggtitle(focal_site) + 
+  geom_point(aes(x = yday, y = meanRatio_fill_roll7), color = "red") + ggtitle(focal_site) + 
+  #geom_smooth(method = "lm", formula = y ~ poly(x, 2)) + 
+  facet_wrap(~year)
+```
 
 
+#### Calculate Gg difference
+
+Join big G PASTA derived parameters (7-day rolling means) to little g PASTA derived parameters and calculate difference (little - big).
+```{r}
+pasta_derived_filled_big <- pasta_derived_filled %>% left_join(siteinfo2 %>% select(site_name, subbasin, designation)) %>% filter(designation == "big") %>% select(-designation)
+
+pasta_derived_filled_little <- pasta_derived_filled %>% left_join(siteinfo2 %>% select(site_name, subbasin, designation)) %>% filter(designation == "little") %>% select(-designation)
+
+pasta_derived_filled_join <- pasta_derived_filled_little %>% 
+  select(site_name, subbasin, date, rSquared_air, rSquared_water, amplitudeRatio_fill_roll7, phaseLag_fill_roll7, meanRatio_fill_roll7) %>% 
+  rename(site_name_little = site_name, rSquared_air_little = rSquared_air, rSquared_water_little = rSquared_water, amplitudeRatio_fill_roll7_little = amplitudeRatio_fill_roll7, phaseLag_fill_roll7_little = phaseLag_fill_roll7, meanRatio_fill_roll7_little = meanRatio_fill_roll7) %>% 
+  left_join(pasta_derived_filled_big %>% 
+  select(site_name, subbasin, date, rSquared_air, rSquared_water, amplitudeRatio_fill_roll7, phaseLag_fill_roll7, meanRatio_fill_roll7) %>% 
+  rename(site_name_big = site_name, rSquared_air_big = rSquared_air, rSquared_water_big = rSquared_water, amplitudeRatio_fill_roll7_big = amplitudeRatio_fill_roll7, phaseLag_fill_roll7_big = phaseLag_fill_roll7, meanRatio_fill_roll7_big = meanRatio_fill_roll7)) %>% 
+  filter(rSquared_air_little >= 0.7, rSquared_water_little >= 0.7, rSquared_air_big >= 0.7, rSquared_water_big >= 0.7) %>%
+  mutate(amplitudeRatio_diff = amplitudeRatio_fill_roll7_little - amplitudeRatio_fill_roll7_big,
+         phaseLag_diff = phaseLag_fill_roll7_little - phaseLag_fill_roll7_big,
+         meanRatio_diff = meanRatio_fill_roll7_little - meanRatio_fill_roll7_big,
+         yday = yday(date),
+         year = year(date))
+```
+
+Write to file
+```{r}
+write_csv(pasta_derived_filled_join, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Covariates/pasta_derived_parameters_7daymean_gGdiff.csv")
+```
 
 
-
-## OLD
-
-##### West Brook
-```{r eval=FALSE, include=FALSE}
-mysites <- unlist(siteinfo2 %>% filter(site_name %in% unique(pasta_derived$site_name)) %>% filter(subbasin == "West Brook") %>% arrange(desc(area_sqmi)) %>% select(site_name))
+##### Amplitude ratio
+```{r}
 myplots <- list()
-for (i in 1:length(mysites)) {
-  myplots[[i]] <- pasta_derived %>% filter(site_name == mysites[i], rSquared_air >= 0.7 & rSquared_water >= 0.7) %>% ggplot(aes(x = yday, y = amplitudeRatio)) + geom_point() + ggtitle(mysites[i]) + geom_smooth(method = "lm", formula = y ~ poly(x, 2)) + facet_wrap(~year)
+for (i in 1:length(mysubbasins)) {
+  mysites <- unlist(siteinfo2 %>% filter(site_name %in% unique(pasta_derived$site_name)) %>% filter(subbasin == mysubbasins[i], designation == "little") %>% arrange(desc(area_sqmi)) %>% select(site_name))
+  myplots[[i]] <- pasta_derived_filled_join %>% 
+    filter(site_name_little %in% mysites) %>% 
+    mutate(year = factor(year), site_name = factor(site_name_little, levels = mysites)) %>% 
+    ggplot(aes(x = yday, y = amplitudeRatio_diff, color = year)) + 
+    geom_point(alpha = 0.5) + 
+    geom_abline(slope = 0, intercept = 0, linetype = "dashed") +
+    ggtitle(mysubbasins[i]) + #ylim(0,1) + 
+    facet_wrap(~site_name_little, ncol = 3)
 }
 ```
+
 :::panel-tabset
-###### WB0
-```{r eval=FALSE, include=FALSE}
+###### West Brook
+```{r fig.width=8, fig.height=8}
 myplots[[1]]
 ```
-###### WB Lower
-```{r eval=FALSE, include=FALSE}
+###### Paine Run
+```{r fig.width=8, fig.height=6}
 myplots[[2]]
 ```
-###### WB Upper
-```{r eval=FALSE, include=FALSE}
+###### Staunton River
+```{r fig.width=8, fig.height=6}
 myplots[[3]]
 ```
-###### WB Reservoir
-```{r eval=FALSE, include=FALSE}
+###### Big Creek
+```{r fig.width=8, fig.height=8}
 myplots[[4]]
 ```
-###### Avery
-```{r eval=FALSE, include=FALSE}
+###### Coal Creek
+```{r fig.width=8, fig.height=6}
 myplots[[5]]
 ```
-###### Sanderson
-```{r eval=FALSE, include=FALSE}
+###### McGee Creek
+```{r fig.width=8, fig.height=3}
 myplots[[6]]
 ```
-###### Jimmy
-```{r eval=FALSE, include=FALSE}
+###### Shields River
+```{r fig.width=8, fig.height=8}
 myplots[[7]]
 ```
-###### obear
-```{r eval=FALSE, include=FALSE}
+###### Snake River
+```{r fig.width=8, fig.height=10}
 myplots[[8]]
 ```
-###### West Whately
-```{r eval=FALSE, include=FALSE}
+###### Donner Blitzen
+```{r fig.width=8, fig.height=6}
 myplots[[9]]
 ```
-###### Mitchell
-```{r eval=FALSE, include=FALSE}
+###### Duck Creek
+```{r fig.width=8, fig.height=4}
 myplots[[10]]
 ```
 :::
 
 
+##### Phase lag
+```{r}
+myplots <- list()
+for (i in 1:length(mysubbasins)) {
+  mysites <- unlist(siteinfo2 %>% filter(site_name %in% unique(pasta_derived$site_name)) %>% filter(subbasin == mysubbasins[i], designation == "little") %>% arrange(desc(area_sqmi)) %>% select(site_name))
+  myplots[[i]] <- pasta_derived_filled_join %>% 
+    filter(site_name_little %in% mysites) %>% 
+    mutate(year = factor(year), site_name = factor(site_name_little, levels = mysites)) %>% 
+    ggplot(aes(x = yday, y = phaseLag_diff, color = year)) + 
+    geom_point(alpha = 0.5) + 
+    geom_abline(slope = 0, intercept = 0, linetype = "dashed") +
+    ggtitle(mysubbasins[i]) + #ylim(0,1) + 
+    facet_wrap(~site_name_little, ncol = 3)
+}
+```
+
+:::panel-tabset
+###### West Brook
+```{r fig.width=8, fig.height=8}
+myplots[[1]]
+```
+###### Paine Run
+```{r fig.width=8, fig.height=6}
+myplots[[2]]
+```
+###### Staunton River
+```{r fig.width=8, fig.height=6}
+myplots[[3]]
+```
+###### Big Creek
+```{r fig.width=8, fig.height=8}
+myplots[[4]]
+```
+###### Coal Creek
+```{r fig.width=8, fig.height=6}
+myplots[[5]]
+```
+###### McGee Creek
+```{r fig.width=8, fig.height=3}
+myplots[[6]]
+```
+###### Shields River
+```{r fig.width=8, fig.height=8}
+myplots[[7]]
+```
+###### Snake River
+```{r fig.width=8, fig.height=10}
+myplots[[8]]
+```
+###### Donner Blitzen
+```{r fig.width=8, fig.height=6}
+myplots[[9]]
+```
+###### Duck Creek
+```{r fig.width=8, fig.height=4}
+myplots[[10]]
+```
+:::
 
 
+##### Mean ratio
+```{r}
+myplots <- list()
+for (i in 1:length(mysubbasins)) {
+  mysites <- unlist(siteinfo2 %>% filter(site_name %in% unique(pasta_derived$site_name)) %>% filter(subbasin == mysubbasins[i], designation == "little") %>% arrange(desc(area_sqmi)) %>% select(site_name))
+  myplots[[i]] <- pasta_derived_filled_join %>% 
+    filter(site_name_little %in% mysites) %>% 
+    mutate(year = factor(year), site_name = factor(site_name_little, levels = mysites)) %>% 
+    ggplot(aes(x = yday, y = meanRatio_diff, color = year)) + 
+    geom_point(alpha = 0.5) + 
+    geom_abline(slope = 0, intercept = 0, linetype = "dashed") +
+    ggtitle(mysubbasins[i]) + #ylim(0,1) + 
+    facet_wrap(~site_name_little, ncol = 3)
+}
+```
+
+:::panel-tabset
+###### West Brook
+```{r fig.width=8, fig.height=8}
+myplots[[1]]
+```
+###### Paine Run
+```{r fig.width=8, fig.height=6}
+myplots[[2]]
+```
+###### Staunton River
+```{r fig.width=8, fig.height=6}
+myplots[[3]]
+```
+###### Big Creek
+```{r fig.width=8, fig.height=8}
+myplots[[4]]
+```
+###### Coal Creek
+```{r fig.width=8, fig.height=6}
+myplots[[5]]
+```
+###### McGee Creek
+```{r fig.width=8, fig.height=3}
+myplots[[6]]
+```
+###### Shields River
+```{r fig.width=8, fig.height=8}
+myplots[[7]]
+```
+###### Snake River
+```{r fig.width=8, fig.height=10}
+myplots[[8]]
+```
+###### Donner Blitzen
+```{r fig.width=8, fig.height=6}
+myplots[[9]]
+```
+###### Duck Creek
+```{r fig.width=8, fig.height=4}
+myplots[[10]]
+```
+:::
 
 
+### August mean
+
+Summarize gG differenced PASTA output as site-level August means, across all years.
+```{r}
+pasta_derived_august <- pasta_derived_filled_join %>% 
+  mutate(month = month(date)) %>% 
+  filter(month == 8, 
+         rSquared_air_little >= 0.7, rSquared_water_little >= 0.7, 
+         rSquared_air_big >= 0.7, rSquared_water_big >= 0.7) %>% 
+  group_by(site_name_little) %>% 
+  summarize(amplitudeRatio_little_AugMean = mean(amplitudeRatio_fill_roll7_little, na.rm = TRUE),
+            phaseLag_little_AugMean = mean(phaseLag_fill_roll7_little, na.rm = TRUE),
+            meanRatio_little_AugMean = mean(meanRatio_fill_roll7_little, na.rm = TRUE),
+            amplitudeRatio_big_AugMean = mean(amplitudeRatio_fill_roll7_big, na.rm = TRUE),
+            phaseLag_big_AugMean = mean(phaseLag_fill_roll7_big, na.rm = TRUE),
+            meanRatio_big_AugMean = mean(meanRatio_fill_roll7_big, na.rm = TRUE),
+            amplitudeRatio_diff_AugMean = mean(amplitudeRatio_diff, na.rm = TRUE),
+            phaseLag_diff_AugMean = mean(phaseLag_diff, na.rm = TRUE),
+            meanRatio_diff_AugMean = mean(meanRatio_diff, na.rm = TRUE))
+head(pasta_derived_august)
+```
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Write to file
+```{r}
+write_csv(pasta_derived_august, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Covariates/pasta_derived_parameters_AugustDiff.csv")
+```
 
 
 
