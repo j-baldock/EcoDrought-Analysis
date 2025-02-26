@@ -186,10 +186,12 @@ mapview(siteinfo_sp, zcol = "designation")
 Load EcoDrought flow and temperature data and convert all date/times to UTC
 ```{r}
 # West Brook
-dat_wb <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw data/Mass/EcoDrought Continuous_MA.csv") %>%
-  mutate(Station_No = factor(Station_No), Site_Name = factor(Site_Name)) %>%
-  rename(station_no = Station_No, site_name = Site_Name, datetime = DateTime_EST, height = GageHeight_Hobo_ft, flow = Discharge_Hobo_cfs, tempf = WaterTemperature_HOBO_DegF) %>%
-  mutate(tempc = (tempf - 32)*(5/9)) %>% select(station_no, site_name, datetime, height, flow, tempc) %>%
+dat_wb <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw data/Mass/EcoDrought_Continuous_MA_updateFeb2025.csv") %>%
+  mutate(Station_No = factor(Station_No), Site_Name = factor(Site_Name), DateTime_EST = mdy_hm(DateTime_EST)) %>%
+  rename(station_no = Station_No, site_name = Site_Name, datetime = DateTime_EST, height = GageHeight_Hobo_ft, flow = Discharge_Hobo_cfs, tempf = WaterTemperature_Hobo_DegF) %>%
+  mutate(tempc = (tempf - 32)*(5/9),
+         site_name = dplyr::recode(site_name, "Obear Brook  Low" = "Obear Brook Lower")) %>% 
+  select(station_no, site_name, datetime, height, flow, tempc) %>%
   left_join(siteinfo %>% select(-station_no) %>% filter(source == "ECOD")) %>%
   mutate(DischargeReliability = as.factor(1), TempReliability = as.factor(1))
 # set tz to local and convert to UTC
@@ -566,7 +568,9 @@ dat_daily_fill_wyield <- dat_daily_fill_wyield %>%
 
 ## View daily data
 
-View daily time series data by sub-basin (little and medium g's only)
+View daily time series data by sub-basin (little and medium g's only). 
+
+### Flow
 
 ::: panel-tabset
 #### Big Creek
@@ -608,6 +612,52 @@ dat_daily_fill_wyield %>% filter(designation %in% c("little", "medium"), subbasi
 #### Donner Blitzen
 ```{r, echo=FALSE}
 dat_daily_fill_wyield %>% filter(designation %in% c("little", "medium"), subbasin == "Donner Blitzen") %>% mutate(logYield = log(Yield_filled_mm)) %>% select(date, site_name, logYield) %>% spread(key = site_name, value = logYield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)")
+```
+:::
+
+
+### Temperature
+
+::: panel-tabset
+#### Big Creek
+```{r, echo=FALSE}
+dat_daily_fill_wyield %>% filter(designation %in% c("little", "medium"), subbasin == "Big Creek") %>% select(date, site_name, tempc_mean) %>% spread(key = site_name, value = tempc_mean) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily mean temperature (deg. C)")
+```
+#### Coal Creek
+```{r, echo=FALSE}
+dat_daily_fill_wyield %>% filter(designation %in% c("little", "medium"), subbasin == "Coal Creek")  %>% select(date, site_name, tempc_mean) %>% spread(key = site_name, value = tempc_mean) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily mean temperature (deg. C)")
+```
+#### McGee Creek
+```{r, echo=FALSE}
+dat_daily_fill_wyield %>% filter(designation %in% c("little", "medium"), subbasin == "McGee Creek")  %>% select(date, site_name, tempc_mean) %>% spread(key = site_name, value = tempc_mean) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily mean temperature (deg. C)")
+```
+#### West Brook
+```{r, echo=FALSE}
+dat_daily_fill_wyield %>% filter(designation %in% c("little", "medium"), subbasin == "West Brook") %>% select(date, site_name, tempc_mean) %>% spread(key = site_name, value = tempc_mean) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily mean temperature (deg. C)")
+```
+#### Paine Run
+```{r, echo=FALSE}
+dat_daily_fill_wyield %>% filter(designation %in% c("little", "medium"), subbasin == "Paine Run") %>% select(date, site_name, tempc_mean) %>% spread(key = site_name, value = tempc_mean) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily mean temperature (deg. C)")
+```
+#### Staunton River
+```{r, echo=FALSE}
+dat_daily_fill_wyield %>% filter(designation %in% c("little", "medium"), subbasin == "Staunton River") %>% select(date, site_name, tempc_mean) %>% spread(key = site_name, value = tempc_mean) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily mean temperature (deg. C)")
+```
+#### Duck Creek
+```{r, echo=FALSE}
+dat_daily_fill_wyield %>% filter(designation %in% c("little", "medium"), subbasin == "Duck Creek") %>% select(date, site_name, tempc_mean) %>% spread(key = site_name, value = tempc_mean) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily mean temperature (deg. C)")
+```
+#### Shields River
+```{r, echo=FALSE}
+dat_daily_fill_wyield %>% filter(designation %in% c("little", "medium"), subbasin == "Shields River") %>% select(date, site_name, tempc_mean) %>% spread(key = site_name, value = tempc_mean) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily mean temperature (deg. C)")
+```
+#### Snake River
+```{r, echo=FALSE}
+dat_daily_fill_wyield %>% filter(designation %in% c("little", "medium"), subbasin == "Snake River") %>% select(date, site_name, tempc_mean) %>% spread(key = site_name, value = tempc_mean) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily mean temperature (deg. C)")
+```
+#### Donner Blitzen
+```{r, echo=FALSE}
+dat_daily_fill_wyield %>% filter(designation %in% c("little", "medium"), subbasin == "Donner Blitzen") %>% select(date, site_name, tempc_mean) %>% spread(key = site_name, value = tempc_mean) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Daily mean temperature (deg. C)")
 ```
 :::
 
