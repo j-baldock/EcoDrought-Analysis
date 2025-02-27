@@ -372,6 +372,169 @@ dat_day_join %>% filter(subbasin == "Duck Creek") %>% mutate(year = as.factor(ye
 :::
 
 
+### Hyteresis loops
+
+Create plotting function
+```{r}
+myplotfun <- function(mysite) {
+  print(dat_day_join %>%
+  mutate(doy = yday(date), year = year(date)) %>%
+  filter(site_name_little == mysite) %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log, color = doy)) +
+  geom_segment(aes(xend = c(tail(yield_big_log, n = -1), NA), 
+                   yend = c(tail(yield_little_log, n = -1), NA)), 
+               arrow = arrow(length = unit(0.3, "cm")), color = "black") +
+  geom_point() + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  scale_color_gradient2(midpoint = 182, low = "purple3", mid = "orange", high = "purple3") +
+  facet_wrap(~year))
+}
+```
+
+#### West Brook
+::: panel-tabset
+##### Avery Brook
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Avery Brook")
+```
+##### Avery Brook NWIS
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Avery Brook NWIS")
+```
+##### Jimmy Brook
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Jimmy Brook")
+```
+##### Mitchell Brook
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Mitchell Brook")
+```
+##### Avery Brook
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Avery Brook")
+```
+##### Obear Brook Lower
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Obear Brook Lower")
+```
+##### Sanderson Brook
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Sanderson Brook")
+```
+##### West Brook Lower
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "West Brook Lower")
+```
+##### West Brook Reservoir
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "West Brook Reservoir")
+```
+##### West Brook Upper
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "West Brook Upper")
+```
+:::
+
+
+#### Big Creek
+::: panel-tabset
+##### Big Creek NWIS
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Big Creek NWIS")
+```
+##### BigCreekMiddle
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "BigCreekMiddle")
+```
+##### BigCreekUpper
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "BigCreekUpper")
+```
+##### Hallowat Creek NWIS
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Hallowat Creek NWIS")
+```
+##### HallowattCreekLower
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "HallowattCreekLower")
+```
+##### LangfordCreekLower
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "LangfordCreekLower")
+```
+##### LangfordCreekUpper
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "LangfordCreekUpper")
+```
+##### NicolaCreek
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "NicolaCreek")
+```
+##### SkookoleelCreek
+```{r fig.width=8, fig.height=4}
+myplotfun(mysite = "SkookoleelCreek")
+```
+##### WernerCreek
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "WernerCreek")
+```
+:::
+
+
+#### Staunton River
+::: panel-tabset
+##### Staunton River 02
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Staunton River 02")
+```
+##### Staunton River 03
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Staunton River 03")
+```
+##### Staunton River 06
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Staunton River 06")
+```
+##### Staunton River 07
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Staunton River 07")
+```
+##### Staunton River 09
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Staunton River 09")
+```
+:::
+
+
+#### Shields River
+::: panel-tabset
+##### Buck Creek
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Buck Creek")
+```
+##### Crandall Creek
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Crandall Creek")
+```
+##### Deep Creek
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Deep Creek")
+```
+##### Dugout Creek
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Dugout Creek")
+```
+##### Lodgepole Creek
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Lodgepole Creek")
+```
+##### Shields River ab Dugout
+```{r fig.width=8, fig.height=8}
+myplotfun(mysite = "Shields River ab Dugout")
+```
+:::
+
+
 
 ## Weekly gG
 
