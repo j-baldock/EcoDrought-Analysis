@@ -18,6 +18,7 @@ library(GGally)
 library(dataRetrieval)
 library(ggpubr)
 library(DT)
+library(colorspace)
 ```
 
 
@@ -534,6 +535,40 @@ myplotfun(mysite = "Shields River ab Dugout")
 ```
 :::
 
+
+
+Color by rate of change (rising vs falling limbs)
+```{r fig.width=8, fig.height=8}
+
+
+dat_day_join %>%
+  mutate(doy = yday(date), year = year(date)) %>%
+  filter(site_name_little == "LangfordCreekLower") %>%
+  mutate(big_deriv1 = (yield_big_log - lag(yield_big_log)) / (doy - lag(doy))) %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log, color = big_deriv1)) +
+  geom_segment(aes(xend = c(tail(yield_big_log, n = -1), NA), 
+                   yend = c(tail(yield_little_log, n = -1), NA)), 
+               arrow = arrow(length = unit(0.3, "cm")), color = "black") +
+  geom_point() + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  scale_color_continuous_diverging(palette = "Red-Green") +
+  theme_dark()+
+  facet_wrap(~year)
+# 
+# myplotfun <- function(mysite) {
+#   print(dat_day_join %>%
+#   mutate(doy = yday(date), year = year(date)) %>%
+#   filter(site_name_little == mysite) %>%
+#   ggplot(aes(x = yield_big_log, y = yield_little_log, color = doy)) +
+#   geom_segment(aes(xend = c(tail(yield_big_log, n = -1), NA), 
+#                    yend = c(tail(yield_little_log, n = -1), NA)), 
+#                arrow = arrow(length = unit(0.3, "cm")), color = "black") +
+#   geom_point() + 
+#   geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+#   scale_color_gradient2(midpoint = 182, low = "purple3", mid = "orange", high = "purple3") +
+#   facet_wrap(~year))
+# }
+```
 
 
 ## Weekly gG
