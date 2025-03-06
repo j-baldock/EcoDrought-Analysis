@@ -285,6 +285,36 @@ dat_gya$datetime <- with_tz(dat_gya$datetime, "UTC")
 head(dat_gya)
 ```
 
+Write formatted basin datasets to individual files
+```{r eval=FALSE}
+write_csv(dat_wb, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Formatted data/EcoDrought_WestBrook_FlowTemp_DataClean.csv")
+
+write_csv(dat_shen, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Formatted data/EcoDrought_Shenandoah_FlowTemp_DataClean.csv")
+
+write_csv(dat_flat %>% 
+            mutate(region = "CC",
+                   flow = ifelse(DischargeReliability == 0, NA, flow),
+                   tempc = ifelse(TempReliability == 0, NA, tempc)) %>%
+            select(-c(designation, source)) %>%
+            select(-c(GageReliability, DischargeReliability, TempReliability)), "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Formatted data/EcoDrought_Flathead_FlowTemp_DataClean.csv")
+
+write_csv(dat_gya %>% 
+            mutate(subbasin = ifelse(subbasin == "Snake River", "Spread Creek", subbasin),
+                   region = "GYA",
+                   flow = ifelse(DischargeReliability == 0, NA, flow),
+                   tempc = ifelse(TempReliability == 0, NA, tempc)) %>%
+            select(-c(designation, source)) %>%
+            select(-c(DischargeReliability, TempReliability)), "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Formatted data/EcoDrought_GreaterYellowstone_FlowTemp_DataClean.csv")
+
+dat_flat <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Formatted data/EcoDrought_Flathead_FlowTemp_DataClean.csv")
+dat_gya <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Formatted data/EcoDrought_GreaterYellowstone_FlowTemp_DataClean.csv")
+dat_flat
+dat_gya
+
+dat_flatgya <- bind_rows(dat_flat, dat_gya)
+write_csv(bind_rows(dat_flat, dat_gya), "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Formatted data/EcoDrought_MT-WY_FlowTemp_DataClean.csv")
+```
+
 
 Bind EcoD hourly flow/temp data with siteinfo and write to file
 ```{r}
