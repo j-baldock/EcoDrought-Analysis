@@ -32,6 +32,9 @@ book:
         - Event Delineation/WeeklySummary.qmd
         - Event Delineation/HydroEvents.qmd
         - Big G Little g/WedgeModel.qmd
+    - part: "Paper"
+      chapters:
+        - Qualitative/QualitativePaper.qmd
     - part: "DEPRECATED"   
       chapters:
         - Big G Little g/GgDiffKS.qmd

@@ -31,6 +31,10 @@ quarto::quarto_render("Big G Little g/GgStoryPlots.qmd",
                       #cache_refresh = TRUE, # default is FALSE
                       output_format = "html", cache = FALSE)
 
+quarto::quarto_render("Event Delineation/WeeklySummary.qmd", 
+                      cache_refresh = TRUE, # default is FALSE
+                      output_format = "html")
+
 quarto::quarto_render("Event Delineation/HydroEvents.qmd", 
                       cache_refresh = TRUE, # default is FALSE
                       output_format = "html")
