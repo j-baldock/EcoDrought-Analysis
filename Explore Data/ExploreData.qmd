@@ -24,8 +24,8 @@ library(SPEI)
 library(knitr)
 ```
 
-
 ## Site info and daily data
+
 ```{r}
 # site information and locations
 siteinfo <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv")
@@ -36,8 +36,8 @@ mapview(siteinfo_sp, zcol = "designation")
 dat <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv")
 ```
 
-
 ## Daymet air temp and precip
+
 ```{r}
 mycols <- brewer.pal(6, "Dark2")
 siteinfo_big <- siteinfo %>% filter(designation == "big")
@@ -67,6 +67,7 @@ climdf_big <- climdf %>% filter(designation == "big")
 ```
 
 View long-term trends in mean annual air temperature, by basin
+
 ```{r, fig.height = 8, fig.width = 8}
 # jpeg("./Explore Data/Long Term Plots/ClimaticContext_Daymet_AirTemp_AnnualTrend_BigG.jpg", height = 8, width = 8, units = "in", res = 500)
 climdf_big_summ <- climdf_big %>% group_by(site_name, year) %>% summarize(anntemp = mean(air_temp_mean)) %>% ungroup()
@@ -78,17 +79,19 @@ climdf_big_summ %>%
 ```
 
 View long-term trends in total annual precipitation, by basin
+
 ```{r, fig.height = 8, fig.width = 8}
 # jpeg("./Explore Data/Long Term Plots/ClimaticContext_Daymet_AirTemp_AnnualTrend_BigG.jpg", height = 8, width = 8, units = "in", res = 500)
 climdf_big_summ <- climdf_big %>% group_by(site_name, year) %>% summarize(annprec = sum(precip_mmday)) %>% ungroup()
 climdf_big_summ %>% 
   ggplot(aes(x = year, y = annprec)) + geom_point() + facet_wrap(~site_name) + 
-  geom_smooth(method = "lm", se = TRUE) + xlab("Year") + ylab("Total annual precipitaion (mm)") +
+  geom_smooth(span = 0.3, se = TRUE) + xlab("Year") + ylab("Total annual precipitaion (mm)") +
   theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 # dev.off()
 ```
 
 View annual air temperature time series
+
 ```{r, fig.height = 8, fig.width = 8}
 # jpeg("./Explore Data/Long Term Plots/ClimaticContext_Daymet_AirTemp_Regime_BigG.jpg", height = 8, width = 8, units = "in", res = 500)
 ggplot() + 
@@ -99,6 +102,7 @@ ggplot() +
 ```
 
 View annual air temperature time series, highlight recent years
+
 ```{r, fig.height = 8, fig.width = 8}
 climdf_big_recent <- climdf_big %>% filter(year %in% c(2018:2023))
 # jpeg("./Explore Data/Long Term Plots/ClimaticContext_Daymet_AirTemp_Regime_BigG_Recent.jpg", height = 8, width = 8, units = "in", res = 500)
@@ -111,8 +115,8 @@ ggplot() +
 # dev.off()
 ```
 
-
 ## Big G temp, flow, and yield
+
 ```{r}
 dat_daily_G <- dat %>% filter(designation == "big", site_name != "West Brook 0") %>% mutate(yday = yday(date), year = year(date))
 dat_daily_G_recent <- dat_daily_G %>% filter(year %in% c(2018:2023))
@@ -122,6 +126,7 @@ dat_daily_G %>% group_by(site_name) %>% summarize(mindate = min(date), maxdate =
 ```
 
 In-situ stream temperature
+
 ```{r, fig.height = 8, fig.width = 9}
 # jpeg("./Explore Data/Long Term Plots/ClimaticContext_StreamTemp_BigG_Recent.jpg", height = 8, width = 9, units = "in", res = 500)
 ggplot() + 
@@ -133,6 +138,7 @@ ggplot() +
 ```
 
 In-situ streamflow
+
 ```{r, fig.height = 8, fig.width = 9}
 # jpeg("./Explore Data/Long Term Plots/ClimaticContext_StreamFlow_BigG_Recent.jpg", height = 8, width = 9, units = "in", res = 500)
 ggplot() + 
@@ -147,6 +153,7 @@ ggplot() +
 ```
 
 Streamflow in Yield. Note same y-axis limits
+
 ```{r, fig.height = 8, fig.width = 9}
 # jpeg("./Explore Data/Long Term Plots/ClimaticContext_Yield_BigG_Recent.jpg", height = 8, width = 9, units = "in", res = 500)
 ggplot() + 
@@ -160,8 +167,8 @@ ggplot() +
 # dev.off()
 ```
 
-
 ## Exceedance probability
+
 ```{r, fig.height = 8, fig.width = 9}
 exceedance <- dat_daily_G %>% filter(!is.na(Yield_filled_mm)) %>% 
   mutate(Yield_filled_mm_log = log(Yield_filled_mm)) %>%
@@ -183,18 +190,20 @@ ggplot() +
 # dev.off()
 ```
 
-
 ## DSCI
+
 View time series of drought severity and coverage index (DSCI), summarized over HUC08 basins. Accessed <https://droughtmonitor.unl.edu/DmData/TimeSeries.aspx>
+
 ```{r}
 # get huc 8 codes
 huctib <- tibble(site_name = siteinfo$site_name, basin = siteinfo$basin, huc08 = NA)
 for (i in 1:dim(siteinfo)[1]) {
-  huctib$huc08[i] <- unlist(tibble(get_huc(siteinfo_sp[i,], type = "huc08"))[,11])
+  huctib$huc08[i] <- unlist(tibble(get_huc(AOI = siteinfo_sp[i,], type = "huc08"))[,11])
   #print(i)
 }
 huctib <- huctib %>% group_by(basin) %>% summarize(huc08 = unique(huc08)) #%>% filter(basin != "Piney River")
 # unique(huctib$huc08)
+#huctib <- tibble(basin = c("Donner Blitzen", "Flathead", "Paine"))
 
 # bring in drought indices
 dsci <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw data/dm_export_19800101_20241004.csv") %>%
@@ -251,8 +260,11 @@ dsci_monthly %>% ggplot() +
 ```
 
 
+
 ## SPI
-Calculate standardized precipiation index (SPI) for EcoDrought basins at multiple time scales (1-24 months). View time series data. 
+
+Calculate standardized precipiation index (SPI) for EcoDrought basins at multiple time scales (1-24 months). View time series data.
+
 ```{r, error=FALSE, warning=FALSE, message=FALSE}
 # combine and calculate monthly totals
 climdf_monthly <- do.call(rbind, climlist) %>% left_join(siteinfo_big) %>% mutate(year = year(date), month = month(date)) %>%
@@ -284,7 +296,6 @@ spi_monthly <- do.call(rbind, spi_list)
 # spi_monthly %>% filter(site_id == "SRL") %>% ggplot() + geom_line(aes(x = date, y = spi_24))
 ```
 
-
 ```{r, fig.height = 8, fig.width = 9}
 # jpeg("./Explore Data/Long Term Plots/ClimaticContext_SPI_1-6-12.jpg", height = 8, width = 9, units = "in", res = 500)
 spi_monthly %>% ggplot() + 
@@ -297,4 +308,12 @@ spi_monthly %>% ggplot() +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 # dev.off()
 ```
+
+Write climate metrics data to file
+```{r}
+droughtmetrics <- spi_monthly %>% select(basin, year, month, date, spi_1:spi_24) %>% full_join(dsci_monthly %>% rename(date = monthyear) %>% select(basin, year, month, date, dsci_monthly_1:dsci_monthly_24))
+
+write_csv(droughtmetrics, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Explore Data/EcoD_Basin_MonthlyDroughtMetrics.csv")
+```
+
 
