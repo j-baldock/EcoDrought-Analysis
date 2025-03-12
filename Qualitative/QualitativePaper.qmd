@@ -11,8 +11,9 @@ title: "First pass"
 *Objectives:*  In progress...
 
 1. Evaluate the extent and magnitude of spatial and temporal variation in headwater streamflow.
-2. Evaluate the predictive ability of existing streamflow modeling techniques for use in headwater systems.
-3. Explore what spatial heterogeneity in headwater streamflow regimes says about spatial variability in flow response to climatic/meteorological drivers (drought effects).
+2. Quantify spatiotemporal variation in streamflow response to regional climatic/meteorological drivers (e.g., drought).
+3. Evaluate the suitability of existing modeling techniques for predicting streamflow in headwater systems.
+
 
 ```{r, include = FALSE}
 library(tidyverse)
@@ -28,6 +29,7 @@ library(scales)
 library(GGally)
 library(DT)
 library(TSdist)
+library(ggridges)
 ```
 
 ## Data
@@ -287,6 +289,162 @@ mtext("log(Daily yield, mm)", outer = TRUE, side = 2, line = 0.5)
 dev.off()
 ```
 ![Observed daily streamflow in yield (mm) in 10 headwater basins of North America.](EcoD_timeseries.jpg)
+
+
+### Ridges plots
+
+::: panel-tabset
+#### West Brook
+```{r}
+dat_clean %>%
+  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
+  summarize(logYield = mean(logYield)) %>%
+  ungroup() %>%
+  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
+         CalendarYear = factor(CalendarYear)) %>%
+  filter(subbasin == "West Brook", designation == "little") %>%
+  ggplot(aes(x = logYield, y = MonthName)) +
+  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
+  theme_bw() +
+  facet_wrap(~CalendarYear) +
+  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```
+#### Paine Run
+```{r}
+dat_clean %>%
+  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
+  summarize(logYield = mean(logYield)) %>%
+  ungroup() %>%
+  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
+         CalendarYear = factor(CalendarYear)) %>%
+  filter(subbasin == "Paine Run", designation == "little") %>%
+  ggplot(aes(x = logYield, y = MonthName)) +
+  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
+  theme_bw() +
+  facet_wrap(~CalendarYear) +
+  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```
+#### Staunton River
+```{r}
+dat_clean %>%
+  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
+  summarize(logYield = mean(logYield)) %>%
+  ungroup() %>%
+  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
+         CalendarYear = factor(CalendarYear)) %>%
+  filter(subbasin == "Staunton River", designation == "little") %>%
+  ggplot(aes(x = logYield, y = MonthName)) +
+  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
+  theme_bw() +
+  facet_wrap(~CalendarYear) +
+  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```
+#### Big Creek
+```{r}
+dat_clean %>%
+  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
+  summarize(logYield = mean(logYield)) %>%
+  ungroup() %>%
+  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
+         CalendarYear = factor(CalendarYear)) %>%
+  filter(subbasin == "Big Creek", designation == "little") %>%
+  ggplot(aes(x = logYield, y = MonthName)) +
+  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
+  theme_bw() +
+  facet_wrap(~CalendarYear) +
+  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```
+#### Coal Creek
+```{r}
+dat_clean %>%
+  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
+  summarize(logYield = mean(logYield)) %>%
+  ungroup() %>%
+  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
+         CalendarYear = factor(CalendarYear)) %>%
+  filter(subbasin == "Coal Creek", designation == "little") %>%
+  ggplot(aes(x = logYield, y = MonthName)) +
+  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
+  theme_bw() +
+  facet_wrap(~CalendarYear) +
+  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```
+#### McGee Creek
+```{r}
+dat_clean %>%
+  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
+  summarize(logYield = mean(logYield)) %>%
+  ungroup() %>%
+  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
+         CalendarYear = factor(CalendarYear)) %>%
+  filter(subbasin == "McGee Creek", designation == "little") %>%
+  ggplot(aes(x = logYield, y = MonthName)) +
+  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
+  theme_bw() +
+  facet_wrap(~CalendarYear) +
+  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```
+#### Snake River
+```{r}
+dat_clean %>%
+  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
+  summarize(logYield = mean(logYield)) %>%
+  ungroup() %>%
+  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
+         CalendarYear = factor(CalendarYear)) %>%
+  filter(subbasin == "Snake River", designation == "little") %>%
+  ggplot(aes(x = logYield, y = MonthName)) +
+  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
+  theme_bw() +
+  facet_wrap(~CalendarYear) +
+  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```
+#### Shields River
+```{r}
+dat_clean %>%
+  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
+  summarize(logYield = mean(logYield)) %>%
+  ungroup() %>%
+  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
+         CalendarYear = factor(CalendarYear)) %>%
+  filter(subbasin == "Shields River", designation == "little") %>%
+  ggplot(aes(x = logYield, y = MonthName)) +
+  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
+  theme_bw() +
+  facet_wrap(~CalendarYear) +
+  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```
+#### Duck Creek
+```{r}
+dat_clean %>%
+  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
+  summarize(logYield = mean(logYield)) %>%
+  ungroup() %>%
+  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
+         CalendarYear = factor(CalendarYear)) %>%
+  filter(subbasin == "Duck Creek", designation == "little") %>%
+  ggplot(aes(x = logYield, y = MonthName)) +
+  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
+  theme_bw() +
+  facet_wrap(~CalendarYear) +
+  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```
+#### Donner Blitzen
+```{r}
+dat_clean %>%
+  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
+  summarize(logYield = mean(logYield)) %>%
+  ungroup() %>%
+  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
+         CalendarYear = factor(CalendarYear)) %>%
+  filter(subbasin == "Donner Blitzen", designation == "little") %>%
+  ggplot(aes(x = logYield, y = MonthName)) +
+  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
+  theme_bw() +
+  facet_wrap(~CalendarYear) +
+  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```
+:::
 
 
 ### Exceedance curves
@@ -631,7 +789,7 @@ myplotfun_mmq(subbas = "Donner Blitzen")
 
 
 
-### Similarity by Climate
+ ### Similarity by Climate
 
 ```{r}
 myplotfun_dist <- function(subbas, distance = c("euclidean", "manhattan")) {
@@ -699,7 +857,7 @@ myplotfun_dist <- function(subbas, distance = c("euclidean", "manhattan")) {
 
 ::: panel-tabset
 #### West Brook
-```{r fig.width=9, fig.height=5}
+```{r fig.width=9, fig.height=5, message=FALSE, warning=FALSE, error=FALSE}
 myplotfun_dist(subbas = "West Brook", distance = "euclidean")
 ```
 #### Paine Run 
@@ -739,4 +897,164 @@ myplotfun_dist(subbas = "Duck Creek", distance = "euclidean")
 myplotfun_dist(subbas = "Donner Blitzen", distance = "euclidean")
 ```
 :::
+
+
+
+###ddd
+
+```{r eval=FALSE}
+
+# summarize monthly mean yield by site, year
+tt <- dat_clean %>% 
+    mutate(basin = ifelse(subbasin == "Duck Creek", "Shields River", basin)) %>%
+    filter(!is.na(logYield), designation == "little") %>%
+    group_by(region, basin, subbasin, site_name, designation, CalendarYear, Month) %>%
+    summarize(meanQ = mean(logYield, na.rm = TRUE), nobs = n()) %>%
+    ungroup() %>%
+    filter(nobs >= 27) %>%
+    left_join(drought) 
+
+# calculate correlations
+mylist_dsci_slope <- list()
+mylist_dsci_pval <- list()
+mylist_dsci_rho <- list()
+mylist_spi_slope <- list()
+mylist_spi_pval <- list()
+mylist_spi_rho <- list()
+
+# list of sites to iterate over
+sites <- unique(tt$site_name)
+
+for(i in 1:length(sites)) {
+  d <- tt %>% filter(site_name == sites[i])
+  mymat_dsci_slope <- matrix(data = NA, nrow = 12, ncol = 24)
+  mymat_dsci_pval <- matrix(data = NA, nrow = 12, ncol = 24)
+  mymat_dsci_rho <- matrix(data = NA, nrow = 12, ncol = 24)
+  mymat_spi_slope <- matrix(data = NA, nrow = 12, ncol = 24)
+  mymat_spi_pval <- matrix(data = NA, nrow = 12, ncol = 24)
+  mymat_spi_rho <- matrix(data = NA, nrow = 12, ncol = 24)
+  for(j in 1:12) {
+    for(k in 1:24) {
+      if(nrow(d %>% filter(Month == j)) < 3) next
+      # DSCI
+      d2 <- d %>% filter(Month == j) %>% select(meanQ, paste("dsci_monthly_", k, sep = ""))
+      ## slope and p-value
+      try(mylm <- lm(unlist(d2[,1]) ~ unlist(d2[,2])), silent = TRUE)
+      try(mymat_dsci_slope[j,k] <- summary(mylm)$coefficients[2,1], silent = TRUE)
+      try(mymat_dsci_pval[j,k] <- summary(mylm)$coefficients[2,4], silent = TRUE)
+      ## pearons r correlation
+      try(mymat_dsci_rho[j,k] <- cor(d2[,1], d2[,2], method = "pearson", use = "complete.obs"), silent = TRUE)
+      
+      # SPI
+      d2 <- d %>% filter(Month == j) %>% select(meanQ, paste("spi_", k, sep = ""))
+      ## slope and p-value
+      try(mylm <- lm(unlist(d2[,1]) ~ unlist(d2[,2])), silent = TRUE)
+      try(mymat_spi_slope[j,k] <- summary(mylm)$coefficients[2,1], silent = TRUE)
+      try(mymat_spi_pval[j,k] <- summary(mylm)$coefficients[2,4], silent = TRUE)
+      ## pearons r correlation
+      try(mymat_spi_rho[j,k] <- cor(d2[,1], d2[,2], method = "pearson", use = "complete.obs"), silent = TRUE)
+    }
+  }
+  mylist_dsci_slope[[i]] <- mymat_dsci_slope
+  mylist_dsci_pval[[i]] <- mymat_dsci_pval
+  mylist_dsci_rho[[i]] <- mymat_dsci_rho
+  mylist_spi_slope[[i]] <- mymat_spi_slope
+  mylist_spi_pval[[i]] <- mymat_spi_pval
+  mylist_spi_rho[[i]] <- mymat_spi_rho
+  print(i)
+}
+
+
+
+
+# generate plots/heatmaps of correlation
+n <- 100
+for(i in 1:length(sites)) {
+  # streamflow mean ~ DSCI
+  jpeg(paste("./Climate Sensitivity/Climate sensitivity plots/Streamflow_DSCI_correlation_TimeVarying_", "site", i, "_mean.jpg", sep = ""), height = 6, width = 7, units = "in", res = 500)
+  filled.contour(x = 1:24, y = 1:12, z = t(corlist_dsci_mean[[i]]), 
+                 levels = seq(from = -1, to = 1, length = n+1), col = hcl.colors(n, "PRGn"),
+                 plot.title = title(main = sites[i], 
+                                    xlab = "DSCI - accumulation time scale (months)", 
+                                    ylab = "Month"),
+                 plot.axes = { 
+                   axis(1, at = seq(from = 1, to = 23, by = 2))
+                   axis(2, at = 1:12, labels = c("J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D")) 
+                   contour(x = 1:24, y = 1:12, z = t(corlist_dsci_mean[[i]]), add = TRUE, labcex = 1, levels = seq(from = -1, to = 1, length = 11))
+                 })
+  dev.off()
+  
+  # streamflow mean ~ SPI
+  jpeg(paste("./Climate Sensitivity/Climate sensitivity plots/Streamflow_SPI_correlation_TimeVarying_", "site", i, "_mean.jpg", sep = ""), height = 6, width = 7, units = "in", res = 500)
+  filled.contour(x = 1:24, y = 1:12, z = t(corlist_spi_mean[[i]]), 
+                 levels = seq(from = -1, to = 1, length = n+1), col = hcl.colors(n, "PRGn"),
+                 plot.title = title(main = sites[i], 
+                                    xlab = "SPI - accumulation time scale (months)", 
+                                    ylab = "Month"),
+                 plot.axes = { 
+                   axis(1, at = seq(from = 1, to = 23, by = 2))
+                   axis(2, at = 1:12, labels = c("J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D")) 
+                   contour(x = 1:24, y = 1:12, z = t(corlist_spi_mean[[i]]), add = TRUE, labcex = 1, levels = seq(from = -1, to = 1, length = 11))
+                 })
+  dev.off()
+  
+  # streamflow minimum ~ DSCI
+  jpeg(paste("./Climate Sensitivity/Climate sensitivity plots/Streamflow_DSCI_correlation_TimeVarying_", "site", i, "_min.jpg", sep = ""), height = 6, width = 7, units = "in", res = 500)
+  filled.contour(x = 1:24, y = 1:12, z = t(corlist_dsci_min[[i]]), 
+                 levels = seq(from = -1, to = 1, length = n+1), col = hcl.colors(n, "PRGn"),
+                 plot.title = title(main = sites[i], 
+                                    xlab = "DSCI - accumulation time scale (months)", 
+                                    ylab = "Month"),
+                 plot.axes = { 
+                   axis(1, at = seq(from = 1, to = 23, by = 2))
+                   axis(2, at = 1:12, labels = c("J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D")) 
+                   contour(x = 1:24, y = 1:12, z = t(corlist_dsci_min[[i]]), add = TRUE, labcex = 1, levels = seq(from = -1, to = 1, length = 11))
+                 })
+  dev.off()
+  
+  # streamflow minimum ~ SPI
+  jpeg(paste("./Climate Sensitivity/Climate sensitivity plots/Streamflow_SPI_correlation_TimeVarying_", "site", i, "_min.jpg", sep = ""), height = 6, width = 7, units = "in", res = 500)
+  filled.contour(x = 1:24, y = 1:12, z = t(corlist_spi_min[[i]]), 
+                 levels = seq(from = -1, to = 1, length = n+1), col = hcl.colors(n, "PRGn"),
+                 plot.title = title(main = sites[i], 
+                                    xlab = "SPI - accumulation time scale (months)", 
+                                    ylab = "Month"),
+                 plot.axes = { 
+                   axis(1, at = seq(from = 1, to = 23, by = 2))
+                   axis(2, at = 1:12, labels = c("J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D")) 
+                   contour(x = 1:24, y = 1:12, z = t(corlist_spi_min[[i]]), add = TRUE, labcex = 1, levels = seq(from = -1, to = 1, length = 11))
+                 })
+  dev.off()
+}
+
+# plot raw data
+plot(meanQ ~ spi_9, tt %>% filter(site_name == "Big Creek NWIS", Month == 10))
+plot(z_flow_mean_monthly ~ spi_7, dat3 %>% filter(site_name == "Donner Blitzen River nr Frenchglen NWIS", month == 6))
+
+
+
+filled.contour(x = 1:24, y = 1:12, z = t(mylist_dsci_slope[[1]]), 
+                levels = seq(from = -1, to = 1, length = 50), 
+               col = hcl.colors(50, "PRGn"),
+                 plot.title = title(main = sites[i], 
+                                    xlab = "DSCI - accumulation time scale (months)", 
+                                    ylab = "Month"),
+                 plot.axes = { 
+                   axis(1, at = seq(from = 1, to = 23, by = 2))
+                   axis(2, at = 1:12, labels = c("J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D")) 
+                   contour(x = 1:24, y = 1:12, z = t(mylist_dsci_slope[[i]]), add = TRUE, labcex = 1, levels = seq(from = -1, to = 1, length = 11))
+                 })
+
+
+filled.contour(x = 1:24, y = 1:12, z = t(mylist_spi_pval[[1]]), 
+                levels = seq(from = 0, to = 1, length = 100), 
+               col = hcl.colors(100, "Blues"))
+
+filled.contour(x = 1:24, y = 1:12, z = t(mylist_spi_slope[[1]]), 
+                levels = seq(from = -1, to = 1, length = 100), 
+               col = hcl.colors(100, "PRGn"))
+
+```
+
+
 
