@@ -30,6 +30,7 @@ library(GGally)
 library(DT)
 library(TSdist)
 library(ggridges)
+library(ggh4x)
 ```
 
 ## Data
@@ -293,156 +294,69 @@ dev.off()
 
 ### Ridges plots
 
+```{r}
+myridgesfun <- function(subbas) {
+  td <- dat_clean %>%
+  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
+  summarize(logYield = mean(logYield)) %>%
+  ungroup() %>%
+  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
+         CalendarYear = factor(CalendarYear)) %>%
+  filter(subbasin == subbas)
+  
+  return(ggplot(data = td) +
+  geom_density_ridges(data = td %>% filter(designation == "little"), aes(x = logYield, y = MonthName), alpha = 0.5,point_alpha = 0.2) +
+  geom_line(data = td %>% filter(designation == "little"), aes(x = logYield, y = MonthName, group = site_name, color = site_name), orientation = "y", alpha = 0.3) +
+  geom_point(data = td %>% filter(designation == "little"), aes(x = logYield, y = MonthName, group = site_name, color = site_name), alpha = 0.3) +
+  geom_line(data = td %>% filter(designation == "big"), aes(x = logYield, y = MonthName, group = site_name), orientation = "y", alpha = 0.5) +
+  geom_point(data = td %>% filter(designation == "big"), aes(x = logYield, y = MonthName, group = site_name), alpha = 0.5) +
+  theme_bw() + theme(legend.position = "none") +
+  facet_wrap2(~CalendarYear, nrow = 3, ncol = 3, trim_blank = FALSE) +
+  xlab("Monthly mean log(Yield, mm/day)") + ylab(""))
+}
+```
+
+
 ::: panel-tabset
 #### West Brook
-```{r}
-dat_clean %>%
-  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
-  summarize(logYield = mean(logYield)) %>%
-  ungroup() %>%
-  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
-         CalendarYear = factor(CalendarYear)) %>%
-  filter(subbasin == "West Brook", designation == "little") %>%
-  ggplot(aes(x = logYield, y = MonthName)) +
-  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
-  theme_bw() +
-  facet_wrap(~CalendarYear) +
-  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```{r fig.width=7, fig.height=7}
+myridgesfun("West Brook")
 ```
 #### Paine Run
-```{r}
-dat_clean %>%
-  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
-  summarize(logYield = mean(logYield)) %>%
-  ungroup() %>%
-  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
-         CalendarYear = factor(CalendarYear)) %>%
-  filter(subbasin == "Paine Run", designation == "little") %>%
-  ggplot(aes(x = logYield, y = MonthName)) +
-  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
-  theme_bw() +
-  facet_wrap(~CalendarYear) +
-  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```{r fig.width=7, fig.height=7}
+myridgesfun("Paine Run")
 ```
 #### Staunton River
-```{r}
-dat_clean %>%
-  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
-  summarize(logYield = mean(logYield)) %>%
-  ungroup() %>%
-  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
-         CalendarYear = factor(CalendarYear)) %>%
-  filter(subbasin == "Staunton River", designation == "little") %>%
-  ggplot(aes(x = logYield, y = MonthName)) +
-  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
-  theme_bw() +
-  facet_wrap(~CalendarYear) +
-  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```{r fig.width=7, fig.height=7}
+myridgesfun("Staunton River")
 ```
 #### Big Creek
-```{r}
-dat_clean %>%
-  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
-  summarize(logYield = mean(logYield)) %>%
-  ungroup() %>%
-  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
-         CalendarYear = factor(CalendarYear)) %>%
-  filter(subbasin == "Big Creek", designation == "little") %>%
-  ggplot(aes(x = logYield, y = MonthName)) +
-  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
-  theme_bw() +
-  facet_wrap(~CalendarYear) +
-  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```{r fig.width=7, fig.height=7}
+myridgesfun("Big Creek")
 ```
 #### Coal Creek
-```{r}
-dat_clean %>%
-  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
-  summarize(logYield = mean(logYield)) %>%
-  ungroup() %>%
-  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
-         CalendarYear = factor(CalendarYear)) %>%
-  filter(subbasin == "Coal Creek", designation == "little") %>%
-  ggplot(aes(x = logYield, y = MonthName)) +
-  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
-  theme_bw() +
-  facet_wrap(~CalendarYear) +
-  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```{r fig.width=7, fig.height=7}
+myridgesfun("Coal Creek")
 ```
 #### McGee Creek
-```{r}
-dat_clean %>%
-  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
-  summarize(logYield = mean(logYield)) %>%
-  ungroup() %>%
-  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
-         CalendarYear = factor(CalendarYear)) %>%
-  filter(subbasin == "McGee Creek", designation == "little") %>%
-  ggplot(aes(x = logYield, y = MonthName)) +
-  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
-  theme_bw() +
-  facet_wrap(~CalendarYear) +
-  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```{r fig.width=7, fig.height=7}
+myridgesfun("McGee Creek")
 ```
 #### Snake River
-```{r}
-dat_clean %>%
-  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
-  summarize(logYield = mean(logYield)) %>%
-  ungroup() %>%
-  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
-         CalendarYear = factor(CalendarYear)) %>%
-  filter(subbasin == "Snake River", designation == "little") %>%
-  ggplot(aes(x = logYield, y = MonthName)) +
-  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
-  theme_bw() +
-  facet_wrap(~CalendarYear) +
-  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```{r fig.width=7, fig.height=7}
+myridgesfun("Snake River")
 ```
 #### Shields River
-```{r}
-dat_clean %>%
-  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
-  summarize(logYield = mean(logYield)) %>%
-  ungroup() %>%
-  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
-         CalendarYear = factor(CalendarYear)) %>%
-  filter(subbasin == "Shields River", designation == "little") %>%
-  ggplot(aes(x = logYield, y = MonthName)) +
-  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
-  theme_bw() +
-  facet_wrap(~CalendarYear) +
-  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```{r fig.width=7, fig.height=7}
+myridgesfun("Shields River")
 ```
 #### Duck Creek
-```{r}
-dat_clean %>%
-  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
-  summarize(logYield = mean(logYield)) %>%
-  ungroup() %>%
-  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
-         CalendarYear = factor(CalendarYear)) %>%
-  filter(subbasin == "Duck Creek", designation == "little") %>%
-  ggplot(aes(x = logYield, y = MonthName)) +
-  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
-  theme_bw() +
-  facet_wrap(~CalendarYear) +
-  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```{r fig.width=7, fig.height=7}
+myridgesfun("Duck Creek")
 ```
 #### Donner Blitzen
-```{r}
-dat_clean %>%
-  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
-  summarize(logYield = mean(logYield)) %>%
-  ungroup() %>%
-  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
-         CalendarYear = factor(CalendarYear)) %>%
-  filter(subbasin == "Donner Blitzen", designation == "little") %>%
-  ggplot(aes(x = logYield, y = MonthName)) +
-  geom_density_ridges(alpha = 0.5, jittered_points = TRUE, point_alpha = 0.2) +
-  theme_bw() +
-  facet_wrap(~CalendarYear) +
-  xlab("Monthly mean log(Yield, mm/day)") + ylab("")
+```{r fig.width=7, fig.height=7}
+myridgesfun("Donner Blitzen")
 ```
 :::
 
@@ -789,7 +703,7 @@ myplotfun_mmq(subbas = "Donner Blitzen")
 
 
 
- ### Similarity by Climate
+### Similarity by Climate
 
 ```{r}
 myplotfun_dist <- function(subbas, distance = c("euclidean", "manhattan")) {
