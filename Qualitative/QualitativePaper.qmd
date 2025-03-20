@@ -11,8 +11,17 @@ title: "First pass"
 *Objectives:*  In progress...
 
 1. Evaluate the extent and magnitude of spatial and temporal variation in headwater streamflow.
-2. Quantify spatiotemporal variation in streamflow response to regional climatic/meteorological drivers (e.g., drought).
-3. Evaluate the suitability of existing modeling techniques for predicting streamflow in headwater systems.
+  a. Visualize time series data to show difference in streamflow regimes between reference gages (big G/NWIS) and upstream gages (little g's)
+    * Back up with flow exceedance curves to describe spatial diversity in distribution of flow values, generally 
+  b. Use scatterplots to show how hysteresis/non-stationarity/non-linearity in g~G relationships changes among basins (rain vs. snow) and sites within basins. 
+*2.* Evaluate the suitability of existing modeling techniques for predicting streamflow in headwater systems.
+  a. Use NSE (Nash-Sutcliffe efficiency) to compare the performance of regional regression, NWM/PRMS, and deep learning approaches for modeling headwater streamflow 
+3. Demonstrate how drought-related low flow conditions manifest differently in streams across headwater networks. 
+  a. Using fixed and seasonally variable low flow/drought thresholds derived from long-term (1970-present) big G data (sensu Hammond et al. 2022), show how streamflow drought duration and deficit vary among headwater streams (relative to big G). Violin plots with points for little g's relative to big G
+  b. How does the spread of values (spatial variation in drought duration and deficit) change among years that differ in regional water availability?
+4. Explore how the spatial structure/geometry of headwater stream networks combines with regional water availability to affect within-network variation in straemflow regimes (and similarity in low flow/drought response?)
+  a. Use fluvial synchronograms to explore the effects of flow connectivity, branching complexity, and regional water availability on short-scale synchrony and decay
+
 
 
 ```{r, include = FALSE}
@@ -31,19 +40,35 @@ library(DT)
 library(TSdist)
 library(ggridges)
 library(ggh4x)
+library(viridis)
+library(daymetr)
+library(scico)
+library(cetcolor)
 ```
 
 ## Data
 
-Site information and daily data
+Site information and map
 ```{r}
 # site information
 siteinfo <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv")
+siteinfo_sp <- st_as_sf(siteinfo, coords = c("long", "lat"), crs = 4326)
+mapview(siteinfo_sp, zcol = "designation")
+```
 
+
+### Little g's
+
+Little g daily data
+```{r}
 # flow/yield (and temp) data 
 dat <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv") %>%
   mutate(site_name = dplyr::recode(site_name, "Leidy Creek Mouth NWIS" = "Leidy Creek Mouth", "SF Spread Creek Lower NWIS" = "SF Spread Creek Lower", "Dugout Creek NWIS" = "Dugout Creek", "Shields River ab Smith NWIS" = "Shields River Valley Ranch")) %>%
-  filter(!site_name %in% c("Avery Brook NWIS", "West Brook 0", "BigCreekMiddle")) %>%
+  filter(!site_name %in% c("Avery Brook NWIS", "West Brook 0", "BigCreekMiddle",                # drop co-located sites
+                           "South River Conway NWIS", "North Fork Flathead River NWIS",         # drop big Gs
+                           "Pacific Creek at Moran NWIS", "Shields River nr Livingston NWIS",   # drop big Gs
+                           "Donner Blitzen River nr Frenchglen NWIS",                           # drop big Gs
+                           "WoundedBuckCreek")) %>%                                             # drop little g outside of focal basin
   group_by(site_name, basin, subbasin, region, date) %>%
   summarize(flow_mean = mean(flow_mean),
             tempc_mean = mean(tempc_mean),
@@ -52,149 +77,18 @@ dat <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoD
   ungroup()
 
 # add water/climate year variables and fill missing dates
-dat <- add_date_variables(dat, dates = date, water_year_start = 4)
 dat <- fill_missing_dates(dat, dates = date, groups = site_name)
-str(dat)
+dat <- add_date_variables(dat, dates = date, water_year_start = 10)
 ```
 
-Map focal sites/subbasins
-```{r}
-siteinfo_sp <- st_as_sf(siteinfo, coords = c("long", "lat"), crs = 4326)
-mapview(siteinfo_sp, zcol = "designation")
-```
-
-
-
-## Objective 1
-
-Objective 1: Evaluate the extent and magnitude of spatial and temporal variation in headwater streamflow.
-
-Approach: 
-
-
-### Spaghetti plots
-
-View daily time series data by sub-basin. Note that for ~all basins except Staunton and Paine, we are using the "Super G" NWIS data for the reference gage (black line). Per Robert comment, entirely nested design is cute, but doesn't reflect how the data is actually used. 
-
-* Staunton and Paine use the UVA gages as reference...maybe change to NWIS
-* Duck Creek uses Sheilds River...maybe change to Boulder or Yellowstone?
-
-
-#### Interactive
-
-::: panel-tabset
-##### West Brook
-```{r, echo=FALSE}
-dat %>% 
-  filter(site_name %in% unlist(siteinfo %>% filter(subbasin == "West Brook") %>% select(site_name)), year(date) >= 2020, date <= date("2025-01-03")) %>% 
-  mutate(logYield = log10(Yield_filled_mm)) %>% 
-  mutate(logYield = ifelse(site_name == "West Brook Upper" & date > date("2024-10-06"), NA, logYield)) %>%
-  mutate(logYield = ifelse(site_name == "Mitchell Brook" & date > date("2021-02-28") & date < date("2021-03-26"), NA, logYield)) %>%
-  select(date, site_name, logYield) %>% 
-  spread(key = site_name, value = logYield) %>% 
-  relocate("South River Conway NWIS", .after = last_col()) %>% 
-  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(8, "Dark2"), "dodgerblue", "darkorchid", "black")) %>% dySeries("South River Conway NWIS", strokeBorderWidth = 1, strokeWidth = 1.5)
-```
-##### Paine Run
-```{r, echo=FALSE}
-dat %>% 
-  filter(site_name %in% unlist(siteinfo %>% filter(subbasin == "Paine Run") %>% select(site_name)), date >= as_date("2018-11-07"), date <= as_date("2023-05-15")) %>%
-  mutate(logYield = log10(Yield_filled_mm)) %>% 
-  select(date, site_name, logYield) %>% 
-  spread(key = site_name, value = logYield) %>% 
-  relocate("Paine Run 10", .after = last_col()) %>% 
-  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(5, "Dark2"), "black")) %>% dySeries("Paine Run 10", strokeBorderWidth = 1, strokeWidth = 1.5)
-```
-##### Staunton River
-```{r, echo=FALSE}
-dat %>% 
-  filter(site_name %in% unlist(siteinfo %>% filter(subbasin == "Staunton River") %>% select(site_name)), date >= as_date("2018-11-07"), date <= as_date("2022-10-19")) %>% 
-  mutate(logYield = log10(Yield_filled_mm)) %>% 
-  select(date, site_name, logYield) %>% 
-  spread(key = site_name, value = logYield) %>% 
-  relocate("Staunton River 10", .after = last_col()) %>% 
-  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(5, "Dark2"), "black")) %>% dySeries("Staunton River 10", strokeBorderWidth = 1, strokeWidth = 1.5)
-```
-##### Big Creek
-```{r, echo=FALSE}
-dat %>% 
-  filter(site_name %in% c(unlist(siteinfo %>% filter(subbasin == "Big Creek") %>% select(site_name)), "North Fork Flathead River NWIS"), date >= date("2018-08-08"), date <= date("2023-08-03"), site_name != "SkookoleelCreek") %>% 
-  mutate(logYield = log10(Yield_filled_mm)) %>% 
-  select(date, site_name, logYield) %>% 
-  spread(key = site_name, value = logYield) %>% 
-  relocate("North Fork Flathead River NWIS", .after = last_col()) %>% 
-  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(8, "Dark2"), "dodgerblue", "black")) %>% dySeries("North Fork Flathead River NWIS", strokeBorderWidth = 1, strokeWidth = 1.5)
-```
-##### Coal Creek
-```{r, echo=FALSE}
-dat %>% filter(site_name %in% c(unlist(siteinfo %>% filter(subbasin == "Coal Creek") %>% select(site_name)), "North Fork Flathead River NWIS"), date >= date("2018-07-29"), date <= date("2023-08-03")) %>% 
-  mutate(logYield = log10(Yield_filled_mm)) %>% 
-  select(date, site_name, logYield) %>% 
-  spread(key = site_name, value = logYield) %>% 
-  relocate("North Fork Flathead River NWIS", .after = last_col()) %>% 
-  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(7, "Dark2"), "black")) %>% dySeries("North Fork Flathead River NWIS", strokeBorderWidth = 1, strokeWidth = 1.5)
-```
-##### McGee Creek
-```{r, echo=FALSE}
-dat %>% 
-  filter(site_name %in% c(unlist(siteinfo %>% filter(subbasin == "McGee Creek") %>% select(site_name)), "North Fork Flathead River NWIS"), date >= date("2017-07-30"), date <= date("2023-12-11")) %>% 
-  mutate(logYield = log10(Yield_filled_mm)) %>% 
-  select(date, site_name, logYield) %>% 
-  spread(key = site_name, value = logYield) %>% 
-  relocate("North Fork Flathead River NWIS", .after = last_col()) %>% 
-  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(3, "Dark2"), "black")) %>% dySeries("North Fork Flathead River NWIS", strokeBorderWidth = 1, strokeWidth = 1.5)
-```
-##### Snake River
-```{r, echo=FALSE}
-dat %>% 
-  filter(site_name %in% unlist(siteinfo %>% filter(subbasin == "Snake River") %>% select(site_name)), date >= date("2016-04-01"), date <= date("2023-10-03"), site_name != "Leidy Creek Upper") %>% 
-  mutate(logYield = log10(Yield_filled_mm)) %>% 
-  select(date, site_name, logYield) %>% 
-  spread(key = site_name, value = logYield) %>% 
-  relocate("Pacific Creek at Moran NWIS", .after = last_col()) %>% 
-  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(8, "Dark2"), "dodgerblue", "black")) %>% dySeries("Pacific Creek at Moran NWIS", strokeBorderWidth = 1, strokeWidth = 1.5)
-```
-##### Shields River
-```{r, echo=FALSE}
-dat %>% 
-  filter(subbasin == "Shields River", date >= date("2016-04-01"), date <= date("2023-12-31"), site_name != "Brackett Creek") %>% 
-  mutate(logYield = log10(Yield_filled_mm)) %>% 
-  select(date, site_name, logYield) %>% filter(!is.na(logYield)) %>%
-  spread(key = site_name, value = logYield) %>% 
-  relocate("Shields River nr Livingston NWIS", .after = last_col()) %>% 
-  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(7, "Dark2"), "black")) %>% dySeries("Shields River nr Livingston NWIS", strokeBorderWidth = 1, strokeWidth = 1.5)
-```
-##### Duck Creek
-```{r, echo=FALSE}
-dat %>% 
-  filter(subbasin == "Duck Creek", date >= date("2015-04-01"), date <= date("2023-12-31")) %>% 
-  mutate(logYield = log10(Yield_filled_mm)) %>% 
-  select(date, site_name, logYield) %>% 
-  spread(key = site_name, value = logYield) %>% 
-  relocate("Shields River nr Livingston NWIS", .after = last_col()) %>% 
-  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(3, "Dark2"), "black")) %>% dySeries("Shields River nr Livingston NWIS", strokeBorderWidth = 1, strokeWidth = 1.5)
-```
-##### Donner Blitzen
-```{r, echo=FALSE}
-dat %>% 
-  filter(subbasin == "Donner Blitzen", date >= as_date("2019-04-23"), date <= as_date("2022-12-31"), !site_name %in% c("Indian Creek NWIS", "Little Blizten River NWIS")) %>% 
-  mutate(logYield = log10(Yield_filled_mm)) %>% 
-  select(date, site_name, logYield) %>% 
-  spread(key = site_name, value = logYield) %>% 
-  relocate("Donner Blitzen River nr Frenchglen NWIS", .after = last_col()) %>% 
-  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(5, "Dark2"), "black")) %>% dySeries("Donner Blitzen River nr Frenchglen NWIS", strokeBorderWidth = 1, strokeWidth = 1.5)
-```
-:::
-
-
-#### Static
-
-Clean and bind data 
+Clean and bind little g data (for each basin, restrict to time period for which data quality/availability is ~consistent)
 ```{r}
 dat_clean <- bind_rows(
   dat %>% filter(site_name %in% unlist(siteinfo %>% filter(subbasin == "West Brook") %>% select(site_name)), year(date) >= 2020, date <= date("2025-01-03")) %>% 
     mutate(Yield_filled_mm = ifelse(site_name == "West Brook Upper" & date > date("2024-10-06"), NA, Yield_filled_mm)) %>%
-    mutate(Yield_filled_mm = ifelse(site_name == "Mitchell Brook" & date > date("2021-02-28") & date < date("2021-03-26"), NA, Yield_filled_mm)) %>% mutate(subbasin = "West Brook"),
+    mutate(Yield_filled_mm = ifelse(site_name == "Mitchell Brook" & date > date("2021-02-28") & date < date("2021-03-26"), NA, Yield_filled_mm)) %>% 
+    mutate(Yield_filled_mm = ifelse(site_name == "Mitchell Brook" & date > date("2021-11-01") & date < date("2022-05-01"), NA, Yield_filled_mm)) %>% 
+    mutate(subbasin = "West Brook"),
   
   dat %>% filter(site_name %in% unlist(siteinfo %>% filter(subbasin == "Paine Run") %>% select(site_name)), date >= as_date("2018-11-07"), date <= as_date("2023-05-15")) %>% mutate(subbasin = "Paine Run"),
   
@@ -216,9 +110,288 @@ dat_clean <- bind_rows(
   dat %>% filter(subbasin == "Donner Blitzen", date >= as_date("2019-04-23"), date <= as_date("2022-12-31"), !site_name %in% c("Indian Creek NWIS", "Little Blizten River NWIS")) %>% mutate(subbasin = "Donner Blitzen")
 ) %>%
   filter(Yield_filled_mm > 0) %>%
-  mutate(logYield = log10(Yield_filled_mm),
-         designation = ifelse(site_name %in% c("South River Conway NWIS", "Paine Run 10", "Staunton River 10", "North Fork Flathead River NWIS", "Pacific Creek at Moran NWIS", "Shields River nr Livingston NWIS", "Donner Blitzen River nr Frenchglen NWIS"), "big", "little")) 
+  mutate(logYield = log10(Yield_filled_mm), 
+         designation = "little", 
+         doy_calendar = yday(date)) %>%
+  select(-Yield_mm) %>%
+  rename(Yield_mm = Yield_filled_mm)
+head(dat_clean)
 ```
+
+
+### Big G's
+
+Load big/super G data
+```{r}
+nwis_daily <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_NWIS_FlowTempData_Raw_Daily.csv") %>%
+  filter(designation == "big", 
+         year(date) >= 1970,
+         site_name != "Shields River nr Livingston NWIS") %>%
+  mutate(flowcfs = ifelse(site_name == "Rapidan River NWIS" & date > date("1995-06-26") & date < date("1995-07-01"), NA, flowcfs),
+         flow_mean_cms = flowcfs*0.02831683199881, 
+         area_sqkm = area_sqmi*2.58999)
+
+# sites
+sites <- unique(nwis_daily$site_name)
+
+# site-specific basin area in square km
+basinarea <- nwis_daily %>% filter(!is.na(site_id)) %>% group_by(site_name) %>% summarize(area_sqkm = unique(area_sqkm))
+
+# calculate yield
+yield_list <- list()
+for (i in 1:length(sites)) {
+  d <- nwis_daily %>% filter(site_name == sites[i])
+  ba <- unlist(basinarea %>% filter(site_name == sites[i]) %>% select(area_sqkm))
+  yield_list[[i]] <-  add_daily_yield(data = d, values = flow_mean_cms, basin_area = as.numeric(ba))
+}
+nwis_daily_wyield <- do.call(rbind, yield_list)
+
+dat_clean_big <- nwis_daily_wyield %>% 
+  select(site_name, basin, subbasin, region, date, Yield_mm, tempc, flowcfs) %>% 
+  mutate(logYield = log10(Yield_mm), doy_calendar = yday(date)) %>%
+  rename(tempc_mean = tempc, flow_mean = flowcfs)
+
+# add water/climate year variables and fill missing dates
+dat_clean_big <- fill_missing_dates(dat_clean_big, dates = date, groups = site_name)
+dat_clean_big <- add_date_variables(dat_clean_big, dates = date, water_year_start = 10)
+
+head(dat_clean_big)
+```
+
+View big G streamflow time series data
+```{r, fig.width=8, fig.height=8}
+dat_clean_big %>% ggplot() + geom_line(aes(x = date, y = logYield)) + facet_wrap(~site_name, nrow = 8) + theme_bw()
+```
+
+
+### Climate
+
+Download Daymet precip data and summarize by water year
+```{r}
+# big G site lat/long
+mysites <- nwis_daily %>% group_by(site_name, basin, subbasin, region) %>% summarize(lat = unique(lat), long = unique(long)) %>% ungroup()
+
+# download point location Daymet data
+climlist <- vector("list", length = dim(mysites)[1])
+for (i in 1:dim(mysites)[1]) {
+  clim <- download_daymet(site = mysites$site_name[i], lat = mysites$lat[i], lon = mysites$long[i], start = 1980, end = 2024, internal = T)
+  climlist[[i]] <- tibble(clim$data) %>% 
+    mutate(air_temp_mean = (tmax..deg.c. + tmin..deg.c.)/2, 
+           date = as.Date(paste(year, yday, sep = "-"), "%Y-%j"),
+           site_name = mysites$site_name[i]) %>%
+    select(12,2,11,10,4,6) %>% rename(precip_mmday = 5, swe_kgm2 = 6)
+  print(i)
+}
+
+# combine and add water years
+climdf <- do.call(rbind, climlist) %>% left_join(mysites) %>% mutate(year = year(date))
+climdf <- add_date_variables(climdf, dates = date, water_year_start = 10)
+
+# calculate total annual precipitation in mm, by site and water year
+climdf_summ <- climdf %>% 
+  group_by(site_name, basin, subbasin, region, WaterYear) %>% 
+  summarize(precip_total = sum(precip_mmday), sampsize = n()) %>% 
+  mutate(precip_total_z = scale(precip_total)) %>%
+  ungroup() %>% 
+  filter(sampsize >= 350)
+```
+
+View time series and scatter plots of big G water availability (total annual yield, sum of daily values, black lines) and precipitation (total annual precip, blues lines). Note that the panel labels indicate basins, not NWIS gage names. In the manuscript, pair these plots with CONUS map and detailed inset maps of focal basins (Figure 1)
+```{r}
+# calculate annual water availability at big g as sum of daily yield values...retain only years with >95% data coverage (at least 350 days)
+wateravail <- dat_clean_big %>% 
+  filter(!is.na(Yield_mm)) %>%
+  group_by(basin, site_name, WaterYear) %>% 
+  summarize(sampsize = n(), totalyield = sum(Yield_mm, na.rm = TRUE)) %>% 
+  mutate(totalyield_z = scale(totalyield)[,1]) %>%
+  ungroup() %>%
+  filter(sampsize >= 350) %>% 
+  complete(basin, WaterYear = 1971:2024, fill = list(sampsize = NA, totalyield = NA))
+
+# get range of years for little g data
+daterange <- dat_clean %>% group_by(basin) %>% summarize(minyear = year(min(date)), maxyear = year(max(date)))
+
+# spread ecod years
+mylist <- vector("list", length = dim(daterange)[1])
+for (i in 1:dim(daterange)[1]) {
+  mylist[[i]] <- tibble(basin = daterange$basin[i], WaterYear = seq(from = daterange$minyear[i], to = daterange$maxyear[i], by = 1))
+}
+yrdf <- do.call(rbind, mylist) %>% mutate(ecodyr = "yes")
+```
+
+::: panel-tabset
+#### Raw values
+```{r, fig.width=8, fig.height=8}
+ggplot() + 
+  geom_rect(data = daterange, aes(xmin = minyear-0.5, xmax = maxyear+0.5, ymin = -Inf, ymax = +Inf), fill = "grey") +
+  geom_line(data = wateravail, aes(x = WaterYear, y = totalyield), linewidth = 1) + 
+  geom_line(data = climdf_summ, aes(x = WaterYear, y = precip_total), linewidth = 0.5, col = "blue") +
+  facet_wrap(~basin) + 
+  xlab("Water year") + ylab("Total annual yield (mm) / Total annual precipitation (mm)") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+#### z-scores
+```{r, fig.width=8, fig.height=8}
+ggplot() + 
+  geom_rect(data = daterange, aes(xmin = minyear-0.5, xmax = maxyear+0.5, ymin = -Inf, ymax = +Inf), fill = "grey") +
+  geom_line(data = wateravail, aes(x = WaterYear, y = totalyield_z), linewidth = 1) + 
+  geom_line(data = climdf_summ, aes(x = WaterYear, y = precip_total_z), linewidth = 0.5, col = "blue") +
+  facet_wrap(~basin) + 
+  xlab("Water year") + ylab("Total annual yield (scaled) / Total annual precipitation (scaled)") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+#### scatter
+```{r fig.width=8, fig.height=8, warning=FALSE}
+wateravail %>% select(-sampsize) %>% left_join(climdf_summ %>% select(-sampsize)) %>% left_join(yrdf) %>%
+  ggplot(aes(x = precip_total_z, y = totalyield_z)) +
+  geom_point(aes(color = ecodyr)) +
+  facet_wrap(~basin) + 
+  xlab("Total annual precipitation (scaled)") + ylab("Total annual yield (scaled)") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none") +
+  stat_cor(method = "pearson", aes(label = ..r.label..))
+```
+:::
+
+
+## Objective 1
+
+*Objective 1:* Evaluate the extent and magnitude of spatial and temporal variation in headwater streamflow.
+
+*Approach:*
+
+* Visualize time series data to show difference in streamflow regimes between reference gages (big G/NWIS) and upstream gages (little g's)
+* Back up with flow exceedance curves to describe spatial diversity in distribution of flow values, generally 
+
+*Notes:*
+
+* Consider combining subbasins 
+  - Flathead = Coal, Big, and McGee Creeks
+  - Yellowstone = Shields River and Duck Creek
+  - Shenandoah??? Hard b/c Staunton, Paine, and Piney all use different big G's
+* Might be helpful to plot panels of static time series plot on the same x-axis/time scale 
+* Not sure how necessary ridgeline plots are under the current framework/objectives, although they do highlight differences in variability between big and littls g's
+* Exceedance curves need updating/doing, perhaps facet by year and restrict to summer/low flow season only (July, August, September). 
+
+
+### Spaghetti plots
+
+View daily time series data by sub-basin. Note that we are using the "Super G" NWIS data for the reference gage (black line). Per Robert comment, entirely nested design is cute, but doesn't reflect how the data is actually used. 
+
+Big G NWIS sites/reference gages for each basin/subbasin:
+```{r}
+dat_clean_big %>% group_by(region, basin, subbasin) %>% summarize(site_name = unique(site_name)) %>% ungroup() %>% filter(!is.na(region)) %>% kable()
+```
+
+
+#### Interactive
+
+::: panel-tabset
+##### West Brook
+```{r, echo=FALSE}
+dat_clean %>% 
+  filter(subbasin == "West Brook") %>% 
+  bind_rows(dat_clean_big %>% filter(subbasin == "West Brook", year(date) >= 2020, date <= date("2025-01-03"))) %>% 
+  select(date, site_name, logYield) %>% 
+  spread(key = site_name, value = logYield) %>% 
+  relocate("South River Conway NWIS", .after = last_col()) %>% 
+  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(8, "Dark2"), "dodgerblue", "darkorchid", "black")) %>% dySeries("South River Conway NWIS", strokeBorderWidth = 1, strokeWidth = 1.5)
+```
+##### Paine Run
+```{r, echo=FALSE}
+dat_clean %>% 
+  filter(subbasin == "Paine Run") %>% 
+  bind_rows(dat_clean_big %>% filter(subbasin == "Paine Run", date >= as_date("2018-11-07"), date <= as_date("2023-05-15"))) %>% 
+  select(date, site_name, logYield) %>% 
+  spread(key = site_name, value = logYield) %>% 
+  relocate("South River Harriston NWIS", .after = last_col()) %>% 
+  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(6, "Dark2"), "black")) %>% dySeries("South River Harriston NWIS", strokeBorderWidth = 1, strokeWidth = 1.5)
+```
+##### Staunton River
+```{r, echo=FALSE}
+dat_clean %>% 
+  filter(subbasin == "Staunton River") %>% 
+  bind_rows(dat_clean_big %>% filter(subbasin == "Staunton River",date >= as_date("2018-11-07"), date <= as_date("2022-10-19"))) %>% 
+  select(date, site_name, logYield) %>% 
+  spread(key = site_name, value = logYield) %>% 
+  relocate("Rapidan River NWIS", .after = last_col()) %>% 
+  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(6, "Dark2"), "black")) %>% dySeries("Rapidan River NWIS", strokeBorderWidth = 1, strokeWidth = 1.5)
+```
+##### Big Creek
+```{r, echo=FALSE}
+dat_clean %>% 
+  filter(subbasin == "Big Creek") %>% 
+  bind_rows(dat_clean_big %>% filter(subbasin == "Flathead", date >= date("2018-08-08"), date <= date("2023-08-03"))) %>% 
+  select(date, site_name, logYield) %>% 
+  spread(key = site_name, value = logYield) %>% 
+  relocate("North Fork Flathead River NWIS", .after = last_col()) %>% 
+  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(9, "Dark2"), "dodgerblue", "black")) %>% dySeries("North Fork Flathead River NWIS", strokeBorderWidth = 1, strokeWidth = 1.5)
+```
+##### Coal Creek
+```{r, echo=FALSE}
+dat_clean %>% 
+  filter(subbasin == "Coal Creek") %>% 
+  bind_rows(dat_clean_big %>% filter(subbasin == "Flathead", date >= date("2018-07-29"), date <= date("2023-08-03"))) %>% 
+  select(date, site_name, logYield) %>% 
+  spread(key = site_name, value = logYield) %>% 
+  relocate("North Fork Flathead River NWIS", .after = last_col()) %>% 
+  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(7, "Dark2"), "black")) %>% dySeries("North Fork Flathead River NWIS", strokeBorderWidth = 1, strokeWidth = 1.5)
+```
+##### McGee Creek
+```{r, echo=FALSE}
+dat_clean %>% 
+  filter(subbasin == "McGee Creek") %>% 
+  bind_rows(dat_clean_big %>% filter(subbasin == "Flathead", date >= date("2017-07-30"), date <= date("2023-12-11"))) %>% 
+  select(date, site_name, logYield) %>% 
+  spread(key = site_name, value = logYield) %>% 
+  relocate("North Fork Flathead River NWIS", .after = last_col()) %>% 
+  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(3, "Dark2"), "black")) %>% dySeries("North Fork Flathead River NWIS", strokeBorderWidth = 1, strokeWidth = 1.5)
+```
+##### Snake River
+```{r, echo=FALSE}
+dat_clean %>% 
+  filter(subbasin == "Snake River") %>% 
+  bind_rows(dat_clean_big %>% filter(subbasin == "Snake River", date >= date("2016-04-01"), date <= date("2023-10-03"))) %>% 
+  select(date, site_name, logYield) %>% 
+  spread(key = site_name, value = logYield) %>% 
+  relocate("Pacific Creek at Moran NWIS", .after = last_col()) %>% 
+  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(8, "Dark2"), "dodgerblue", "black")) %>% dySeries("Pacific Creek at Moran NWIS", strokeBorderWidth = 1, strokeWidth = 1.5)
+```
+##### Shields River
+```{r, echo=FALSE}
+dat_clean %>% 
+  filter(subbasin == "Shields River") %>% 
+  bind_rows(dat_clean_big %>% filter(subbasin == "Shields River", date >= date("2016-04-01"), date <= date("2023-12-31"))) %>% 
+  select(date, site_name, logYield) %>% 
+  spread(key = site_name, value = logYield) %>% 
+  relocate("Yellowstone River Livingston NWIS", .after = last_col()) %>% 
+  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(7, "Dark2"), "black")) %>% dySeries("Yellowstone River Livingston NWIS", strokeBorderWidth = 1, strokeWidth = 1.5)
+```
+
+##### Duck Creek
+```{r, echo=FALSE}
+dat_clean %>% 
+  filter(subbasin == "Duck Creek") %>% 
+  bind_rows(dat_clean_big %>% filter(subbasin == "Shields River", date >= date("2015-04-01"), date <= date("2023-12-31"))) %>% 
+  select(date, site_name, logYield) %>% 
+  spread(key = site_name, value = logYield) %>% 
+  relocate("Yellowstone River Livingston NWIS", .after = last_col()) %>% 
+  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(3, "Dark2"), "black")) %>% dySeries("Yellowstone River Livingston NWIS", strokeBorderWidth = 1, strokeWidth = 1.5)
+```
+##### Donner Blitzen
+```{r, echo=FALSE}
+dat_clean %>% 
+  filter(subbasin == "Donner Blitzen") %>% 
+  bind_rows(dat_clean_big %>% filter(subbasin == "Donner Blitzen", date >= date("2019-06-01"), date <= as_date("2022-12-31"))) %>% 
+  select(date, site_name, logYield) %>% 
+  spread(key = site_name, value = logYield) %>% 
+  relocate("Donner Blitzen River nr Frenchglen NWIS", .after = last_col()) %>% 
+  dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)") %>% dyOptions(colors = c(brewer.pal(5, "Dark2"), "black")) %>% dySeries("Donner Blitzen River nr Frenchglen NWIS", strokeBorderWidth = 1, strokeWidth = 1.5)
+```
+
+:::
+
+
+#### Static
 
 Plotting function
 ```{r}
@@ -226,13 +399,14 @@ Plotting function
 mycols <- c(brewer.pal(8, "Dark2"), "dodgerblue", "darkorchid")
 
 # create plotting function
-myplotfun <- function(subbas, lab) {
+myplotfun <- function(subbas, lab, bigG) {
   data_sub <- dat_clean %>% filter(subbasin == subbas)
   par(mar = c(1.7,1.7,0.1,0.1), mgp = c(2.5,0.6,0))
   plot(logYield ~ date, data_sub, type = "n", xlab = "", ylab = "")
-  tempdat_little <- data_sub %>% filter(designation == "little")
-  tempdat_little <- fill_missing_dates(tempdat_little, dates = date, groups = site_name, pad_ends = FALSE)
-  tempdat_big <- data_sub %>% filter(designation == "big")
+  #tempdat_little <- data_sub %>% filter(designation == "little")
+  tempdat_little <- fill_missing_dates(data_sub, dates = date, groups = site_name, pad_ends = FALSE)
+  tempdat_big <- dat_clean_big %>% filter(site_name == bigG, date >= min(tempdat_little$date), date <= max(tempdat_little$date))
+  #tempdat_big <- data_sub %>% filter(designation == "big")
   tempdat_big <- fill_missing_dates(tempdat_big, dates = date, groups = site_name, pad_ends = FALSE)
   mysites <- sort(unique(tempdat_little$site_name))
   for (i in 1:length(mysites)) {
@@ -245,7 +419,6 @@ myplotfun <- function(subbas, lab) {
   text(0.02, 0.9, labels = lab, cex = 1.2)
   par(usr = usr)
 }
-
 ```
 
 Generate plot
@@ -255,34 +428,34 @@ jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Work
 par(mfrow = c(10,1), oma = c(0.5,2,0.5,0.5))
 
 # West Brook
-myplotfun(subbas = "West Brook", lab = "(a)")
+myplotfun(subbas = "West Brook", lab = "(a)", bigG = "South River Conway NWIS")
 
 # Paine
-myplotfun(subbas = "Paine Run", lab = "(b)")
+myplotfun(subbas = "Paine Run", lab = "(b)", bigG = "South River Harriston NWIS")
 
 # Staunton River
-myplotfun(subbas = "Staunton River", lab = "(c)")
+myplotfun(subbas = "Staunton River", lab = "(c)", bigG = "Rapidan River NWIS")
 
 # Big Creek
-myplotfun(subbas = "Big Creek", lab = "(d)")
+myplotfun(subbas = "Big Creek", lab = "(d)", bigG = "North Fork Flathead River NWIS")
 
 # Coal Creek
-myplotfun(subbas = "Coal Creek", lab = "(e)")
+myplotfun(subbas = "Coal Creek", lab = "(e)", bigG = "North Fork Flathead River NWIS")
 
 # McGee Creek
-myplotfun(subbas = "McGee Creek", lab = "(f)")
+myplotfun(subbas = "McGee Creek", lab = "(f)", bigG = "North Fork Flathead River NWIS")
 
 # Snake River
-myplotfun(subbas = "Snake River", lab = "(g)")
+myplotfun(subbas = "Snake River", lab = "(g)", bigG = "Pacific Creek at Moran NWIS")
 
 # Shields River
-myplotfun(subbas = "Shields River", lab = "(h)")
+myplotfun(subbas = "Shields River", lab = "(h)", bigG = "Yellowstone River Livingston NWIS")
 
 # Duck Creek
-myplotfun(subbas = "Duck Creek", lab = "(i)")
+myplotfun(subbas = "Duck Creek", lab = "(i)", bigG = "Yellowstone River Livingston NWIS")
 
 # Donner Blitzen
-myplotfun(subbas = "Donner Blitzen", lab = "(j)")
+myplotfun(subbas = "Donner Blitzen", lab = "(j)", bigG = "Donner Blitzen River nr Frenchglen NWIS")
 
 # common axis label
 mtext("log(Daily yield, mm)", outer = TRUE, side = 2, line = 0.5)
@@ -292,81 +465,15 @@ dev.off()
 ![Observed daily streamflow in yield (mm) in 10 headwater basins of North America.](EcoD_timeseries.jpg)
 
 
-### Ridges plots
-
-```{r}
-myridgesfun <- function(subbas) {
-  td <- dat_clean %>%
-  group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
-  summarize(logYield = mean(logYield)) %>%
-  ungroup() %>%
-  mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
-         CalendarYear = factor(CalendarYear)) %>%
-  filter(subbasin == subbas)
-  
-  return(ggplot(data = td) +
-  geom_density_ridges(data = td %>% filter(designation == "little"), aes(x = logYield, y = MonthName), alpha = 0.5,point_alpha = 0.2) +
-  geom_line(data = td %>% filter(designation == "little"), aes(x = logYield, y = MonthName, group = site_name, color = site_name), orientation = "y", alpha = 0.3) +
-  geom_point(data = td %>% filter(designation == "little"), aes(x = logYield, y = MonthName, group = site_name, color = site_name), alpha = 0.3) +
-  geom_line(data = td %>% filter(designation == "big"), aes(x = logYield, y = MonthName, group = site_name), orientation = "y", alpha = 0.5) +
-  geom_point(data = td %>% filter(designation == "big"), aes(x = logYield, y = MonthName, group = site_name), alpha = 0.5) +
-  theme_bw() + theme(legend.position = "none") +
-  facet_wrap2(~CalendarYear, nrow = 3, ncol = 3, trim_blank = FALSE) +
-  xlab("Monthly mean log(Yield, mm/day)") + ylab(""))
-}
-```
-
-
-::: panel-tabset
-#### West Brook
-```{r fig.width=7, fig.height=7}
-myridgesfun("West Brook")
-```
-#### Paine Run
-```{r fig.width=7, fig.height=7}
-myridgesfun("Paine Run")
-```
-#### Staunton River
-```{r fig.width=7, fig.height=7}
-myridgesfun("Staunton River")
-```
-#### Big Creek
-```{r fig.width=7, fig.height=7}
-myridgesfun("Big Creek")
-```
-#### Coal Creek
-```{r fig.width=7, fig.height=7}
-myridgesfun("Coal Creek")
-```
-#### McGee Creek
-```{r fig.width=7, fig.height=7}
-myridgesfun("McGee Creek")
-```
-#### Snake River
-```{r fig.width=7, fig.height=7}
-myridgesfun("Snake River")
-```
-#### Shields River
-```{r fig.width=7, fig.height=7}
-myridgesfun("Shields River")
-```
-#### Duck Creek
-```{r fig.width=7, fig.height=7}
-myridgesfun("Duck Creek")
-```
-#### Donner Blitzen
-```{r fig.width=7, fig.height=7}
-myridgesfun("Donner Blitzen")
-```
-:::
-
 
 ### Exceedance curves
 
-these all should probably be trimmed to just the summer data...or comparable period over which data availability is maximized across sites and subbasins
+*these all should probably be trimmed to just the summer data...or comparable period over which data availability is maximized across sites and subbasins*
+
+*Need to do*
 
 Plotting functions
-```{r}
+```{r eval=FALSE}
 # create plotting function
 myplotfun_ex <- function(subbas, lab) {
   # filter to subbasin and get site designation
@@ -444,9 +551,8 @@ myplotfun_cv <- function(subbas, lab) {
 }  
 ```
 
-
 Plot exceedance
-```{r fig.width=8, fig.height=12}
+```{r fig.width=8, fig.height=12, eval=FALSE}
 jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/EcoD_exceedance_JAS.jpg", width = 4, height = 8, units = "in", res = 1000)
 par(mfrow = c(5,2), oma = c(2,2,0.5,0.5))
 myplotfun_ex(subbas = "West Brook", lab = "(a)")
@@ -462,12 +568,12 @@ myplotfun_ex(subbas = "Donner Blitzen", lab = "(j)")
 mtext("log(Daily yield, mm)", outer = TRUE, side = 2, line = 0.5)
 mtext("Exceedance probability", outer = TRUE, side = 1, line = 0.5)
 dev.off()
-```
-![July-September flow exceedance curves for sites in 10 headwater stream networks.](EcoD_exceedance_JAS.jpg)
 
+#![July-September flow exceedance curves for sites in 10 headwater stream networks.](EcoD_exceedance_JAS.jpg)
+```
 
 Plot CV by exceedance
-```{r fig.width=8, fig.height=12}
+```{r fig.width=8, fig.height=12, eval=FALSE}
 jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/EcoD_exceedance_cv.jpg", width = 4, height = 8, units = "in", res = 1000)
 par(mfrow = c(5,2), oma = c(2,2,0.5,0.5))
 myplotfun_cv(subbas = "West Brook", lab = "(a)")
@@ -483,16 +589,626 @@ myplotfun_cv(subbas = "Donner Blitzen", lab = "(j)")
 mtext("SD of log(daily yield, mm) at little g's", outer = TRUE, side = 2, line = 0.5)
 mtext("Exceedance probability", outer = TRUE, side = 1, line = 0.5)
 dev.off()
-```
-![July-September spatial variation in flow exceedance probabilities for 10 headwater stream networks.](EcoD_exceedance_cv_JAS.jpg)
 
+#![July-September spatial variation in flow exceedance probabilities for 10 headwater stream networks.](EcoD_exceedance_cv_JAS.jpg)
+```
+
+
+### Ridges plots
+
+*Under the current objectives/framework, I'm not sure there is much of a role for these plots. Leaving in for reference*
+
+```{r}
+myridgesfun <- function(subbas, bigG) {
+  td <- dat_clean %>% filter(subbasin == subbas)
+  td2 <- td %>%
+    group_by(subbasin, site_name, designation, CalendarYear, Month, MonthName) %>%
+    summarize(logYield = mean(logYield)) %>%
+    ungroup() %>%
+    mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))),
+           CalendarYear = factor(CalendarYear)) 
+  
+  tempdat_big <- dat_clean_big %>% 
+    filter(site_name == bigG, date >= min(td$date), date <= max(td$date)) %>%
+    group_by(site_name, CalendarYear, Month, MonthName) %>%
+    summarize(logYield = mean(logYield)) %>%
+    ungroup() %>%
+    mutate(MonthName = factor(MonthName, levels = rev(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))), CalendarYear = factor(CalendarYear))
+    
+  return(ggplot(data = td2) +
+  geom_density_ridges(data = td2, aes(x = logYield, y = MonthName), alpha = 0.5,point_alpha = 0.2) +
+  geom_line(data = td2, aes(x = logYield, y = MonthName, group = site_name, color = site_name), orientation = "y", alpha = 0.3) +
+  geom_point(data = td2, aes(x = logYield, y = MonthName, group = site_name, color = site_name), alpha = 0.3) +
+  geom_line(data = tempdat_big, aes(x = logYield, y = MonthName, group = site_name), orientation = "y", alpha = 0.5) +
+  geom_point(data =tempdat_big, aes(x = logYield, y = MonthName, group = site_name), alpha = 0.5) +
+  theme_bw() + theme(legend.position = "none") +
+  facet_wrap2(~CalendarYear, nrow = 3, ncol = 3, trim_blank = FALSE) +
+  xlab("Monthly mean log(Yield, mm/day)") + ylab(""))
+}
+```
+
+
+::: panel-tabset
+#### West Brook
+```{r fig.width=7, fig.height=7}
+myridgesfun(subbas = "West Brook", bigG = "South River Conway NWIS")
+```
+#### Paine Run
+```{r fig.width=7, fig.height=7}
+myridgesfun(subbas = "Paine Run", bigG = "South River Harriston NWIS")
+```
+#### Staunton River
+```{r fig.width=7, fig.height=7}
+myridgesfun(subbas = "Staunton River", bigG = "Rapidan River NWIS")
+```
+#### Big Creek
+```{r fig.width=7, fig.height=7}
+myridgesfun(subbas = "Big Creek", bigG = "North Fork Flathead River NWIS")
+```
+#### Coal Creek
+```{r fig.width=7, fig.height=7}
+myridgesfun(subbas = "Coal Creek", bigG = "North Fork Flathead River NWIS")
+```
+#### McGee Creek
+```{r fig.width=7, fig.height=7}
+myridgesfun(subbas = "McGee Creek", bigG = "North Fork Flathead River NWIS")
+```
+#### Snake River
+```{r fig.width=7, fig.height=7}
+myridgesfun(subbas = "Snake River", bigG = "Pacific Creek at Moran NWIS")
+```
+#### Shields River
+```{r fig.width=7, fig.height=7}
+myridgesfun(subbas = "Shields River", bigG = "Yellowstone River Livingston NWIS")
+```
+#### Duck Creek
+```{r fig.width=7, fig.height=7}
+myridgesfun(subbas = "Duck Creek", bigG = "Yellowstone River Livingston NWIS")
+```
+#### Donner Blitzen
+```{r fig.width=7, fig.height=7}
+myridgesfun(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS")
+```
+:::
+
+
+### Hysteresis
+
+Find little g site/water years with at least 90% data completeness, join big and little g daily yield data
+```{r}
+# find little g site/water yeras with at least 90% data availability
+mysiteyrs <- dat_clean %>% 
+  group_by(site_name, basin, subbasin, region, WaterYear) %>% 
+  summarize(numdays = n()) %>% 
+  ungroup() %>% 
+  filter(numdays >= 0.9*365) %>% 
+  mutate(forhyst = 1) %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield_z))
+
+# join big G data to little g
+dat_clean_hyst <- dat_clean %>% 
+  left_join(mysiteyrs) %>%
+  filter(forhyst == 1) %>%
+  left_join(dat_clean_big %>% select(basin, date, Yield_mm, logYield) %>% rename(Yield_mm_big = Yield_mm, logYield_big = logYield)) %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield_z))
+```
+
+Create plotting function
+```{r}
+hystplotfun <- function(mysite, wy) {
+  print(dat_clean_hyst %>%
+          filter(site_name == mysite, WaterYear == wy) %>%
+          ggplot(aes(x = logYield_big, y = logYield, color = date)) +
+          geom_segment(aes(xend = c(tail(logYield_big, n = -1), NA), yend = c(tail(logYield, n = -1), NA)), arrow = arrow(length = unit(0.2, "cm")), color = "black") +
+          geom_point() + 
+          geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+          scale_color_gradientn(colors = cet_pal(250, name = "c2"), trans = "date") +
+          xlim(-1,1.5) + ylim(-1.5,1.8) + 
+          #scale_color_scico(palette = "romaO") +
+          xlab("log(Yield, mm) at reference gage") + ylab("log(Yield, mm) at headwater gage") +
+          # geom_text(data = annotations, aes(x = xpos, y = ypos, label = annotateText), hjust = "inward", vjust = "inward") +
+          annotate(geom = "text", x = -Inf, y = Inf, label = paste(mysite, ", WY ", wy, sep = ""), hjust = -0.1, vjust = 1.5) +
+          theme_bw() + 
+          theme(panel.grid.major = element_blank(), 
+                panel.grid.minor = element_blank(),
+                panel.background = element_rect(fill = "grey85"),
+                axis.title = element_blank()) +
+          theme(plot.margin = margin(0.1,0.1,0,0, "cm")) )
+  
+}
+```
+
+
+```{r include=FALSE}
+leg <- get_legend(hystplotfun(mysite = "EF Duck Creek be HF", wy = 2022))
+```
+
+Plot example sites and years. Generally, in rain-dominated basins the East (top two rows), we see relatively little hysteresis/non-stationarity in the relationship between streamflow in headwaters and at reference gages. In contrast, in snowmelt-dominated basins of the Rocky Mountains, we see much stronger hysteresis/non-stationarity in the relationship between streamflow in headwaters and at reference gages, but this varies considerably among locations. 
+```{r fig.width=12, fig.height=12, warning=FALSE}
+ggarrange(hystplotfun(mysite = "West Brook NWIS", wy = 2021) + theme(legend.position = "none"),
+          hystplotfun(mysite = "Jimmy Brook", wy = 2021) + theme(legend.position = "none"),
+          hystplotfun(mysite = "Sanderson Brook", wy = 2021) + theme(legend.position = "none"),
+          hystplotfun(mysite = "Avery Brook", wy = 2021) + theme(legend.position = "none"),
+          
+          hystplotfun(mysite = "Staunton River 10", wy = 2021) + theme(legend.position = "none"),
+          hystplotfun(mysite = "Staunton River 06", wy = 2021) + theme(legend.position = "none"),
+          hystplotfun(mysite = "Staunton River 03", wy = 2021) + theme(legend.position = "none"),
+          hystplotfun(mysite = "Staunton River 02", wy = 2021) + theme(legend.position = "none"),
+          
+          hystplotfun(mysite = "Big Creek NWIS", wy = 2020) + theme(legend.position = "none"),
+          hystplotfun(mysite = "WernerCreek", wy = 2020) + theme(legend.position = "none"),
+          hystplotfun(mysite = "CycloneCreekUpper", wy = 2020) + theme(legend.position = "none"),
+          hystplotfun(mysite = "McGeeCreekTrib", wy = 2020) + theme(legend.position = "none"),
+          
+          hystplotfun(mysite = "Buck Creek", wy = 2022) + theme(legend.position = "none"),
+          hystplotfun(mysite = "Dugout Creek", wy = 2022) + theme(legend.position = "none"),
+          hystplotfun(mysite = "EF Duck Creek be HF", wy = 2022) + theme(legend.position = "none"),
+          leg,
+          
+          nrow = 4, ncol = 4) %>%
+  annotate_figure(left = text_grob("log(Yield, mm) at headwater gage", rot = 90),
+                  bottom = text_grob("log(Yield, mm) at reference gage"))
+```
+
+
+
+## Objective 2
+
+
+## Objective 3
+
+*Objective 3:* Demonstrate how drought-related low flow conditions manifest differently in streams across headwater networks. 
+
+*Approach:*
+
+* Using fixed and seasonally variable low flow/drought thresholds derived from long-term (1970-present) big G data (*sensu* Hammond *et al.* 2022), show how streamflow drought duration and deficit vary among headwater streams (relative to big G). 
+  - Heat maps showing the timing/onset of low flow conditions across big G and little g'sG
+  - Drought deficit/duration violin plots with points for little g's relative to big G
+* Show how does the spread of values (spatial variation in drought duration and deficit) changes among years that differ in regional water availability
+
+
+*Notes:*
+
+* not sure how to accomplish (2) given that the number and collection of sites per (sub)basin changes considerably among years/months
+
+
+### Low flow thresholds
+
+Generate fixed and time varying (by day of year) drought/low flow thresholds from long-term (1970-2025) big G streamflow data. Quantiles correspond to those used in Hammond *et al.* (2022): 0.30, 0.20, 0.10, 0.05, 0.02. 
+```{r}
+# calculate site-level fixed low flow thresholds
+dat_clean_big_fixed <- dat_clean_big %>% 
+  group_by(site_name, basin, subbasin, region) %>%
+  summarize(thresh_30_fix = quantile(Yield_mm, probs = 0.3, na.rm = TRUE),
+            thresh_20_fix = quantile(Yield_mm, probs = 0.2, na.rm = TRUE),
+            thresh_10_fix = quantile(Yield_mm, probs = 0.1, na.rm = TRUE),
+            thresh_5_fix = quantile(Yield_mm, probs = 0.05, na.rm = TRUE),
+            thresh_2_fix = quantile(Yield_mm, probs = 0.02, na.rm = TRUE)) %>%
+  ungroup()
+(dat_clean_big_fixed)
+
+# calculate site-level variable (by doy) low flow thresholds
+dat_clean_big_variable <- dat_clean_big %>% 
+  group_by(site_name, basin, subbasin, region, doy_calendar) %>%
+  summarize(thresh_30_var = quantile(Yield_mm, probs = 0.3, na.rm = TRUE),
+            thresh_20_var = quantile(Yield_mm, probs = 0.2, na.rm = TRUE),
+            thresh_10_var = quantile(Yield_mm, probs = 0.1, na.rm = TRUE),
+            thresh_5_var = quantile(Yield_mm, probs = 0.05, na.rm = TRUE),
+            thresh_2_var = quantile(Yield_mm, probs = 0.02, na.rm = TRUE)) %>%
+  ungroup()
+(dat_clean_big_variable)
+```
+
+Join drought thresholds derived from big G to little g's
+```{r}
+# little gs
+dat_clean_little_join <- dat_clean %>% 
+  left_join(dat_clean_big_fixed %>% select(-c(site_name, subbasin))) %>%
+  left_join(dat_clean_big_variable %>% select(-c(site_name, subbasin))) %>%
+  mutate(month = month(date),
+         year = year(date),
+         designation = "little",
+         drought_fix = ifelse(Yield_mm <= thresh_30_fix & Yield_mm > thresh_20_fix, "q30", 
+                              ifelse(Yield_mm <= thresh_20_fix & Yield_mm > thresh_10_fix, "q20", 
+                                     ifelse(Yield_mm <= thresh_10_fix & Yield_mm > thresh_5_fix, "q10",
+                                            ifelse(Yield_mm <= thresh_5_fix & Yield_mm > thresh_2_fix, "q05", 
+                                                   ifelse(Yield_mm <= thresh_2_fix, "q02", "none"))))),
+         drought_var = ifelse(Yield_mm <= thresh_30_var & Yield_mm > thresh_20_var, "q30", 
+                              ifelse(Yield_mm <= thresh_20_var & Yield_mm > thresh_10_var, "q20", 
+                                     ifelse(Yield_mm <= thresh_10_var & Yield_mm > thresh_5_var, "q10",
+                                            ifelse(Yield_mm <= thresh_5_var & Yield_mm > thresh_2_var, "q05", 
+                                                   ifelse(Yield_mm <= thresh_2_var, "q02", "none")))))) %>%
+  mutate(drought_fix = factor(ifelse(is.na(Yield_mm), NA, drought_fix), levels = c("none", "q30", "q20", "q10", "q05", "q02")),
+         drought_var = factor(ifelse(is.na(Yield_mm), NA, drought_var), levels = c("none", "q30", "q20", "q10", "q05", "q02"))) 
+
+# big gs
+dat_clean_big_join <- dat_clean_big %>% 
+  left_join(dat_clean_big_fixed %>% select(-c(site_name, subbasin))) %>%
+  left_join(dat_clean_big_variable %>% select(-c(site_name, subbasin))) %>%
+  mutate(month = month(date),
+         year = year(date),
+         designation = "big",
+         drought_fix = ifelse(Yield_mm <= thresh_30_fix & Yield_mm > thresh_20_fix, "q30", 
+                              ifelse(Yield_mm <= thresh_20_fix & Yield_mm > thresh_10_fix, "q20", 
+                                     ifelse(Yield_mm <= thresh_10_fix & Yield_mm > thresh_5_fix, "q10",
+                                            ifelse(Yield_mm <= thresh_5_fix & Yield_mm > thresh_2_fix, "q05", 
+                                                   ifelse(Yield_mm <= thresh_2_fix, "q02", "none"))))),
+         drought_var = ifelse(Yield_mm <= thresh_30_var & Yield_mm > thresh_20_var, "q30", 
+                              ifelse(Yield_mm <= thresh_20_var & Yield_mm > thresh_10_var, "q20", 
+                                     ifelse(Yield_mm <= thresh_10_var & Yield_mm > thresh_5_var, "q10",
+                                            ifelse(Yield_mm <= thresh_5_var & Yield_mm > thresh_2_var, "q05", 
+                                                   ifelse(Yield_mm <= thresh_2_var, "q02", "none")))))) %>%
+  mutate(drought_fix = factor(ifelse(is.na(Yield_mm), NA, drought_fix), levels = c("none", "q30", "q20", "q10", "q05", "q02")),
+         drought_var = factor(ifelse(is.na(Yield_mm), NA, drought_var), levels = c("none", "q30", "q20", "q10", "q05", "q02"))) 
+dat_clean_big_join_sub <- dat_clean_big_join %>% left_join(yrdf) %>% filter(ecodyr == "yes")
+
+# join data
+dat_clean_join <- bind_rows(dat_clean_little_join, dat_clean_big_join_sub)
+```
+
+### Low flow heatmaps
+
+Create heatmap functions
+```{r}
+# fixed drought threshold
+heatmapfun_fix <- function(subbas, months, bigG) {
+  dd <- dat_clean_join %>% filter(subbasin == subbas | site_name == bigG, month %in% months)
+  mysites <- c(unique(unlist(dd %>% filter(designation == "big") %>% select(site_name))),
+               unique(unlist(dd %>% filter(designation == "little") %>% select(site_name))))
+  myrect <- dd %>% group_by(WaterYear) %>% summarize(mindate = min(date), maxdate = max(date)) %>% ungroup()
+  p <- dd %>%
+    ggplot() +
+    geom_tile(aes(x = date, y = factor(site_name, levels = rev(mysites)), fill = drought_fix)) +
+    scale_fill_viridis(option = "A", direction = -1, discrete = TRUE, limits = c("none", "q30", "q20", "q10", "q05", "q02")) +
+    geom_rect(data = myrect, aes(xmin = mindate, xmax = maxdate, ymin = length(mysites)-0.5, ymax = length(mysites)+0.5), 
+              color = "grey70", fill = NA, size = 1.25) +
+    xlab("Date") + ylab("Site") +
+    #facet_wrap(~WaterYear, scales = "free_x") + 
+    facet_wrap2(~WaterYear, scales = "free_x", nrow = 3, ncol = 3, trim_blank = FALSE) +
+    theme_bw() + theme(axis.title = element_blank())
+return(p)
+}
+# variable drought threshold
+heatmapfun_var <- function(subbas, months, bigG) {
+  dd <- dat_clean_join %>% filter(subbasin == subbas | site_name == bigG, month %in% months)
+  mysites <- c(unique(unlist(dd %>% filter(designation == "big") %>% select(site_name))),
+               unique(unlist(dd %>% filter(designation == "little") %>% select(site_name))))
+  myrect <- dd %>% group_by(WaterYear) %>% summarize(mindate = min(date), maxdate = max(date)) %>% ungroup()
+  p <- dd %>%
+    ggplot() +
+    geom_tile(aes(x = date, y = factor(site_name, levels = rev(mysites)), fill = drought_var)) +
+    scale_fill_viridis(option = "A", direction = -1, discrete = TRUE, limits = c("none", "q30", "q20", "q10", "q05", "q02")) +
+    geom_rect(data = myrect, aes(xmin = mindate, xmax = maxdate, ymin = length(mysites)-0.5, ymax = length(mysites)+0.5), 
+              color = "grey70", fill = NA, size = 1.25) +
+    xlab("Date") + ylab("Site") +
+    #facet_wrap(~WaterYear, scales = "free_x") +
+    facet_wrap2(~WaterYear, scales = "free_x", nrow = 3, ncol = 3, trim_blank = FALSE) +
+    theme_bw() + theme(axis.title = element_blank())
+return(p)
+}
+```
+
+#### Fixed threshold
+::: panel-tabset
+##### West Brook
+```{r fig.height=7, fig.width=9}
+heatmapfun_fix(subbas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9))
+```
+##### Paine Run
+```{r fig.height=7, fig.width=9}
+heatmapfun_fix(subbas = "Paine Run", bigG = "South River Harriston NWIS", months = c(7:9))
+```
+##### Staunton River
+```{r fig.height=7, fig.width=9}
+heatmapfun_fix(subbas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9))
+```
+##### Big Creek
+```{r fig.height=7, fig.width=9}
+heatmapfun_fix(subbas = "Big Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
+```
+##### Coal Creek
+```{r fig.height=7, fig.width=9}
+heatmapfun_fix(subbas = "Coal Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
+```
+##### McGee Creek
+```{r fig.height=7, fig.width=9}
+heatmapfun_fix(subbas = "McGee Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
+```
+##### Snake River
+```{r fig.height=7, fig.width=9}
+heatmapfun_fix(subbas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9))
+```
+##### Shields River
+```{r fig.height=7, fig.width=9}
+heatmapfun_fix(subbas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
+```
+##### Duck Creek
+```{r fig.height=7, fig.width=9}
+heatmapfun_fix(subbas = "Duck Creek", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
+```
+##### Donner Blitzen
+```{r fig.height=7, fig.width=9}
+heatmapfun_fix(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9))
+```
+:::
+
+#### Variable threshold
+::: panel-tabset
+##### West Brook
+```{r fig.height=7, fig.width=9}
+heatmapfun_var(subbas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9))
+```
+##### Paine Run
+```{r fig.height=7, fig.width=9}
+heatmapfun_var(subbas = "Paine Run", bigG = "South River Harriston NWIS", months = c(7:9))
+```
+##### Staunton River
+```{r fig.height=7, fig.width=9}
+heatmapfun_var(subbas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9))
+```
+##### Big Creek
+```{r fig.height=7, fig.width=9}
+heatmapfun_var(subbas = "Big Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
+```
+##### Coal Creek
+```{r fig.height=7, fig.width=9}
+heatmapfun_var(subbas = "Coal Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
+```
+##### McGee Creek
+```{r fig.height=7, fig.width=9}
+heatmapfun_var(subbas = "McGee Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
+```
+##### Snake River
+```{r fig.height=7, fig.width=9}
+heatmapfun_var(subbas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9))
+```
+##### Shields River
+```{r fig.height=7, fig.width=9}
+heatmapfun_var(subbas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
+```
+##### Duck Creek
+```{r fig.height=7, fig.width=9}
+heatmapfun_var(subbas = "Duck Creek", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
+```
+##### Donner Blitzen
+```{r fig.height=7, fig.width=9}
+heatmapfun_var(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9))
+```
+:::
+
+### Deficit and duration
+
+Calculate daily deficit, then summarize deficit magnitude and duration by site and month.
+```{r}
+# calculate daily deficit
+dat_clean_join_deficit <- dat_clean_join %>%
+  mutate(deficit_30_fix = ifelse(Yield_mm < thresh_30_fix, thresh_30_fix - Yield_mm, 0),
+         deficit_20_fix = ifelse(Yield_mm < thresh_20_fix, thresh_20_fix - Yield_mm, 0),
+         deficit_10_fix = ifelse(Yield_mm < thresh_10_fix, thresh_10_fix - Yield_mm, 0),
+         deficit_5_fix = ifelse(Yield_mm < thresh_5_fix, thresh_5_fix - Yield_mm, 0),
+         deficit_2_fix = ifelse(Yield_mm < thresh_2_fix, thresh_2_fix - Yield_mm, 0),
+         deficit_30_var = ifelse(Yield_mm < thresh_30_var, thresh_30_var - Yield_mm, 0),
+         deficit_20_var = ifelse(Yield_mm < thresh_20_var, thresh_20_var - Yield_mm, 0),
+         deficit_10_var = ifelse(Yield_mm < thresh_10_var, thresh_10_var - Yield_mm, 0),
+         deficit_5_var = ifelse(Yield_mm < thresh_5_var, thresh_5_var - Yield_mm, 0),
+         deficit_2_var = ifelse(Yield_mm < thresh_2_var, thresh_2_var - Yield_mm, 0))
+
+# fill missing dates
+dat_clean_join_deficit <- fill_missing_dates(dat_clean_join_deficit, dates = date, groups = site_name, pad_ends = TRUE)
+
+# fill ragged basin, subbasin, region, date variables
+dat_clean_join_deficit <- dat_clean_join_deficit %>% 
+  select(-c(basin, subbasin, region, CalendarYear, Month, MonthName, WaterYear, DayofYear, designation)) %>% 
+  left_join(siteinfo %>% 
+              mutate(designation = ifelse(site_name %in% unique(dat_clean_big$site_name), "big", "little")) %>% 
+              select(site_name, basin, subbasin, region, designation))
+dat_clean_join_deficit <- add_date_variables(dat_clean_join_deficit, dates = date, water_year_start = 10)
+
+# summarize by month
+defdur_month <- dat_clean_join_deficit %>% 
+  group_by(site_name, basin, subbasin, region, designation, CalendarYear, Month, MonthName, WaterYear) %>% 
+  summarize(duration_30_fix = sum(deficit_30_fix > 0),
+            duration_20_fix = sum(deficit_20_fix > 0),
+            duration_10_fix = sum(deficit_10_fix > 0),
+            duration_5_fix = sum(deficit_5_fix > 0),
+            duration_2_fix = sum(deficit_2_fix > 0),
+            duration_30_var = sum(deficit_30_var > 0),
+            duration_20_var = sum(deficit_20_var > 0),
+            duration_10_var = sum(deficit_10_var > 0),
+            duration_5_var = sum(deficit_5_var > 0),
+            duration_2_var = sum(deficit_2_var > 0),
+            deficit_30_fix = sum(deficit_30_fix),
+            deficit_20_fix = sum(deficit_20_fix),
+            deficit_10_fix = sum(deficit_10_fix),
+            deficit_5_fix = sum(deficit_5_fix),
+            deficit_2_fix = sum(deficit_2_fix),
+            deficit_30_var = sum(deficit_30_var),
+            deficit_20_var = sum(deficit_20_var),
+            deficit_10_var = sum(deficit_10_var),
+            deficit_5_var = sum(deficit_5_var),
+            deficit_2_var = sum(deficit_2_var)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield, totalyield_z))
+```
+
+
+Create violin plot function. Don't love this plotting style, but shows that data reasonably well
+```{r warning=FALSE}
+defdurplotfun <- function(subbas, bigG, months) {
+  dd_little <- defdur_month %>% filter(subbasin == subbas, Month %in% months, designation == "little")
+  myyrs <- unique(dd_little$WaterYear)
+  dd_little <- dd_little %>% mutate(WaterYear = factor(WaterYear, levels = (sort(myyrs))))
+  dd_big <- defdur_month %>% 
+    filter(site_name == bigG, Month %in% months) %>% 
+    mutate(WaterYear = factor(WaterYear, levels = (sort(myyrs)))) %>% 
+    filter(WaterYear %in% unique(myyrs))
+
+  m <- 7
+  p_def_7 <- ggplot() +
+    geom_violin(data = dd_little %>% filter(Month == m), aes(y = WaterYear, x = deficit_10_fix, fill = totalyield_z), trim = TRUE, scale = "width") +
+    scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0) + 
+    geom_line(data = dd_little %>% filter(Month == m), aes(y = WaterYear, x = deficit_10_fix, group = site_name, color = site_name), orientation = "y") +
+    geom_point(data = dd_little %>% filter(Month == m), aes(y = WaterYear, x = deficit_10_fix, group = site_name, color = site_name)) +
+    geom_line(data = dd_big %>% filter(Month == m), aes(y = WaterYear, x = deficit_10_fix, group = site_name), orientation = "y") +
+    geom_point(data = dd_big %>% filter(Month == m), aes(y = WaterYear, x = deficit_10_fix, group = site_name), size = 2) +
+    coord_flip() +
+    theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  p_dur_7 <- ggplot() +
+    geom_violin(data = dd_little %>% filter(Month == m), aes(y = WaterYear, x = duration_10_fix, fill = totalyield_z), trim = TRUE, scale = "width") +
+    scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0) + 
+    geom_line(data = dd_little %>% filter(Month == m), aes(y = WaterYear, x = duration_10_fix, group = site_name, color = site_name), orientation = "y") +
+    geom_point(data = dd_little %>% filter(Month == m), aes(y = WaterYear, x = duration_10_fix, group = site_name, color = site_name)) +
+    geom_line(data = dd_big %>% filter(Month == m), aes(y = WaterYear, x = duration_10_fix, group = site_name), orientation = "y") +
+    geom_point(data = dd_big %>% filter(Month == m), aes(y = WaterYear, x = duration_10_fix, group = site_name), size = 2) +
+    coord_flip() +
+    theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+  m <- 8
+  p_def_8 <- ggplot() +
+    geom_violin(data = dd_little %>% filter(Month == m), aes(y = WaterYear, x = deficit_10_fix, fill = totalyield_z), trim = TRUE, scale = "width") +
+    scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0) + 
+    geom_line(data = dd_little %>% filter(Month == m), aes(y = WaterYear, x = deficit_10_fix, group = site_name, color = site_name), orientation = "y") +
+    geom_point(data = dd_little %>% filter(Month == m), aes(y = WaterYear, x = deficit_10_fix, group = site_name, color = site_name)) +
+    geom_line(data = dd_big %>% filter(Month == m), aes(y = WaterYear, x = deficit_10_fix, group = site_name), orientation = "y") +
+    geom_point(data = dd_big %>% filter(Month == m), aes(y = WaterYear, x = deficit_10_fix, group = site_name), size = 2) +
+    coord_flip() +
+    theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  p_dur_8 <- ggplot() +
+    geom_violin(data = dd_little %>% filter(Month == m), aes(y = WaterYear, x = duration_10_fix, fill = totalyield_z), trim = TRUE, scale = "width") +
+    scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0) + 
+    geom_line(data = dd_little %>% filter(Month == m), aes(y = WaterYear, x = duration_10_fix, group = site_name, color = site_name), orientation = "y") +
+    geom_point(data = dd_little %>% filter(Month == m), aes(y = WaterYear, x = duration_10_fix, group = site_name, color = site_name)) +
+    geom_line(data = dd_big %>% filter(Month == m), aes(y = WaterYear, x = duration_10_fix, group = site_name), orientation = "y") +
+    geom_point(data = dd_big %>% filter(Month == m), aes(y = WaterYear, x = duration_10_fix, group = site_name), size = 2) +
+    coord_flip() +
+    theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+  m <- 9
+  p_def_9 <- ggplot() +
+    geom_violin(data = dd_little %>% filter(Month == m), aes(y = WaterYear, x = deficit_10_fix, fill = totalyield_z), trim = TRUE, scale = "width") +
+    scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0) + 
+    geom_line(data = dd_little %>% filter(Month == m), aes(y = WaterYear, x = deficit_10_fix, group = site_name, color = site_name), orientation = "y") +
+    geom_point(data = dd_little %>% filter(Month == m), aes(y = WaterYear, x = deficit_10_fix, group = site_name, color = site_name)) +
+    geom_line(data = dd_big %>% filter(Month == m), aes(y = WaterYear, x = deficit_10_fix, group = site_name), orientation = "y") +
+    geom_point(data = dd_big %>% filter(Month == m), aes(y = WaterYear, x = deficit_10_fix, group = site_name), size = 2) +
+    coord_flip() +
+    theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  p_dur_9 <- ggplot() +
+    geom_violin(data = dd_little %>% filter(Month == m), aes(y = WaterYear, x = duration_10_fix, fill = totalyield_z), trim = TRUE, scale = "width") +
+    scale_fill_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0) + 
+    geom_line(data = dd_little %>% filter(Month == m), aes(y = WaterYear, x = duration_10_fix, group = site_name, color = site_name), orientation = "y") +
+    geom_point(data = dd_little %>% filter(Month == m), aes(y = WaterYear, x = duration_10_fix, group = site_name, color = site_name)) +
+    geom_line(data = dd_big %>% filter(Month == m), aes(y = WaterYear, x = duration_10_fix, group = site_name), orientation = "y") +
+    geom_point(data = dd_big %>% filter(Month == m), aes(y = WaterYear, x = duration_10_fix, group = site_name), size = 2) +
+    coord_flip() +
+    theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+  return(ggarrange(p_def_7, p_def_8, p_def_9,
+                   p_dur_7, p_dur_8, p_dur_9, 
+                   nrow = 2, ncol = 3, common.legend = TRUE, legend = "right") %>% 
+           annotate_figure(top = "July                                                             August                                                  September"))
+}
+```
+
+::: panel-tabset
+##### West Brook
+```{r fig.width=11, fig.height=6, warning=FALSE}
+defdurplotfun(subbas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9))
+```
+##### Paine Run
+```{r fig.width=11, fig.height=6, warning=FALSE}
+defdurplotfun(subbas = "Paine Run", bigG = "South River Harriston NWIS", months = c(7:9))
+```
+##### Staunton River
+```{r fig.width=11, fig.height=6, warning=FALSE}
+defdurplotfun(subbas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9))
+```
+##### Big Creek
+```{r fig.width=11, fig.height=6, warning=FALSE}
+defdurplotfun(subbas = "Big Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
+```
+##### Coal Creek
+```{r fig.width=11, fig.height=6, warning=FALSE}
+defdurplotfun(subbas = "Coal Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
+```
+##### McGee Creek
+```{r fig.width=11, fig.height=6, warning=FALSE}
+defdurplotfun(subbas = "McGee Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
+```
+##### Snake River
+```{r fig.width=11, fig.height=6, warning=FALSE}
+defdurplotfun(subbas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9))
+```
+##### Shields River
+```{r fig.width=11, fig.height=6, warning=FALSE}
+defdurplotfun(subbas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
+```
+##### Duck Creek
+```{r fig.width=11, fig.height=6, warning=FALSE}
+defdurplotfun(subbas = "Duck Creek", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
+```
+##### Donner Blitzen
+```{r fig.width=11, fig.height=6, warning=FALSE}
+defdurplotfun(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9))
+```
+:::
+
+
+
+
+
+```{r eval=FALSE, include=FALSE}
+defdur_month %>% 
+  filter(subbasin == "West Brook", Month %in% c(7)) %>%
+  mutate(WaterYear = factor(WaterYear)) %>%
+  ggplot() +
+  geom_violin(aes(x = WaterYear, y = deficit_10_fix)) + 
+  #geom_dotplot(aes(x = WaterYear, y = deficit_10_fix), binaxis = 'y', stackdir = 'center') + 
+  geom_line(aes(x = WaterYear, y = totalyield_z))
+
+defdur_month %>% 
+  filter(subbasin == "West Brook", Month %in% c(7:9)) %>%
+  mutate(WaterYear = factor(WaterYear), Month = factor(Month)) %>%
+  ggplot() +
+  geom_density_ridges(aes(x = deficit_10_fix, y = WaterYear, linetype = Month), scale = 1, alpha = 0.3) +
+  #geom_line(aes(y = WaterYear, x = deficit_10_fix, group = site_name, color = site_name), orientation = "y") +
+  #geom_point(aes(y = WaterYear, x = deficit_10_fix, group = site_name, color = site_name)) +
+  #coord_flip() +
+  theme_bw() + theme()
+
+
+
+
+defdur_month %>% 
+  filter(subbasin == "Shields River", Month %in% c(7:9)) %>%
+  mutate(WaterYear = factor(WaterYear), Month = factor(Month)) %>%
+  ggplot() +
+  geom_point(aes(x = jitter(totalyield_z, factor = 5), y = jitter(deficit_10_fix, factor = 500), color = Month))
+
+
+defdur_month %>% filter(subbasin == "Donner Blitzen") %>%
+  ggplot() +
+  geom_point(aes(x = totalyield_z, y = deficit_30_fix, color = site_name)) +
+  facet_wrap(~Month)
+```
+
+
+
+
+## Objective 4
+
+
+
+
+
+## OLD
 
 ### Spatiotemporal variation
 
 How does the spatial variation in stream flow compare to temporal variation in streamflow at a single reference location?
 
 Create plotting function 
-```{r}
+```{r eval=FALSE}
 myplotfun_spacetime <- function(subbas) {
   # format data
   data_sub <- dat_clean %>% filter(subbasin == subbas)
@@ -531,43 +1247,43 @@ myplotfun_spacetime <- function(subbas) {
 
 ::: panel-tabset
 #### West Brook
-```{r}
+```{r eval=FALSE}
 myplotfun_spacetime(subbas = "West Brook")
 ```
 #### Paine Run 
-```{r}
+```{r eval=FALSE}
 myplotfun_spacetime(subbas = "Paine Run")
 ```
 #### Staunton River
-```{r}
+```{r eval=FALSE}
 myplotfun_spacetime(subbas = "Staunton River")
 ```
 #### Big Creek
-```{r}
+```{r eval=FALSE}
 myplotfun_spacetime(subbas = "Big Creek")
 ```
 #### Coal Creek
-```{r}
+```{r eval=FALSE}
 myplotfun_spacetime(subbas = "Coal Creek")
 ```
 #### McGee Creek
-```{r}
+```{r eval=FALSE}
 myplotfun_spacetime(subbas = "McGee Creek")
 ```
 #### Snake River
-```{r}
+```{r eval=FALSE}
 myplotfun_spacetime(subbas = "Snake River")
 ```
 #### Shields River
-```{r}
+```{r eval=FALSE}
 myplotfun_spacetime(subbas = "Shields River")
 ```
 #### Duck Creek
-```{r}
+```{r eval=FALSE}
 myplotfun_spacetime(subbas = "Duck Creek")
 ```
 #### Donner Blitzen
-```{r}
+```{r eval=FALSE}
 myplotfun_spacetime(subbas = "Donner Blitzen")
 ```
 :::
@@ -771,50 +1487,48 @@ myplotfun_dist <- function(subbas, distance = c("euclidean", "manhattan")) {
 
 ::: panel-tabset
 #### West Brook
-```{r fig.width=9, fig.height=5, message=FALSE, warning=FALSE, error=FALSE}
+```{r fig.width=9, fig.height=5, error=FALSE, message=FALSE, warning=FALSE, error=FALSE}
 myplotfun_dist(subbas = "West Brook", distance = "euclidean")
 ```
 #### Paine Run 
-```{r fig.width=9, fig.height=5}
+```{r fig.width=9, fig.height=5, error=FALSE, message=FALSE, warning=FALSE, error=FALSE}
 myplotfun_dist(subbas = "Paine Run", distance = "euclidean")
 ```
 #### Staunton River
-```{r fig.width=9, fig.height=5}
+```{r fig.width=9, fig.height=5, error=FALSE, message=FALSE, warning=FALSE, error=FALSE}
 myplotfun_dist(subbas = "Staunton River", distance = "euclidean")
 ```
 #### Big Creek
-```{r fig.width=9, fig.height=5}
+```{r fig.width=9, fig.height=5, error=FALSE, message=FALSE, warning=FALSE, error=FALSE}
 myplotfun_dist(subbas = "Big Creek", distance = "euclidean")
 ```
 #### Coal Creek
-```{r fig.width=9, fig.height=5}
+```{r fig.width=9, fig.height=5, error=FALSE, message=FALSE, warning=FALSE, error=FALSE}
 myplotfun_dist(subbas = "Coal Creek", distance = "euclidean")
 ```
 #### McGee Creek
-```{r fig.width=9, fig.height=5}
+```{r fig.width=9, fig.height=5, error=FALSE, message=FALSE, warning=FALSE, error=FALSE}
 myplotfun_dist(subbas = "McGee Creek", distance = "euclidean")
 ```
 #### Snake River
-```{r  fig.width=9, fig.height=5}
+```{r  fig.width=9, fig.height=5, error=FALSE, message=FALSE, warning=FALSE, error=FALSE}
 myplotfun_dist(subbas = "Snake River", distance = "euclidean")
 ```
 #### Shields River
-```{r  fig.width=9, fig.height=5}
+```{r  fig.width=9, fig.height=5, error=FALSE, message=FALSE, warning=FALSE, error=FALSE}
 myplotfun_dist(subbas = "Shields River", distance = "euclidean")
 ```
 #### Duck Creek
-```{r fig.width=9, fig.height=5}
+```{r fig.width=9, fig.height=5, error=FALSE, message=FALSE, warning=FALSE, error=FALSE}
 myplotfun_dist(subbas = "Duck Creek", distance = "euclidean")
 ```
 #### Donner Blitzen
-```{r fig.width=9, fig.height=5}
+```{r fig.width=9, fig.height=5, error=FALSE, message=FALSE, warning=FALSE, error=FALSE}
 myplotfun_dist(subbas = "Donner Blitzen", distance = "euclidean")
 ```
 :::
 
 
-
-###ddd
 
 ```{r eval=FALSE}
 
