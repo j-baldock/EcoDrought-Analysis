@@ -45,6 +45,7 @@ library(daymetr)
 library(scico)
 library(cetcolor)
 library(plotly)
+library(cowplot)
 ```
 
 ## Data
@@ -697,7 +698,7 @@ dat_clean_hyst <- dat_clean %>%
 Create plotting function
 ```{r}
 hystplotfun <- function(mysite, wy) {
-  print(dat_clean_hyst %>%
+  (dat_clean_hyst %>%
           filter(site_name == mysite, WaterYear == wy) %>%
           ggplot(aes(x = logYield_big, y = logYield, color = date)) +
           geom_segment(aes(xend = c(tail(logYield_big, n = -1), NA), yend = c(tail(logYield, n = -1), NA)), arrow = arrow(length = unit(0.2, "cm")), color = "black") +
@@ -715,7 +716,6 @@ hystplotfun <- function(mysite, wy) {
                 panel.background = element_rect(fill = "grey85"),
                 axis.title = element_blank()) +
           theme(plot.margin = margin(0.1,0.1,0,0, "cm")) )
-  
 }
 ```
 
@@ -751,7 +751,8 @@ ggarrange(hystplotfun(mysite = "West Brook NWIS", wy = 2021) + theme(legend.posi
                   bottom = text_grob("log(Yield, mm) at reference gage"))
 ```
 
-
+#### West Brook
+::: panel-tabset
 ##### WB NWIS
 ```{r}
 ggplotly(hystplotfun(mysite = "West Brook NWIS", wy = 2021))
@@ -768,7 +769,10 @@ ggplotly(hystplotfun(mysite = "Sanderson Brook", wy = 2021))
 ```{r}
 ggplotly(hystplotfun(mysite = "Avery Brook", wy = 2021))
 ```
+:::
 
+#### Staunton River
+::: panel-tabset
 ##### SR 10
 ```{r}
 ggplotly(hystplotfun(mysite = "Staunton River 10", wy = 2021))
@@ -785,7 +789,10 @@ ggplotly(hystplotfun(mysite = "Staunton River 03", wy = 2021))
 ```{r}
 ggplotly(hystplotfun(mysite = "Staunton River 02", wy = 2021))
 ```
+:::
 
+#### Flathead
+::: panel-tabset
 ##### Big Creek NWIS
 ```{r}
 ggplotly(hystplotfun(mysite = "Big Creek NWIS", wy = 2020))
@@ -802,7 +809,10 @@ ggplotly(hystplotfun(mysite = "CycloneCreekUpper", wy = 2020))
 ```{r}
 ggplotly(hystplotfun(mysite = "McGeeCreekTrib", wy = 2020))
 ```
+:::
 
+#### Yellowstone
+::: panel-tabset
 ##### Buck
 ```{r}
 ggplotly(hystplotfun(mysite = "Buck Creek", wy = 2022))
@@ -815,7 +825,7 @@ ggplotly(hystplotfun(mysite = "Dugout Creek", wy = 2022))
 ```{r}
 ggplotly(hystplotfun(mysite = "EF Duck Creek be HF", wy = 2022))
 ```
-
+:::
 
 
 
@@ -1043,6 +1053,7 @@ heatmapfun_var(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr French
 ```
 :::
 
+
 ### Deficit and duration
 
 Calculate daily deficit, then summarize deficit magnitude and duration by site and month.
@@ -1074,7 +1085,8 @@ dat_clean_join_deficit <- add_date_variables(dat_clean_join_deficit, dates = dat
 # summarize by month
 defdur_month <- dat_clean_join_deficit %>% 
   group_by(site_name, basin, subbasin, region, designation, CalendarYear, Month, MonthName, WaterYear) %>% 
-  summarize(duration_30_fix = sum(deficit_30_fix > 0),
+  summarize(ndays = n(), 
+            duration_30_fix = sum(deficit_30_fix > 0),
             duration_20_fix = sum(deficit_20_fix > 0),
             duration_10_fix = sum(deficit_10_fix > 0),
             duration_5_fix = sum(deficit_5_fix > 0),
@@ -1097,6 +1109,134 @@ defdur_month <- dat_clean_join_deficit %>%
   ungroup() %>%
   left_join(wateravail %>% select(basin, WaterYear, totalyield, totalyield_z))
 ```
+
+
+Create plotting function (duration)
+```{r}
+deficitplotfun <- function(subbas, bigG, months, wateryears, dropsites = NA) {
+  # filter and summarize data
+  dd <- defdur_month %>% 
+    filter(subbasin == subbas | site_name == bigG, Month %in% months, WaterYear %in% wateryears, !site_name %in% dropsites) %>%
+    mutate(WaterYear = factor(WaterYear, levels = wateryears)) %>% 
+    group_by(site_name, designation, WaterYear) %>%
+    summarize(duration_30_fix_prop = sum(duration_30_fix) / sum(ndays),
+              duration_20_fix_prop = sum(duration_20_fix) / sum(ndays),
+              duration_10_fix_prop = sum(duration_10_fix) / sum(ndays),
+              duration_5_fix_prop = sum(duration_5_fix) / sum(ndays),
+              duration_2_fix_prop = sum(duration_2_fix) / sum(ndays)) %>%
+    ungroup()
+
+  # order sites, Big G first
+  mysites <- c(unique(unlist(dd %>% filter(designation == "big") %>% select(site_name))),
+               unique(unlist(dd %>% filter(designation == "little") %>% select(site_name))))
+
+  # barplot 30th perc
+  p30 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = duration_30_fix_prop)) +
+    geom_bar(aes(fill = site_name), stat = "identity") +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(c("red", "blue"), 0.5)))) +
+    ylim(0,1) +
+    ylab("Days below low flow threshold (%JAS)") + ggtitle("30th perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  # barplot 20th perc.
+  p20 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = duration_20_fix_prop)) +
+    geom_bar(aes(fill = site_name), stat = "identity") +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(c("red", "blue"), 0.5)))) +
+    ylim(0,1) +
+    ylab("Days below low flow threshold (%JAS)") + ggtitle("20th perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  # barplot 10th perc.
+  p10 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = duration_10_fix_prop)) +
+    geom_bar(aes(fill = site_name), stat = "identity") +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(c("red", "blue"), 0.5)))) +
+    ylim(0,1) +
+    ylab("Days below low flow threshold (%JAS)") + ggtitle("10th perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  # barplot 5th perc.
+  p05 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = duration_5_fix_prop)) +
+    geom_bar(aes(fill = site_name), stat = "identity") +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(c("red", "blue"), 0.5)))) +
+    ylim(0,1) +
+    ylab("Days below low flow threshold (%JAS)") + ggtitle("5th perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  # barplot 2nd perc
+  p02 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = duration_2_fix_prop)) +
+    geom_bar(aes(fill = site_name), stat = "identity") +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(c("red", "blue"), 0.5)))) +
+    ylim(0,1) +
+    ylab("Days below low flow threshold (%JAS)") + ggtitle("2nd perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  # among site StDev ~ percentile
+  p_sds <- dd %>% 
+    gather(duration_30_fix_prop:duration_2_fix_prop, key = "metric", value = "duration") %>%
+    mutate(quant = as.numeric(gsub(".*?([0-9]+).*", "\\1", metric)) ) %>% 
+    filter(designation == "little") %>%
+    group_by(WaterYear, metric, quant) %>%
+    summarize(sddur = sd(duration, na.rm = TRUE)) %>%
+    ungroup() %>%
+    ggplot(aes(x = quant, y = sddur, color = WaterYear)) +
+    geom_point() +
+    scale_color_manual(values = c("red", "blue")) +
+    stat_smooth(method = "lm") +
+    xlab("Low flow threshold (percentile)") + ylab("Among-site SD(duration)") +
+    theme_bw() + 
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          legend.position = "top") + guides(shape = guide_legend(title = "Water year"))
+
+  # arrange plots
+  egg::ggarrange(p02 + theme(plot.margin = margin(r = 1, t = 5, b = 5)), 
+                 p05 + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = margin(r = 1, l = 1)), 
+                 p10 + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = margin(r = 1, l = 1)), 
+                 p20 + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = margin(r = 1, l = 1)), 
+                 p30 + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = margin(r = 1, l = 1)),
+                 p_sds,
+                 nrow = 1, widths = c(1,1,1,1,1,2.5))
+}
+```
+
+Show proportion of days (July - September) below different low flow thresholds (derived from long-term Big G data) for each site during a relatively wet year and a dry year. Then, for each year, plot the relationship between the among site (little g's only) standard deviation of low flow duration and the low flow threshold used to calculate duration
+
+::: panel-tabset
+##### West Brook
+```{r fig.width=10, fig.height=5}
+deficitplotfun(subbas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9), wateryears = c(2020, 2021))
+```
+##### Snake River
+```{r fig.width=10, fig.height=5}
+deficitplotfun(subbas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9), wateryears = c(2021, 2020))
+```
+##### Shields River
+```{r fig.width=10, fig.height=5}
+deficitplotfun(subbas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2020, 2019), dropsites = c("Shields River Valley Ranch"))
+```
+##### Duck Creek
+```{r fig.width=10, fig.height=5}
+deficitplotfun(subbas = "Duck Creek", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2021, 2019))
+```
+##### Donner Blitzen
+```{r fig.width=10, fig.height=5}
+deficitplotfun(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9), wateryears = c(2022, 2020))
+```
+:::
 
 
 Create violin plot function. Don't love this plotting style, but shows that data reasonably well
