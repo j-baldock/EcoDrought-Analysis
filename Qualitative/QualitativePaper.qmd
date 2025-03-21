@@ -44,6 +44,7 @@ library(viridis)
 library(daymetr)
 library(scico)
 library(cetcolor)
+library(plotly)
 ```
 
 ## Data
@@ -749,6 +750,72 @@ ggarrange(hystplotfun(mysite = "West Brook NWIS", wy = 2021) + theme(legend.posi
   annotate_figure(left = text_grob("log(Yield, mm) at headwater gage", rot = 90),
                   bottom = text_grob("log(Yield, mm) at reference gage"))
 ```
+
+
+##### WB NWIS
+```{r}
+ggplotly(hystplotfun(mysite = "West Brook NWIS", wy = 2021))
+```
+##### Jimmy
+```{r}
+ggplotly(hystplotfun(mysite = "Jimmy Brook", wy = 2021))
+```
+##### Sanderson
+```{r}
+ggplotly(hystplotfun(mysite = "Sanderson Brook", wy = 2021))
+```
+##### Avery
+```{r}
+ggplotly(hystplotfun(mysite = "Avery Brook", wy = 2021))
+```
+
+##### SR 10
+```{r}
+ggplotly(hystplotfun(mysite = "Staunton River 10", wy = 2021))
+```
+##### SR 06
+```{r}
+ggplotly(hystplotfun(mysite = "Staunton River 06", wy = 2021))
+```
+##### SR 03
+```{r}
+ggplotly(hystplotfun(mysite = "Staunton River 03", wy = 2021))
+```
+##### SR 02
+```{r}
+ggplotly(hystplotfun(mysite = "Staunton River 02", wy = 2021))
+```
+
+##### Big Creek NWIS
+```{r}
+ggplotly(hystplotfun(mysite = "Big Creek NWIS", wy = 2020))
+```
+##### Werner 
+```{r}
+ggplotly(hystplotfun(mysite = "WernerCreek", wy = 2020))
+```
+##### Cyclone Upper
+```{r}
+ggplotly(hystplotfun(mysite = "CycloneCreekUpper", wy = 2020))
+```
+##### McGee Trib
+```{r}
+ggplotly(hystplotfun(mysite = "McGeeCreekTrib", wy = 2020))
+```
+
+##### Buck
+```{r}
+ggplotly(hystplotfun(mysite = "Buck Creek", wy = 2022))
+```
+##### Dugout 
+```{r}
+ggplotly(hystplotfun(mysite = "Dugout Creek", wy = 2022))
+```
+##### Duck be HF
+```{r}
+ggplotly(hystplotfun(mysite = "EF Duck Creek be HF", wy = 2022))
+```
+
 
 
 
