@@ -1006,7 +1006,7 @@ dat_clean_sub <- bind_rows(
     bind_rows(dat_clean_big %>% filter(basin == "Donner Blitzen", WaterYear %in% c(2020:2022), Month %in% monthss))
 ) %>%
   group_by(site_name) %>%
-  mutate(z_Yield_mm = scale(Yield_mm, center = TRUE, scale = TRUE)) %>%
+  mutate(z_Yield_mm = scale(Yield_mm, center = TRUE, scale = TRUE)[,1]) %>%
   ungroup()
 
 # get low flow thresholds
@@ -1236,6 +1236,8 @@ heatmapfun_site(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenc
 
 ### Deficit and duration
 
+#### Fixed threshold
+
 Calculate daily deficit, then summarize deficit magnitude and duration by site and month.
 ```{r}
 # calculate daily deficit
@@ -1264,44 +1266,100 @@ dat_clean_join_deficit <- dat_clean_join %>%
          deficit_05_var = ifelse(Yield_mm < thresh_05_var, thresh_05_var - Yield_mm, 0),
          deficit_02_var = ifelse(Yield_mm < thresh_05_var, thresh_05_var - Yield_mm, 0))
 
-# fill missing dates
-dat_clean_join_deficit <- fill_missing_dates(dat_clean_join_deficit, dates = date, groups = site_name, pad_ends = TRUE)
+# # fill missing dates
+# dat_clean_join_deficit <- fill_missing_dates(dat_clean_join_deficit, dates = date, groups = site_name, pad_ends = TRUE)
+# 
+# # fill ragged basin, subbasin, region, date variables
+# dat_clean_join_deficit <- dat_clean_join_deficit %>% 
+#   select(-c(basin, subbasin, region, CalendarYear, Month, MonthName, WaterYear, DayofYear, designation)) %>% 
+#   left_join(siteinfo %>% 
+#               mutate(designation = ifelse(site_name %in% unique(dat_clean_big$site_name), "big", "little")) %>% 
+#               select(site_name, basin, subbasin, region, designation))
+# dat_clean_join_deficit <- add_date_variables(dat_clean_join_deficit, dates = date, water_year_start = 10)
+# 
+# # summarize by month
+# defdur_month <- dat_clean_join_deficit %>% 
+#   group_by(site_name, basin, subbasin, region, designation, CalendarYear, Month, MonthName, WaterYear) %>% 
+#   summarize(ndays = n(), 
+#             duration_50_fix = sum(deficit_50_fix > 0),
+#             duration_45_fix = sum(deficit_45_fix > 0),
+#             duration_40_fix = sum(deficit_40_fix > 0),
+#             duration_35_fix = sum(deficit_35_fix > 0),
+#             duration_30_fix = sum(deficit_30_fix > 0),
+#             duration_25_fix = sum(deficit_25_fix > 0),
+#             duration_20_fix = sum(deficit_20_fix > 0),
+#             duration_15_fix = sum(deficit_15_fix > 0),
+#             duration_10_fix = sum(deficit_10_fix > 0),
+#             duration_05_fix = sum(deficit_05_fix > 0),
+#             duration_02_fix = sum(deficit_02_fix > 0),
+#             
+#             duration_50_var = sum(deficit_50_var > 0),
+#             duration_45_var = sum(deficit_45_var > 0),
+#             duration_40_var = sum(deficit_40_var > 0),
+#             duration_35_var = sum(deficit_35_var > 0),
+#             duration_30_var = sum(deficit_30_var > 0),
+#             duration_25_var = sum(deficit_25_var > 0),
+#             duration_20_var = sum(deficit_20_var > 0),
+#             duration_15_var = sum(deficit_15_var > 0),
+#             duration_10_var = sum(deficit_10_var > 0),
+#             duration_05_var = sum(deficit_05_var > 0),
+#             duration_02_var = sum(deficit_02_var > 0),
+#             
+#             deficit_50_fix = sum(deficit_50_fix),
+#             deficit_45_fix = sum(deficit_45_fix),
+#             deficit_40_fix = sum(deficit_40_fix),
+#             deficit_35_fix = sum(deficit_35_fix),
+#             deficit_30_fix = sum(deficit_30_fix),
+#             deficit_25_fix = sum(deficit_25_fix),
+#             deficit_20_fix = sum(deficit_20_fix),
+#             deficit_15_fix = sum(deficit_15_fix),
+#             deficit_10_fix = sum(deficit_10_fix),
+#             deficit_05_fix = sum(deficit_05_fix),
+#             deficit_02_fix = sum(deficit_02_fix),
+#             
+#             deficit_50_var = sum(deficit_50_var),
+#             deficit_45_var = sum(deficit_45_var),
+#             deficit_40_var = sum(deficit_40_var),
+#             deficit_35_var = sum(deficit_35_var),
+#             deficit_30_var = sum(deficit_30_var),
+#             deficit_25_var = sum(deficit_25_var),
+#             deficit_20_var = sum(deficit_20_var),
+#             deficit_15_var = sum(deficit_15_var),
+#             deficit_10_var = sum(deficit_10_var),
+#             deficit_05_var = sum(deficit_05_var),
+#             deficit_02_var = sum(deficit_02_var)) %>%
+#   ungroup() %>%
+#   left_join(wateravail %>% select(basin, WaterYear, totalyield, totalyield_z))
 
-# fill ragged basin, subbasin, region, date variables
-dat_clean_join_deficit <- dat_clean_join_deficit %>% 
-  select(-c(basin, subbasin, region, CalendarYear, Month, MonthName, WaterYear, DayofYear, designation)) %>% 
-  left_join(siteinfo %>% 
-              mutate(designation = ifelse(site_name %in% unique(dat_clean_big$site_name), "big", "little")) %>% 
-              select(site_name, basin, subbasin, region, designation))
-dat_clean_join_deficit <- add_date_variables(dat_clean_join_deficit, dates = date, water_year_start = 10)
-
-# summarize by month
-defdur_month <- dat_clean_join_deficit %>% 
-  group_by(site_name, basin, subbasin, region, designation, CalendarYear, Month, MonthName, WaterYear) %>% 
-  summarize(ndays = n(), 
-            duration_50_fix = sum(deficit_50_fix > 0),
-            duration_45_fix = sum(deficit_45_fix > 0),
-            duration_40_fix = sum(deficit_40_fix > 0),
-            duration_35_fix = sum(deficit_35_fix > 0),
-            duration_30_fix = sum(deficit_30_fix > 0),
-            duration_25_fix = sum(deficit_25_fix > 0),
-            duration_20_fix = sum(deficit_20_fix > 0),
-            duration_15_fix = sum(deficit_15_fix > 0),
-            duration_10_fix = sum(deficit_10_fix > 0),
-            duration_05_fix = sum(deficit_05_fix > 0),
-            duration_02_fix = sum(deficit_02_fix > 0),
+# summarize by summer
+defdur_ssn <- dat_clean_join_deficit %>% 
+  filter(!is.na(Yield_mm), Month %in% c(7:9)) %>% 
+  group_by(site_name, basin, subbasin, region, designation, CalendarYear, WaterYear) %>% 
+  summarize(ndays = n(),
+            propdays = ndays/(31+31+30), 
+            duration_50_fix_prop = sum(deficit_50_fix > 0) / ndays,
+            duration_45_fix_prop = sum(deficit_45_fix > 0) / ndays,
+            duration_40_fix_prop = sum(deficit_40_fix > 0) / ndays,
+            duration_35_fix_prop = sum(deficit_35_fix > 0) / ndays,
+            duration_30_fix_prop = sum(deficit_30_fix > 0) / ndays,
+            duration_25_fix_prop = sum(deficit_25_fix > 0) / ndays,
+            duration_20_fix_prop = sum(deficit_20_fix > 0) / ndays,
+            duration_15_fix_prop = sum(deficit_15_fix > 0) / ndays,
+            duration_10_fix_prop = sum(deficit_10_fix > 0) / ndays,
+            duration_05_fix_prop = sum(deficit_05_fix > 0) / ndays,
+            duration_02_fix_prop = sum(deficit_02_fix > 0) / ndays,
             
-            duration_50_var = sum(deficit_50_var > 0),
-            duration_45_var = sum(deficit_45_var > 0),
-            duration_40_var = sum(deficit_40_var > 0),
-            duration_35_var = sum(deficit_35_var > 0),
-            duration_30_var = sum(deficit_30_var > 0),
-            duration_25_var = sum(deficit_25_var > 0),
-            duration_20_var = sum(deficit_20_var > 0),
-            duration_15_var = sum(deficit_15_var > 0),
-            duration_10_var = sum(deficit_10_var > 0),
-            duration_05_var = sum(deficit_05_var > 0),
-            duration_02_var = sum(deficit_02_var > 0),
+            duration_50_var_prop = sum(deficit_50_var > 0) / ndays,
+            duration_45_var_prop = sum(deficit_45_var > 0) / ndays,
+            duration_40_var_prop = sum(deficit_40_var > 0) / ndays,
+            duration_35_var_prop = sum(deficit_35_var > 0) / ndays,
+            duration_30_var_prop = sum(deficit_30_var > 0) / ndays,
+            duration_25_var_prop = sum(deficit_25_var > 0) / ndays,
+            duration_20_var_prop = sum(deficit_20_var > 0) / ndays,
+            duration_15_var_prop = sum(deficit_15_var > 0) / ndays,
+            duration_10_var_prop = sum(deficit_10_var > 0) / ndays,
+            duration_05_var_prop = sum(deficit_05_var > 0) / ndays,
+            duration_02_var_prop = sum(deficit_02_var > 0) / ndays,
             
             deficit_50_fix = sum(deficit_50_fix),
             deficit_45_fix = sum(deficit_45_fix),
@@ -1327,30 +1385,33 @@ defdur_month <- dat_clean_join_deficit %>%
             deficit_05_var = sum(deficit_05_var),
             deficit_02_var = sum(deficit_02_var)) %>%
   ungroup() %>%
+  filter(propdays >= 0.90) %>%
   left_join(wateravail %>% select(basin, WaterYear, totalyield, totalyield_z))
 ```
 
-
-Create plotting function (duration)
+Create plotting functions
 ```{r}
-deficitplotfun <- function(subbas, bigG, months, wateryears, dropsites = NA) {
+durationplotfun <- function(subbas, bigG, months, wateryears, dropsites = NA) {
   # filter and summarize data
-  dd <- defdur_month %>% 
-    filter(subbasin == subbas | site_name == bigG, Month %in% months, WaterYear %in% wateryears, !site_name %in% dropsites) %>%
-    mutate(WaterYear = factor(WaterYear, levels = wateryears)) %>% 
-    group_by(site_name, designation, WaterYear, totalyield_z) %>%
-    summarize(duration_50_fix_prop = sum(duration_50_fix) / sum(ndays),
-              duration_45_fix_prop = sum(duration_45_fix) / sum(ndays),
-              duration_40_fix_prop = sum(duration_40_fix) / sum(ndays),
-              duration_35_fix_prop = sum(duration_35_fix) / sum(ndays),
-              duration_30_fix_prop = sum(duration_30_fix) / sum(ndays),
-              duration_25_fix_prop = sum(duration_25_fix) / sum(ndays),
-              duration_20_fix_prop = sum(duration_20_fix) / sum(ndays),
-              duration_15_fix_prop = sum(duration_15_fix) / sum(ndays),
-              duration_10_fix_prop = sum(duration_10_fix) / sum(ndays),
-              duration_05_fix_prop = sum(duration_05_fix) / sum(ndays),
-              duration_02_fix_prop = sum(duration_02_fix) / sum(ndays)) %>%
-    ungroup()
+  # dd <- defdur_month %>% 
+  #   filter(subbasin == subbas | site_name == bigG, Month %in% months, WaterYear %in% wateryears, !site_name %in% dropsites) %>%
+  #   mutate(WaterYear = factor(WaterYear, levels = wateryears)) %>% 
+  #   group_by(site_name, designation, WaterYear, totalyield_z) %>%
+  #   summarize(duration_50_fix_prop = sum(duration_50_fix) / sum(ndays),
+  #             duration_45_fix_prop = sum(duration_45_fix) / sum(ndays),
+  #             duration_40_fix_prop = sum(duration_40_fix) / sum(ndays),
+  #             duration_35_fix_prop = sum(duration_35_fix) / sum(ndays),
+  #             duration_30_fix_prop = sum(duration_30_fix) / sum(ndays),
+  #             duration_25_fix_prop = sum(duration_25_fix) / sum(ndays),
+  #             duration_20_fix_prop = sum(duration_20_fix) / sum(ndays),
+  #             duration_15_fix_prop = sum(duration_15_fix) / sum(ndays),
+  #             duration_10_fix_prop = sum(duration_10_fix) / sum(ndays),
+  #             duration_05_fix_prop = sum(duration_05_fix) / sum(ndays),
+  #             duration_02_fix_prop = sum(duration_02_fix) / sum(ndays)) %>%
+  #   ungroup()
+  dd <- defdur_ssn %>% 
+    filter(subbasin == subbas | site_name == bigG, WaterYear %in% wateryears, !site_name %in% dropsites) %>%
+    mutate(WaterYear = factor(WaterYear, levels = wateryears))
 
   # order sites, Big G first
   mysites <- c(unique(unlist(dd %>% filter(designation == "big") %>% select(site_name))),
@@ -1365,14 +1426,14 @@ deficitplotfun <- function(subbas, bigG, months, wateryears, dropsites = NA) {
     summarize(sddur = sd(duration, na.rm = TRUE)) %>%
     ungroup() %>%
     left_join(dd %>% filter(site_name == bigG) %>% select(WaterYear, duration_50_fix_prop) %>% rename(dur50 = duration_50_fix_prop)) %>%
-    ggplot(aes(x = quant, y = sddur, color = dur50, group = WaterYear)) +
+    ggplot(aes(x = quant, y = sddur, color = dur50, group = WaterYear, shape = WaterYear)) +
     geom_point() +
     scale_color_gradient(low = "blue", high = "red", limits = c(0,1)) +
     stat_smooth() +
     xlab("Low flow threshold (percentile)") + ylab("Among-site SD(duration)") +
     theme_bw() + 
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-          legend.position = "top") + guides(shape = guide_legend(title = "Water year"))
+          legend.position = "bottom", legend.direction = "vertical", legend.key.height = unit(0.3, 'cm')) 
   
   # barplot 50th perc
   p30 <- dd %>% 
@@ -1434,22 +1495,6 @@ deficitplotfun <- function(subbas, bigG, months, wateryears, dropsites = NA) {
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
           legend.position = "none", axis.title.x = element_blank(),
           panel.grid.major = element_blank(), panel.grid.minor = element_blank())
-  # among site StDev ~ percentile
-  # p_sds <- dd %>% 
-  #   gather(duration_50_fix_prop:duration_02_fix_prop, key = "metric", value = "duration") %>%
-  #   mutate(quant = as.numeric(gsub(".*?([0-9]+).*", "\\1", metric)) ) %>% 
-  #   filter(designation == "little") %>%
-  #   group_by(WaterYear, metric, quant) %>%
-  #   summarize(sddur = sd(duration, na.rm = TRUE)) %>%
-  #   ungroup() %>%
-  #   ggplot(aes(x = quant, y = sddur, color = WaterYear)) +
-  #   geom_point() +
-  #   scale_color_manual(values = c("red", "blue")) +
-  #   stat_smooth() +
-  #   xlab("Low flow threshold (percentile)") + ylab("Among-site SD(duration)") +
-  #   theme_bw() + 
-  #   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-  #         legend.position = "top") + guides(shape = guide_legend(title = "Water year"))
 
   # arrange plots
   egg::ggarrange(p02 + theme(plot.margin = margin(r = 1, t = 5, b = 5)), 
@@ -1461,106 +1506,552 @@ deficitplotfun <- function(subbas, bigG, months, wateryears, dropsites = NA) {
                  nrow = 1, widths = c(1,1,1,1,1,2.5))
 }
 
-# 
-# subbas <- "West Brook"
-# bigG <- "South River Conway NWIS"
-# wateryears <- c(2020, 2021)
-# dropsites <- c("Mitchell Brook")
-# months <- c(7:9)
-# 
-# dd <- defdur_month %>% 
-#     filter(subbasin == subbas | site_name == bigG, Month %in% months, WaterYear %in% wateryears, !site_name %in% dropsites) %>%
-#     mutate(WaterYear = factor(WaterYear, levels = wateryears)) %>% 
-#     group_by(site_name, designation, WaterYear, totalyield_z) %>%
-#     summarize(duration_50_fix_prop = sum(duration_50_fix) / sum(ndays),
-#               duration_45_fix_prop = sum(duration_45_fix) / sum(ndays),
-#               duration_40_fix_prop = sum(duration_40_fix) / sum(ndays),
-#               duration_35_fix_prop = sum(duration_35_fix) / sum(ndays),
-#               duration_30_fix_prop = sum(duration_30_fix) / sum(ndays),
-#               duration_25_fix_prop = sum(duration_25_fix) / sum(ndays),
-#               duration_20_fix_prop = sum(duration_20_fix) / sum(ndays),
-#               duration_15_fix_prop = sum(duration_15_fix) / sum(ndays),
-#               duration_10_fix_prop = sum(duration_10_fix) / sum(ndays),
-#               duration_05_fix_prop = sum(duration_05_fix) / sum(ndays),
-#               duration_02_fix_prop = sum(duration_02_fix) / sum(ndays)) %>%
-#     ungroup()
-# 
-#   # order sites, Big G first
-#   mysites <- c(unique(unlist(dd %>% filter(designation == "big") %>% select(site_name))),
-#                unique(unlist(dd %>% filter(designation == "little") %>% select(site_name))))
-# 
-#   p_sds <- dd %>% 
-#     gather(duration_50_fix_prop:duration_02_fix_prop, key = "metric", value = "duration") %>%
-#     mutate(quant = as.numeric(gsub(".*?([0-9]+).*", "\\1", metric)) ) %>% 
-#     filter(designation == "little") %>%
-#     group_by(WaterYear, totalyield_z, metric, quant) %>%
-#     summarize(sddur = sd(duration, na.rm = TRUE)) %>%
-#     ungroup() %>%
-#     left_join(dd %>% filter(site_name == bigG) %>% select(WaterYear, duration_25_fix_prop) %>% rename(dur25 = duration_25_fix_prop)) %>%
-#     ggplot(aes(x = quant, y = sddur, color = dur25, group = WaterYear)) +
-#     geom_point() +
-#     scale_color_gradient(low = "blue", high = "red", limits = c(0,1)) +
-#     stat_smooth() +
-#     xlab("Low flow threshold (percentile)") + ylab("Among-site SD(duration)") +
-#     theme_bw() + 
-#     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-#           legend.position = "top") + guides(shape = guide_legend(title = "Water year"))
-#   
-#   # barplot 50th perc
-#   p30 <- dd %>% 
-#     ggplot(aes(x = factor(site_name, levels = (mysites)), y = duration_50_fix_prop)) +
-#     geom_bar(aes(fill = designation), stat = "identity") +
-#     scale_fill_manual(values = c("grey20", "grey55")) +
-#     facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(unique(layer_data(p_sds)[,1]), 0.5)))) +
-#     ylim(0,1) +
-#     ylab("Days below low flow threshold (%JAS)") + ggtitle("50th perc.") +
-#     theme_bw() + 
-#     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
-#           legend.position = "none", axis.title.x = element_blank(),
-#           panel.grid.major = element_blank(), panel.grid.minor = element_blank())
-# 
-#   p_sds
-#   p30
-# 
-#   str(p_sds)
-#   p_sds$data[[1]]["gradient"]
-#   
-#   layer_data(p_sds)
-#   unique(layer_data(p_sds)[,1])
+
+deficitplotfun <- function(subbas, bigG, months, wateryears, dropsites = NA) {
+  # filter and summarize data
+  # dd <- defdur_month %>% 
+  #   filter(subbasin == subbas | site_name == bigG, Month %in% months, WaterYear %in% wateryears, !site_name %in% dropsites) %>%
+  #   mutate(WaterYear = factor(WaterYear, levels = wateryears)) %>% 
+  #   group_by(site_name, designation, WaterYear, totalyield_z) %>%
+  #   summarize(deficit_50_fix = sum(deficit_50_fix),
+  #             deficit_45_fix = sum(deficit_45_fix),
+  #             deficit_40_fix = sum(deficit_40_fix),
+  #             deficit_35_fix = sum(deficit_35_fix),
+  #             deficit_30_fix = sum(deficit_30_fix),
+  #             deficit_25_fix = sum(deficit_25_fix),
+  #             deficit_20_fix = sum(deficit_20_fix),
+  #             deficit_15_fix = sum(deficit_15_fix),
+  #             deficit_10_fix = sum(deficit_10_fix),
+  #             deficit_05_fix = sum(deficit_05_fix),
+  #             deficit_02_fix = sum(deficit_02_fix)) %>%
+  #   ungroup()
+  dd_all <- defdur_ssn %>% filter(subbasin == subbas | site_name == bigG, WaterYear %in% wateryears, !site_name %in% dropsites) 
+  dd <- defdur_ssn %>% 
+    filter(subbasin == subbas | site_name == bigG, WaterYear %in% wateryears, !site_name %in% dropsites) %>%
+    mutate(WaterYear = factor(WaterYear, levels = wateryears))
   
+  # get y-axis limit
+  ymax <- max(dd %>% select(deficit_50_fix:deficit_02_fix))
+
+  # order sites, Big G first
+  mysites <- c(unique(unlist(dd %>% filter(designation == "big") %>% select(site_name))),
+               unique(unlist(dd %>% filter(designation == "little") %>% select(site_name))))
+
+  # among site StDev ~ percentile
+  p_sds <- dd %>% 
+    gather(deficit_50_fix:deficit_02_fix, key = "metric", value = "deficit") %>%
+    mutate(quant = as.numeric(gsub(".*?([0-9]+).*", "\\1", metric)) ) %>% 
+    filter(designation == "little") %>%
+    group_by(WaterYear, totalyield_z, metric, quant) %>%
+    summarize(sddur = sd(deficit, na.rm = TRUE)) %>%
+    ungroup() %>%
+    left_join(dd %>% filter(site_name == bigG) %>% select(WaterYear, deficit_50_fix) %>% rename(def50 = deficit_50_fix)) %>%
+    ggplot(aes(x = quant, y = sddur, color = def50, group = WaterYear, shape = WaterYear)) +
+    geom_point() +
+    scale_color_gradient(low = "blue", high = "red", limits = c(0,max(dd_all$deficit_50_fix))) +
+    stat_smooth() +
+    xlab("Low flow threshold (percentile)") + ylab("Among-site SD(deficit)") +
+    theme_bw() + 
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          legend.position = "bottom", legend.direction = "vertical", legend.key.height = unit(0.3, 'cm'))
+  
+  # barplot 50th perc
+  p30 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = deficit_50_fix)) +
+    geom_bar(aes(fill = designation), stat = "identity") +
+    scale_fill_manual(values = c("grey20", "grey55")) +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(unique(layer_data(p_sds)[,1]), 0.5)))) +
+    ylim(0,ymax) +
+    ylab("Drought deficit (mm, JAS)") + ggtitle("50th perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  # barplot 25th perc.
+  p20 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = deficit_25_fix)) +
+    geom_bar(aes(fill = designation), stat = "identity") +
+    scale_fill_manual(values = c("grey20", "grey55")) +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(unique(layer_data(p_sds)[,1]), 0.5)))) +
+    ylim(0,ymax) +
+    ylab("Drought deficit (mm, JAS)") + ggtitle("25th perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  # barplot 10th perc.
+  p10 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = deficit_10_fix)) +
+    geom_bar(aes(fill = designation), stat = "identity") +
+    scale_fill_manual(values = c("grey20", "grey55")) +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(unique(layer_data(p_sds)[,1]), 0.5)))) +
+    ylim(0,ymax) +
+    ylab("Drought deficit (mm, JAS)") + ggtitle("10th perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  # barplot 5th perc.
+  p05 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = deficit_05_fix)) +
+    geom_bar(aes(fill = designation), stat = "identity") +
+    scale_fill_manual(values = c("grey20", "grey55")) +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(unique(layer_data(p_sds)[,1]), 0.5)))) +
+    ylim(0,ymax) +
+    ylab("Drought deficit (mm, JAS)") + ggtitle("5th perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  # barplot 2nd perc
+  p02 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = deficit_02_fix)) +
+    geom_bar(aes(fill = designation), stat = "identity") +
+    scale_fill_manual(values = c("grey20", "grey55")) +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(unique(layer_data(p_sds)[,1]), 0.5)))) +
+    ylim(0,ymax) +
+    ylab("Drought deficit (JAS)") + ggtitle("2nd perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+  # arrange plots
+  egg::ggarrange(p02 + theme(plot.margin = margin(r = 1, t = 5, b = 5)), 
+                 p05 + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = margin(r = 1, l = 1)), 
+                 p10 + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = margin(r = 1, l = 1)), 
+                 p20 + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = margin(r = 1, l = 1)), 
+                 p30 + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = margin(r = 1, l = 1)),
+                 p_sds,
+                 nrow = 1, widths = c(1,1,1,1,1,2.5))
+}
 ```
+
+##### Duration
 
 Show proportion of days (July - September) below different low flow thresholds (derived from long-term Big G data) for each site during a relatively wet year and a dry year. Then, for each year, plot the relationship between the among site (little g's only) standard deviation of low flow duration and the low flow threshold used to calculate duration
 
 ::: panel-tabset
-##### West Brook
+###### West Brook
+```{r fig.width=10, fig.height=5}
+durationplotfun(subbas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9), wateryears = c(2020, 2021))
+```
+###### Staunton River
+```{r fig.width=10, fig.height=5}
+durationplotfun(subbas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9), wateryears = c(2019, 2020))
+```
+###### Big Creek
+```{r fig.width=10, fig.height=5}
+durationplotfun(subbas = "Big Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9), wateryears = c(2020, 2021), dropsites = c("LangfordCreekUpper", "NicolaCreek", "WernerCreek", "LangfordCreekLower"))
+```
+###### Snake River
+```{r fig.width=10, fig.height=5}
+durationplotfun(subbas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9), wateryears = c(2021, 2022))
+```
+###### Shields River
+```{r fig.width=10, fig.height=5}
+durationplotfun(subbas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2020, 2019), dropsites = c("Shields River Valley Ranch"))
+```
+###### Duck Creek
+```{r fig.width=10, fig.height=5}
+durationplotfun(subbas = "Duck Creek", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2021, 2019))
+```
+###### Donner Blitzen
+```{r fig.width=10, fig.height=5}
+durationplotfun(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9), wateryears = c(2022, 2020))
+```
+:::
+
+##### Deficit
+
+Show total drought deficit (mm) relative to different low flow thresholds (derived from long-term Big G data) for each site during a relatively wet year and a dry year. Then, for each year, plot the relationship between the among site (little g's only) standard deviation of deficit and the low flow threshold used to calculate deficit
+
+::: panel-tabset
+###### West Brook
 ```{r fig.width=10, fig.height=5}
 deficitplotfun(subbas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9), wateryears = c(2020, 2021))
 ```
-##### Snake River
+###### Staunton River
+```{r fig.width=10, fig.height=5}
+deficitplotfun(subbas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9), wateryears = c(2019, 2020))
+```
+###### Big Creek
+```{r fig.width=10, fig.height=5}
+deficitplotfun(subbas = "Big Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9), wateryears = c(2020, 2021), dropsites = c("LangfordCreekUpper", "NicolaCreek", "WernerCreek", "LangfordCreekLower"))
+```
+###### Snake River
 ```{r fig.width=10, fig.height=5}
 deficitplotfun(subbas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9), wateryears = c(2021, 2022))
 ```
-##### Shields River
+###### Shields River
 ```{r fig.width=10, fig.height=5}
 deficitplotfun(subbas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2020, 2019), dropsites = c("Shields River Valley Ranch"))
 ```
-##### Duck Creek
+###### Duck Creek
 ```{r fig.width=10, fig.height=5}
 deficitplotfun(subbas = "Duck Creek", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2021, 2019))
 ```
-##### Donner Blitzen
+###### Donner Blitzen
 ```{r fig.width=10, fig.height=5}
 deficitplotfun(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9), wateryears = c(2022, 2020))
 ```
 :::
 
 
+#### Site-level threshold
+
+Organize data
+```{r}
+dat_clean_sub_deficit <- dat_clean_sub %>%
+  mutate(deficit_50_fix = ifelse(z_Yield_mm < thresh_50_fix, abs(thresh_50_fix - z_Yield_mm), 0),
+         deficit_45_fix = ifelse(z_Yield_mm < thresh_45_fix, abs(thresh_45_fix - z_Yield_mm), 0),
+         deficit_40_fix = ifelse(z_Yield_mm < thresh_40_fix, abs(thresh_40_fix - z_Yield_mm), 0),
+         deficit_35_fix = ifelse(z_Yield_mm < thresh_35_fix, abs(thresh_35_fix - z_Yield_mm), 0),
+         deficit_30_fix = ifelse(z_Yield_mm < thresh_30_fix, abs(thresh_30_fix - z_Yield_mm), 0),
+         deficit_25_fix = ifelse(z_Yield_mm < thresh_25_fix, abs(thresh_25_fix - z_Yield_mm), 0),
+         deficit_20_fix = ifelse(z_Yield_mm < thresh_20_fix, abs(thresh_20_fix - z_Yield_mm), 0),
+         deficit_15_fix = ifelse(z_Yield_mm < thresh_15_fix, abs(thresh_15_fix - z_Yield_mm), 0),
+         deficit_10_fix = ifelse(z_Yield_mm < thresh_10_fix, abs(thresh_10_fix - z_Yield_mm), 0),
+         deficit_05_fix = ifelse(z_Yield_mm < thresh_05_fix, abs(thresh_05_fix - z_Yield_mm), 0),
+         deficit_02_fix = ifelse(z_Yield_mm < thresh_05_fix, abs(thresh_05_fix - z_Yield_mm), 0))
+
+# summarize by summer
+defdur_ssn_sub <- dat_clean_sub_deficit %>% 
+  filter(!is.na(Yield_mm), Month %in% c(7:9)) %>% 
+  group_by(site_name, basin, subbasin, region, designation, CalendarYear, WaterYear) %>% 
+  summarize(ndays = n(),
+            propdays = ndays/(31+31+30), 
+            duration_50_fix_prop = sum(deficit_50_fix > 0) / ndays,
+            duration_45_fix_prop = sum(deficit_45_fix > 0) / ndays,
+            duration_40_fix_prop = sum(deficit_40_fix > 0) / ndays,
+            duration_35_fix_prop = sum(deficit_35_fix > 0) / ndays,
+            duration_30_fix_prop = sum(deficit_30_fix > 0) / ndays,
+            duration_25_fix_prop = sum(deficit_25_fix > 0) / ndays,
+            duration_20_fix_prop = sum(deficit_20_fix > 0) / ndays,
+            duration_15_fix_prop = sum(deficit_15_fix > 0) / ndays,
+            duration_10_fix_prop = sum(deficit_10_fix > 0) / ndays,
+            duration_05_fix_prop = sum(deficit_05_fix > 0) / ndays,
+            duration_02_fix_prop = sum(deficit_02_fix > 0) / ndays,
+            
+            deficit_50_fix = sum(deficit_50_fix),
+            deficit_45_fix = sum(deficit_45_fix),
+            deficit_40_fix = sum(deficit_40_fix),
+            deficit_35_fix = sum(deficit_35_fix),
+            deficit_30_fix = sum(deficit_30_fix),
+            deficit_25_fix = sum(deficit_25_fix),
+            deficit_20_fix = sum(deficit_20_fix),
+            deficit_15_fix = sum(deficit_15_fix),
+            deficit_10_fix = sum(deficit_10_fix),
+            deficit_05_fix = sum(deficit_05_fix),
+            deficit_02_fix = sum(deficit_02_fix)) %>%
+  ungroup() %>%
+  mutate(designation = ifelse(is.na(designation), "big", designation)) %>%
+  filter(propdays >= 0.90) %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield, totalyield_z))
+
+```
+
+Create plotting functions. These are the same as defined above, but instead grab the "defdur_ssn_sub" object for site-level low flow thresholds.
+```{r}
+durationplotfun_sub <- function(subbas, bigG, months, wateryears, dropsites = NA) {
+  # filter and summarize data
+  dd <- defdur_ssn_sub %>% 
+    filter(subbasin == subbas | site_name == bigG, WaterYear %in% wateryears, !site_name %in% dropsites) %>%
+    mutate(WaterYear = factor(WaterYear, levels = wateryears))
+
+  # order sites, Big G first
+  mysites <- c(unique(unlist(dd %>% filter(designation == "big") %>% select(site_name))),
+               unique(unlist(dd %>% filter(designation == "little") %>% select(site_name))))
+
+  # among site StDev ~ percentile
+  p_sds <- dd %>% 
+    gather(duration_50_fix_prop:duration_02_fix_prop, key = "metric", value = "duration") %>%
+    mutate(quant = as.numeric(gsub(".*?([0-9]+).*", "\\1", metric)) ) %>% 
+    filter(designation == "little") %>%
+    group_by(WaterYear, totalyield_z, metric, quant) %>%
+    summarize(sddur = sd(duration, na.rm = TRUE)) %>%
+    ungroup() %>%
+    left_join(dd %>% filter(site_name == bigG) %>% select(WaterYear, duration_25_fix_prop) %>% rename(dur25 = duration_25_fix_prop)) %>%
+    ggplot(aes(x = quant, y = sddur, color = dur25, group = WaterYear, shape = WaterYear)) +
+    stat_smooth() +
+    geom_point() +
+    scale_color_gradient(low = "blue", high = "red", limits = c(0,1)) +
+    xlab("Low flow threshold (percentile)") + ylab("Among-site SD(duration)") +
+    theme_bw() + 
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          legend.position = "bottom", legend.direction = "vertical", legend.key.height = unit(0.3, 'cm')) 
+  
+  # barplot 50th perc
+  p30 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = duration_50_fix_prop)) +
+    geom_bar(aes(fill = designation), stat = "identity") +
+    scale_fill_manual(values = c("grey20", "grey55")) +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(unique(layer_data(p_sds)[,1]), 0.5)))) +
+    ylim(0,1) +
+    ylab("Days below low flow threshold (%JAS)") + ggtitle("50th perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  # barplot 25th perc.
+  p20 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = duration_25_fix_prop)) +
+    geom_bar(aes(fill = designation), stat = "identity") +
+    scale_fill_manual(values = c("grey20", "grey55")) +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(unique(layer_data(p_sds)[,1]), 0.5)))) +
+    ylim(0,1) +
+    ylab("Days below low flow threshold (%JAS)") + ggtitle("25th perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  # barplot 10th perc.
+  p10 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = duration_10_fix_prop)) +
+    geom_bar(aes(fill = designation), stat = "identity") +
+    scale_fill_manual(values = c("grey20", "grey55")) +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(unique(layer_data(p_sds)[,1]), 0.5)))) +
+    ylim(0,1) +
+    ylab("Days below low flow threshold (%JAS)") + ggtitle("10th perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  # barplot 5th perc.
+  p05 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = duration_05_fix_prop)) +
+    geom_bar(aes(fill = designation), stat = "identity") +
+    scale_fill_manual(values = c("grey20", "grey55")) +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(unique(layer_data(p_sds)[,1]), 0.5)))) +
+    ylim(0,1) +
+    ylab("Days below low flow threshold (%JAS)") + ggtitle("5th perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  # barplot 2nd perc
+  p02 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = duration_02_fix_prop)) +
+    geom_bar(aes(fill = designation), stat = "identity") +
+    scale_fill_manual(values = c("grey20", "grey55")) +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(unique(layer_data(p_sds)[,1]), 0.5)))) +
+    ylim(0,1) +
+    ylab("Days below low flow threshold (%JAS)") + ggtitle("2nd perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+  # arrange plots
+  egg::ggarrange(p02 + theme(plot.margin = margin(r = 1, t = 5, b = 5)), 
+                 p05 + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = margin(r = 1, l = 1)), 
+                 p10 + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = margin(r = 1, l = 1)), 
+                 p20 + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = margin(r = 1, l = 1)), 
+                 p30 + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = margin(r = 1, l = 1)),
+                 p_sds,
+                 nrow = 1, widths = c(1,1,1,1,1,2.5))
+}
+
+
+deficitplotfun_sub <- function(subbas, bigG, months, wateryears, dropsites = NA) {
+  # filter and summarize data
+  dd_all <- defdur_ssn_sub %>% filter(subbasin == subbas | site_name == bigG, WaterYear %in% wateryears, !site_name %in% dropsites) 
+  dd <- defdur_ssn_sub %>% 
+    filter(subbasin == subbas | site_name == bigG, WaterYear %in% wateryears, !site_name %in% dropsites) %>%
+    mutate(WaterYear = factor(WaterYear, levels = wateryears))
+  
+  # get y-axis limit
+  ymax <- max(dd %>% select(deficit_50_fix:deficit_02_fix))
+
+  # order sites, Big G first
+  mysites <- c(unique(unlist(dd %>% filter(designation == "big") %>% select(site_name))),
+               unique(unlist(dd %>% filter(designation == "little") %>% select(site_name))))
+
+  # among site StDev ~ percentile
+  p_sds <- dd %>% 
+    gather(deficit_50_fix:deficit_02_fix, key = "metric", value = "deficit") %>%
+    mutate(quant = as.numeric(gsub(".*?([0-9]+).*", "\\1", metric)) ) %>% 
+    filter(designation == "little") %>%
+    group_by(WaterYear, totalyield_z, metric, quant) %>%
+    summarize(sddur = sd(deficit, na.rm = TRUE)) %>%
+    ungroup() %>%
+    left_join(dd %>% filter(site_name == bigG) %>% select(WaterYear, deficit_25_fix) %>% rename(def25 = deficit_25_fix)) %>%
+    ggplot(aes(x = quant, y = sddur, color = def25, group = WaterYear, shape = WaterYear)) +
+    stat_smooth() +
+    geom_point() +
+    scale_color_gradient(low = "blue", high = "red", limits = c(0,max(dd_all$deficit_25_fix))) +
+    xlab("Low flow threshold (percentile)") + ylab("Among-site SD(deficit)") +
+    theme_bw() + 
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          legend.position = "bottom", legend.direction = "vertical", legend.key.height = unit(0.3, 'cm'))
+  
+  # barplot 50th perc
+  p30 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = deficit_50_fix)) +
+    geom_bar(aes(fill = designation), stat = "identity") +
+    scale_fill_manual(values = c("grey20", "grey55")) +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(unique(layer_data(p_sds)[,1]), 0.5)))) +
+    ylim(0,ymax) +
+    ylab("Drought deficit (mm, JAS)") + ggtitle("50th perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  # barplot 25th perc.
+  p20 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = deficit_25_fix)) +
+    geom_bar(aes(fill = designation), stat = "identity") +
+    scale_fill_manual(values = c("grey20", "grey55")) +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(unique(layer_data(p_sds)[,1]), 0.5)))) +
+    ylim(0,ymax) +
+    ylab("Drought deficit (mm, JAS)") + ggtitle("25th perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  # barplot 10th perc.
+  p10 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = deficit_10_fix)) +
+    geom_bar(aes(fill = designation), stat = "identity") +
+    scale_fill_manual(values = c("grey20", "grey55")) +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(unique(layer_data(p_sds)[,1]), 0.5)))) +
+    ylim(0,ymax) +
+    ylab("Drought deficit (mm, JAS)") + ggtitle("10th perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  # barplot 5th perc.
+  p05 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = deficit_05_fix)) +
+    geom_bar(aes(fill = designation), stat = "identity") +
+    scale_fill_manual(values = c("grey20", "grey55")) +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(unique(layer_data(p_sds)[,1]), 0.5)))) +
+    ylim(0,ymax) +
+    ylab("Drought deficit (mm, JAS)") + ggtitle("5th perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  # barplot 2nd perc
+  p02 <- dd %>% 
+    ggplot(aes(x = factor(site_name, levels = (mysites)), y = deficit_02_fix)) +
+    geom_bar(aes(fill = designation), stat = "identity") +
+    scale_fill_manual(values = c("grey20", "grey55")) +
+    facet_wrap2(~WaterYear, ncol = 1, strip = strip_themed(background_x = elem_list_rect(fill = alpha(unique(layer_data(p_sds)[,1]), 0.5)))) +
+    ylim(0,ymax) +
+    ylab("Drought deficit (JAS)") + ggtitle("2nd perc.") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          legend.position = "none", axis.title.x = element_blank(),
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+  # arrange plots
+  egg::ggarrange(p02 + theme(plot.margin = margin(r = 1, t = 5, b = 5)), 
+                 p05 + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = margin(r = 1, l = 1)), 
+                 p10 + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = margin(r = 1, l = 1)), 
+                 p20 + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = margin(r = 1, l = 1)), 
+                 p30 + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), plot.margin = margin(r = 1, l = 1)),
+                 p_sds,
+                 nrow = 1, widths = c(1,1,1,1,1,2.5))
+}
+```
+
+##### Duration
+
+Show proportion of days (July - September) below different low flow thresholds (derived from temporally restricted, site-specific data) for each site during a relatively wet year and a dry year. Then, for each year, plot the relationship between the among site (little g's only) standard deviation of low flow duration and the low flow threshold used to calculate duration
+
+::: panel-tabset
+###### West Brook
+```{r fig.width=10, fig.height=5}
+durationplotfun_sub(subbas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9), wateryears = c(2022, 2020, 2021))
+```
+###### Staunton River
+```{r fig.width=10, fig.height=5}
+durationplotfun_sub(subbas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9), wateryears = c(2019, 2021, 2020))
+```
+###### Big Creek
+```{r fig.width=10, fig.height=5}
+durationplotfun_sub(subbas = "Big Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9), wateryears = c(2020, 2019))
+```
+###### Coal Creek
+```{r fig.width=10, fig.height=5}
+durationplotfun_sub(subbas = "Coal Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9), wateryears = c(2019, 2021))
+```
+###### Snake River
+```{r fig.width=10, fig.height=5}
+durationplotfun_sub(subbas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9), wateryears = c(2021, 2020, 2022))
+```
+###### Shields River
+```{r fig.width=10, fig.height=5}
+durationplotfun_sub(subbas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2020, 2019, 2023), dropsites = c("Shields River Valley Ranch"))
+```
+###### Duck Creek
+```{r fig.width=10, fig.height=5}
+durationplotfun_sub(subbas = "Duck Creek", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2021, 2022, 2017))
+```
+###### Donner Blitzen
+```{r fig.width=10, fig.height=5}
+durationplotfun_sub(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9), wateryears = c(2022, 2020))
+```
+:::
+
+##### Deficit
+
+Show total drought deficit (mm) relative to different low flow thresholds (derived from long-term Big G data) for each site during a relatively wet year and a dry year. Then, for each year, plot the relationship between the among site (little g's only) standard deviation of deficit and the low flow threshold used to calculate deficit
+
+::: panel-tabset
+###### West Brook
+```{r fig.width=10, fig.height=5}
+deficitplotfun_sub(subbas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9), wateryears = c(2022, 2020, 2021))
+```
+###### Staunton River
+```{r fig.width=10, fig.height=5}
+deficitplotfun_sub(subbas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9), wateryears = c(2019, 2021, 2020))
+```
+###### Big Creek
+```{r fig.width=10, fig.height=5}
+deficitplotfun_sub(subbas = "Big Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9), wateryears = c(2020, 2019))
+```
+###### Coal Creek
+```{r fig.width=10, fig.height=5}
+deficitplotfun_sub(subbas = "Coal Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9), wateryears = c(2019, 2021))
+```
+###### Snake River
+```{r fig.width=10, fig.height=5}
+deficitplotfun_sub(subbas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9), wateryears = c(2021, 2020, 2022))
+```
+###### Shields River
+```{r fig.width=10, fig.height=5}
+deficitplotfun_sub(subbas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2020, 2019, 2023), dropsites = c("Shields River Valley Ranch"))
+```
+###### Duck Creek
+```{r fig.width=10, fig.height=5}
+deficitplotfun_sub(subbas = "Duck Creek", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2021, 2022, 2017))
+```
+###### Donner Blitzen
+```{r fig.width=10, fig.height=5}
+deficitplotfun_sub(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9), wateryears = c(2022, 2020))
+```
+:::
+
+
+
+
+## Objective 4
+
+
+
+
+
+## OLD
+
+
 
 ### Violin plots 
 
 Create violin plot function. Don't love this plotting style, but shows that data reasonably well
-```{r warning=FALSE}
+```{r warning=FALSE, eval=FALSE}
 defdurplotfun <- function(subbas, bigG, months) {
   dd_little <- defdur_month %>% filter(subbasin == subbas, Month %in% months, designation == "little")
   myyrs <- unique(dd_little$WaterYear)
@@ -1639,43 +2130,43 @@ defdurplotfun <- function(subbas, bigG, months) {
 
 ::: panel-tabset
 ##### West Brook
-```{r fig.width=11, fig.height=6, warning=FALSE}
+```{r fig.width=11, fig.height=6, warning=FALSE, eval=FALSE}
 defdurplotfun(subbas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9))
 ```
 ##### Paine Run
-```{r fig.width=11, fig.height=6, warning=FALSE}
+```{r fig.width=11, fig.height=6, warning=FALSE, eval=FALSE}
 defdurplotfun(subbas = "Paine Run", bigG = "South River Harriston NWIS", months = c(7:9))
 ```
 ##### Staunton River
-```{r fig.width=11, fig.height=6, warning=FALSE}
+```{r fig.width=11, fig.height=6, warning=FALSE, eval=FALSE}
 defdurplotfun(subbas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9))
 ```
 ##### Big Creek
-```{r fig.width=11, fig.height=6, warning=FALSE}
+```{r fig.width=11, fig.height=6, warning=FALSE, eval=FALSE}
 defdurplotfun(subbas = "Big Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
 ```
 ##### Coal Creek
-```{r fig.width=11, fig.height=6, warning=FALSE}
+```{r fig.width=11, fig.height=6, warning=FALSE, eval=FALSE}
 defdurplotfun(subbas = "Coal Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
 ```
 ##### McGee Creek
-```{r fig.width=11, fig.height=6, warning=FALSE}
+```{r fig.width=11, fig.height=6, warning=FALSE, eval=FALSE}
 defdurplotfun(subbas = "McGee Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
 ```
 ##### Snake River
-```{r fig.width=11, fig.height=6, warning=FALSE}
+```{r fig.width=11, fig.height=6, warning=FALSE, eval=FALSE}
 defdurplotfun(subbas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9))
 ```
 ##### Shields River
-```{r fig.width=11, fig.height=6, warning=FALSE}
+```{r fig.width=11, fig.height=6, warning=FALSE, eval=FALSE}
 defdurplotfun(subbas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
 ```
 ##### Duck Creek
-```{r fig.width=11, fig.height=6, warning=FALSE}
+```{r fig.width=11, fig.height=6, warning=FALSE, eval=FALSE}
 defdurplotfun(subbas = "Duck Creek", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
 ```
 ##### Donner Blitzen
-```{r fig.width=11, fig.height=6, warning=FALSE}
+```{r fig.width=11, fig.height=6, warning=FALSE, eval=FALSE}
 defdurplotfun(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9))
 ```
 :::
@@ -1684,7 +2175,7 @@ defdurplotfun(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchg
 
 
 
-```{r eval=FALSE, include=FALSE}
+```{r eval=FALSE, include=FALSE, eval=FALSE}
 defdur_month %>% 
   filter(subbasin == "West Brook", Month %in% c(7)) %>%
   mutate(WaterYear = factor(WaterYear)) %>%
@@ -1722,13 +2213,6 @@ defdur_month %>% filter(subbasin == "Donner Blitzen") %>%
 
 
 
-## Objective 4
-
-
-
-
-
-## OLD
 
 ### Spatiotemporal variation
 
