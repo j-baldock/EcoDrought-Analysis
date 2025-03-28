@@ -674,6 +674,81 @@ myridgesfun(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchgle
 :::
 
 
+### Groundwater
+
+Explore the general effect of groundwater on summer (July-September) water availability. 
+
+Load PASTA daily derived parameters: summarize as July-September site-specific means (across all years)
+```{r}
+pasta <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Covariates/pasta_derived_parameters_daily.csv") %>%
+  mutate(Month = month(date)) %>%
+  rename(CalendarYear = year) %>%
+  filter(Month %in% c(7:9)) %>%
+  group_by(site_name) %>%
+  summarize(meanRatio = mean(meanRatio, na.rm = TRUE),
+            phaseLag = mean(phaseLag, na.rm = TRUE),
+            amplitudeRatio = mean(amplitudeRatio, na.rm = TRUE))
+pasta
+```
+
+
+Create flow by groundwater plotting function.
+```{r}
+mdaystib <- tibble(Month = c(1:12), mdays = c(31,28,31,30,31,30,31,31,30,31,30,31))
+
+gwflowfun <- function (subbas, years, dropsites, months = c(1:12)) {
+  dat_clean %>% 
+  filter(subbasin == subbas, CalendarYear %in% years, Month %in% months) %>%
+  group_by(site_name, subbasin, designation, CalendarYear) %>% #, Month, MonthName) %>%
+  summarise(ss = n(),
+            logYield = mean(logYield, na.rm = TRUE)) %>%
+  ungroup() %>%
+  #left_join(mdaystib) %>%
+  mutate(pdays = ss/92#,
+         #YearMonth = paste(CalendarYear, "_", Month, sep = "")
+         ) %>%
+  filter(pdays > 0.9,
+         !site_name %in% dropsites) %>%
+  group_by(CalendarYear) %>%
+  mutate(z_logYield = scale(logYield, center = TRUE, scale = TRUE)[,1]) %>%
+  ungroup() %>%
+  left_join(pasta) %>%
+  ggplot(aes(x = amplitudeRatio, y = z_logYield)) +
+  geom_abline(intercept = 0, slope = 0, linetype = 2) +
+  geom_smooth(method = "lm", color = "black") +
+  geom_point(aes(color = site_name)) +
+  facet_wrap(~CalendarYear, nrow = 1) +
+  #facet_wrap2(~CalendarYear, nrow = 1, ncol = 5, trim_blank = FALSE) +
+  #facet_grid(cols = vars(Month), rows = vars(CalendarYear)) + 
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) 
+}
+```
+
+Plot the relationship between standardized annual summer mean discharge and amplitude ratio from PASTA, where lower amplitude ratio values are indicative of greater groundwater availability. Mean flow for each site is standardized by year to remove interannual variation in climate/regional water availability
+
+
+```{r}
+gwflowfun(subbas = "West Brook", dropsites = c("West Brook Reservoir", "Mitchell Brook"), years = c(2020:2024))
+```
+
+
+```{r}
+gwflowfun(subbas = "Staunton River", dropsites = NA, years = c(2019:2022))
+```
+
+
+```{r}
+gwflowfun(subbas = "Snake River", dropsites = NA, years = c(2018, 2020:2022), months = c(7:9))
+```
+
+
+```{r}
+gwflowfun(subbas = "Shields River", dropsites = NA, years = c(2017,2019,2020,2022,2023), months = c(7:9))
+```
+
+
+
+
 ### Hysteresis
 
 Find little g site/water years with at least 90% data completeness, join big and little g daily yield data
