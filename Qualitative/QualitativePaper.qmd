@@ -4,23 +4,48 @@ title: "First pass"
 
 *Significance:* Headwater streams account for a majority of river networks worldwide and have a disproportionately large influence on the functioning of aquatic ecosystems. Headwater streams also support critical habitat for many species, including cold-water fishes, many of which are declining or at risk of extinction. 
 
+
 *Problem:* Headwater streams are largely underrepresented in streamflow monitoring networks, which place greater emphasis on mainstem rivers. As a result, less is known about how headwaters respond to changing water availability. Headwater streams therefore represent a blind spot in understanding flow regime variability and assessing the vulnerability of cold-water fish to changing climatic conditions, including the increasing frequency and severity of drought.
+
 
 *Existential question:* How do streamflow regimes vary spatially in headwater stream networks and what does this imply about the sensitivity of these systems (and the species they support) to changing climatic conditions (i.e., drought)?
 
-*Objectives:*  In progress...
+
+*Objectives:* 
 
 1. Evaluate the extent and magnitude of spatial and temporal variation in headwater streamflow.
-  a. Visualize time series data to show difference in streamflow regimes between reference gages (big G/NWIS) and upstream gages (little g's)
-    * Back up with flow exceedance curves to describe spatial diversity in distribution of flow values, generally 
-  b. Use scatterplots to show how hysteresis/non-stationarity/non-linearity in g~G relationships changes among basins (rain vs. snow) and sites within basins. 
-*2.* Evaluate the suitability of existing modeling techniques for predicting streamflow in headwater systems.
-  a. Use NSE (Nash-Sutcliffe efficiency) to compare the performance of regional regression, NWM/PRMS, and deep learning approaches for modeling headwater streamflow 
-3. Demonstrate how drought-related low flow conditions manifest differently in streams across headwater networks. 
-  a. Using fixed and seasonally variable low flow/drought thresholds derived from long-term (1970-present) big G data (sensu Hammond et al. 2022), show how streamflow drought duration and deficit vary among headwater streams (relative to big G). Violin plots with points for little g's relative to big G
-  b. How does the spread of values (spatial variation in drought duration and deficit) change among years that differ in regional water availability?
-4. Explore how the spatial structure/geometry of headwater stream networks combines with regional water availability to affect within-network variation in straemflow regimes (and similarity in low flow/drought response?)
-  a. Use fluvial synchronograms to explore the effects of flow connectivity, branching complexity, and regional water availability on short-scale synchrony and decay
+    + Visualize time series data to show difference in streamflow regimes between reference gages (big G/NWIS) and upstream gages (little g's). Use CVPE to summarize the magnitude of the portfolio effect in headwater flow regimes.
+    + Back up with ridgeline plots and exceedance curves to describe spatial diversity in distribution of flow values, generally (at monthly time scales and within the "dry" season, respectively) 
+2. Explore non-linear and hysteretic relationship between flow at reference vs. at headwater gages
+    + Trim data to complete site-years and use scatterplots to show diversity in g~G relationships within and among basins. 
+    + Conduct event delineation and calculate the (modified) Lloyd index for each g~G pair of storms. Arrange sites on a  frequency/magnitude bi-plot and highlight differences among (rain-snow) basins. 
+3. Quantify the suitability of existing modeling techniques for predicting streamflow in headwater systems.
+    + Use NSE (Nash-Sutcliffe efficiency) to compare the performance of Stream Stats, PRMS (in the Donner-Blitzen only), and Hoyleman's neural net model to understand the utility of existing tools for modeling headwater streamflow. (How well do these tools perform when applied to catchments smaller than those used paramertize each tool?)
+    + Maybe this is a box or a discussion point?
+4. Demonstrate how drought-related low flow conditions manifest differently in streams across headwater networks. 
+    + Using site-specific low flow thresholds derived from contemporary data (sensu Hammond et al. 2022), show how streamflow drought duration and deficit vary among headwater streams and relative to big G (heatmaps and barplots)
+    + Explore how network heterogeneity changes with threshold magnitude and among years that differ in regional water availability (scatterplots)
+  
+
+*Conceptual Model:* develop a conceptual framework and set of hypotheses based on the objectives above How do we link/combine what we have learned so far to enhance our understanding of spatial diversity in headwater streamflow regimes? 
+
+* Moving beyond "The Natural Flow Regime" - understanding and quantifying flow regime diversity in headwater stream networks
+* Perhaps the fluvial synchrogram concept will be helpful as a starting point. Also see Scholl *et al.* (*in review*) and Rossi *et al.* (2024) for inspiration 
+
+
+*Boxes:* Use boxes to highlight additional details of the data, vignettes, and case studies that demonstrate spatiotemporal streamflow heterogeneity
+
+1. High temporal resolution data reveals network diverse in streamflow response to individual storms and during low flow
+    + Show sub-daily/hourly flow data for selected storms and baseflow periods (diurnal cycles during very low flows) to show heterogeneity at very fine temporal resolutions
+2. The Wedge Hypothesis/model for rain-dominated basins (West Brook)
+    + Fit the basic wedge model for the West Brook...and develop hypotheses for how this would play out in snow-dominated basins (bowtie hypothesis)
+    + What does this this tell us about how diversity in flow regimes is driven by climate regime, antecedent conditions, and catchment storage capacity? See Dralle *et al.* (2023)
+3. Synoptic surveys reveal super fine-scale spatial variation in flow at a single point in time. (perhaps separate boxes for DB and Shen)
+    + Donner-Blitzen: longitudinal temperature and flow surveys and aerial thermal imagery show how localized groundwater inflow from geologic faults drives abrupt changes in stream conditions. (Christian Torgersen, Brandon Overstreet)
+    + Shanandoah: dewatering surveys show how longitudinal flow variability can affect habitat connectivity within headwater streams, but this is mediated by catchment characteristics and changing regional water availability among years. See Hitt *et al.* (2024). (Karli Rogers, Than Hitt). Could show relationship between size of largest patch (or number of patches, distribution of patch sizes) and regional annual water availability (or flow at big G/UVA gages).
+4. Effects of groundwater on relative flow within basins. 
+    + Show the effect of groundwater availability (derived from PASTA) on mean summer flow (or distribution of summer values).
+    + This could be combined with the above box(es), but is potentially less powerful. *Low priority*
 
 
 
@@ -46,6 +71,11 @@ library(scico)
 library(cetcolor)
 library(plotly)
 library(cowplot)
+library(hydroEvents)
+library(dtw)
+library(nhdplusTools)
+library(glue)
+library(hydroGOF)
 ```
 
 ## Data
@@ -90,6 +120,7 @@ dat_clean <- bind_rows(
     mutate(Yield_filled_mm = ifelse(site_name == "West Brook Upper" & date > date("2024-10-06"), NA, Yield_filled_mm)) %>%
     mutate(Yield_filled_mm = ifelse(site_name == "Mitchell Brook" & date > date("2021-02-28") & date < date("2021-03-26"), NA, Yield_filled_mm)) %>% 
     mutate(Yield_filled_mm = ifelse(site_name == "Mitchell Brook" & date > date("2021-11-01") & date < date("2022-05-01"), NA, Yield_filled_mm)) %>% 
+    mutate(Yield_filled_mm = ifelse(site_name == "Jimmy Brook" & date > date("2024-12-10"), NA, Yield_filled_mm)) %>% 
     mutate(subbasin = "West Brook"),
   
   dat %>% filter(site_name %in% unlist(siteinfo %>% filter(subbasin == "Paine Run") %>% select(site_name)), date >= as_date("2018-11-07"), date <= as_date("2023-05-15")) %>% mutate(subbasin = "Paine Run"),
@@ -674,89 +705,29 @@ myridgesfun(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchgle
 :::
 
 
-### Groundwater
-
-Explore the general effect of groundwater on summer (July-September) water availability. 
-
-Load PASTA daily derived parameters: summarize as July-September site-specific means (across all years)
-```{r}
-pasta <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Covariates/pasta_derived_parameters_daily.csv") %>%
-  mutate(Month = month(date)) %>%
-  rename(CalendarYear = year) %>%
-  filter(Month %in% c(7:9)) %>%
-  group_by(site_name) %>%
-  summarize(meanRatio = mean(meanRatio, na.rm = TRUE),
-            phaseLag = mean(phaseLag, na.rm = TRUE),
-            amplitudeRatio = mean(amplitudeRatio, na.rm = TRUE))
-pasta
-```
 
 
-Create flow by groundwater plotting function.
-```{r}
-mdaystib <- tibble(Month = c(1:12), mdays = c(31,28,31,30,31,30,31,31,30,31,30,31))
+## Objective 2
 
-gwflowfun <- function (subbas, years, dropsites, months = c(1:12)) {
-  dat_clean %>% 
-  filter(subbasin == subbas, CalendarYear %in% years, Month %in% months) %>%
-  group_by(site_name, subbasin, designation, CalendarYear) %>% #, Month, MonthName) %>%
-  summarise(ss = n(),
-            logYield = mean(logYield, na.rm = TRUE)) %>%
-  ungroup() %>%
-  #left_join(mdaystib) %>%
-  mutate(pdays = ss/92#,
-         #YearMonth = paste(CalendarYear, "_", Month, sep = "")
-         ) %>%
-  filter(pdays > 0.9,
-         !site_name %in% dropsites) %>%
-  group_by(CalendarYear) %>%
-  mutate(z_logYield = scale(logYield, center = TRUE, scale = TRUE)[,1]) %>%
-  ungroup() %>%
-  left_join(pasta) %>%
-  ggplot(aes(x = amplitudeRatio, y = z_logYield)) +
-  geom_abline(intercept = 0, slope = 0, linetype = 2) +
-  geom_smooth(method = "lm", color = "black") +
-  geom_point(aes(color = site_name)) +
-  facet_wrap(~CalendarYear, nrow = 1) +
-  #facet_wrap2(~CalendarYear, nrow = 1, ncol = 5, trim_blank = FALSE) +
-  #facet_grid(cols = vars(Month), rows = vars(CalendarYear)) + 
-  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) 
-}
-```
+*Purpose:* Explore non-linear and hysteretic relationship between flow at reference vs. at headwater gages
 
-Plot the relationship between standardized annual summer mean discharge and amplitude ratio from PASTA, where lower amplitude ratio values are indicative of greater groundwater availability. Mean flow for each site is standardized by year to remove interannual variation in climate/regional water availability
+*Approach:*
+
+* Trim data to complete site-years.
+* Use scatterplots to show diversity in g~G relationships within and among basins. 
+* Conduct event delineation and calculate the (modified) Lloyd index for each g~G pair of storms. 
+* Arrange sites on a frequency/magnitude bi-plot and highlight differences among (rain-snow) basins.
 
 
-```{r}
-gwflowfun(subbas = "West Brook", dropsites = c("West Brook Reservoir", "Mitchell Brook"), years = c(2020:2024))
-```
-
-
-```{r}
-gwflowfun(subbas = "Staunton River", dropsites = NA, years = c(2019:2022))
-```
-
-
-```{r}
-gwflowfun(subbas = "Snake River", dropsites = NA, years = c(2018, 2020:2022), months = c(7:9))
-```
-
-
-```{r}
-gwflowfun(subbas = "Shields River", dropsites = NA, years = c(2017,2019,2020,2022,2023), months = c(7:9))
-```
-
-
-
-
-### Hysteresis
+### Trim data
 
 Find little g site/water years with at least 90% data completeness, join big and little g daily yield data
 ```{r}
 # find little g site/water yeras with at least 90% data availability
 mysiteyrs <- dat_clean %>% 
   group_by(site_name, basin, subbasin, region, WaterYear) %>% 
-  summarize(numdays = n()) %>% 
+  summarize(numdays = n(),
+            totalyield_site = sum(Yield_mm)) %>% 
   ungroup() %>% 
   filter(numdays >= 0.9*365) %>% 
   mutate(forhyst = 1) %>%
@@ -768,13 +739,20 @@ dat_clean_hyst <- dat_clean %>%
   filter(forhyst == 1) %>%
   left_join(dat_clean_big %>% select(basin, date, Yield_mm, logYield) %>% rename(Yield_mm_big = Yield_mm, logYield_big = logYield)) %>%
   left_join(wateravail %>% select(basin, WaterYear, totalyield_z))
+
+# view data
+mysiteyrs
+dat_clean_hyst
 ```
+
+
+### gG scatterplots
 
 Create plotting function
 ```{r}
-hystplotfun <- function(mysite, wy) {
+hystplotfun <- function(mysite, wy, months = c(1:12)) {
   (dat_clean_hyst %>%
-          filter(site_name == mysite, WaterYear == wy) %>%
+          filter(site_name == mysite, WaterYear == wy, Month %in% months) %>%
           ggplot(aes(x = logYield_big, y = logYield, color = date)) +
           geom_segment(aes(xend = c(tail(logYield_big, n = -1), NA), yend = c(tail(logYield, n = -1), NA)), arrow = arrow(length = unit(0.2, "cm")), color = "black") +
           geom_point() + 
@@ -792,12 +770,29 @@ hystplotfun <- function(mysite, wy) {
                 axis.title = element_blank()) +
           theme(plot.margin = margin(0.1,0.1,0,0, "cm")) )
 }
+# change to linear color palette
+hystplotfunlin <- function(mysite, wy, months = c(1:12)) {
+  (dat_clean_hyst %>%
+          filter(site_name == mysite, WaterYear == wy, Month %in% months) %>%
+          ggplot(aes(x = logYield_big, y = logYield, color = date)) +
+          geom_segment(aes(xend = c(tail(logYield_big, n = -1), NA), yend = c(tail(logYield, n = -1), NA)), arrow = arrow(length = unit(0.2, "cm")), color = "black") +
+          geom_point() + 
+          geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+          scale_color_gradientn(colors = cet_pal(90, name = "r1"), trans = "date") +
+          xlim(-1,1.5) + ylim(-1.5,1.8) + 
+          #scale_color_scico(palette = "romaO") +
+          xlab("log(Yield, mm) at reference gage") + ylab("log(Yield, mm) at headwater gage") +
+          # geom_text(data = annotations, aes(x = xpos, y = ypos, label = annotateText), hjust = "inward", vjust = "inward") +
+          annotate(geom = "text", x = -Inf, y = Inf, label = paste(mysite, ", WY ", wy, sep = ""), hjust = -0.1, vjust = 1.5) +
+          theme_bw() + 
+          theme(panel.grid.major = element_blank(), 
+                panel.grid.minor = element_blank(),
+                panel.background = element_rect(fill = "grey85"),
+                axis.title = element_blank()) +
+          theme(plot.margin = margin(0.1,0.1,0,0, "cm")) )
+}
 ```
 
-
-```{r include=FALSE}
-leg <- get_legend(hystplotfun(mysite = "EF Duck Creek be HF", wy = 2022))
-```
 
 Plot example sites and years. Generally, in rain-dominated basins the East (top two rows), we see relatively little hysteresis/non-stationarity in the relationship between streamflow in headwaters and at reference gages. In contrast, in snowmelt-dominated basins of the Rocky Mountains, we see much stronger hysteresis/non-stationarity in the relationship between streamflow in headwaters and at reference gages, but this varies considerably among locations. 
 ```{r fig.width=12, fig.height=12, warning=FALSE}
@@ -819,12 +814,40 @@ ggarrange(hystplotfun(mysite = "West Brook NWIS", wy = 2021) + theme(legend.posi
           hystplotfun(mysite = "Buck Creek", wy = 2022) + theme(legend.position = "none"),
           hystplotfun(mysite = "Dugout Creek", wy = 2022) + theme(legend.position = "none"),
           hystplotfun(mysite = "EF Duck Creek be HF", wy = 2022) + theme(legend.position = "none"),
-          leg,
+          get_legend(hystplotfun(mysite = "EF Duck Creek be HF", wy = 2022)),
           
           nrow = 4, ncol = 4) %>%
   annotate_figure(left = text_grob("log(Yield, mm) at headwater gage", rot = 90),
                   bottom = text_grob("log(Yield, mm) at reference gage"))
 ```
+
+What if we just consider the summer (low flow) period, July - September? In some ways, we see an opposite pattern relative to that describe above. In that we see greater hysteretic behavior in rain-dominated basins (driven by frequent summer storms and lagged runoff response) and less hysteretic behavior in snow-dominated basins, as all streams are in recession from the spring snowmelt peak. However, in general, we see greater divergence from a 1:1 relationship in snowmelt vs rain-dominated basins.
+```{r fig.width=12, fig.height=12, warning=FALSE}
+ggarrange(hystplotfunlin(mysite = "West Brook NWIS", wy = 2021, months = c(7:9)) + theme(legend.position = "none"),
+          hystplotfunlin(mysite = "Jimmy Brook", wy = 2021, months = c(7:9)) + theme(legend.position = "none"),
+          hystplotfunlin(mysite = "Sanderson Brook", wy = 2021, months = c(7:9)) + theme(legend.position = "none"),
+          hystplotfunlin(mysite = "Avery Brook", wy = 2021, months = c(7:9)) + theme(legend.position = "none"),
+          
+          hystplotfunlin(mysite = "Staunton River 10", wy = 2021, months = c(7:9)) + theme(legend.position = "none"),
+          hystplotfunlin(mysite = "Staunton River 06", wy = 2021, months = c(7:9)) + theme(legend.position = "none"),
+          hystplotfunlin(mysite = "Staunton River 03", wy = 2021, months = c(7:9)) + theme(legend.position = "none"),
+          hystplotfunlin(mysite = "Staunton River 02", wy = 2021, months = c(7:9)) + theme(legend.position = "none"),
+          
+          hystplotfunlin(mysite = "Big Creek NWIS", wy = 2020, months = c(7:9)) + theme(legend.position = "none"),
+          hystplotfunlin(mysite = "WernerCreek", wy = 2020, months = c(7:9)) + theme(legend.position = "none"),
+          hystplotfunlin(mysite = "CycloneCreekUpper", wy = 2020, months = c(7:9)) + theme(legend.position = "none"),
+          hystplotfunlin(mysite = "McGeeCreekTrib", wy = 2020, months = c(7:9)) + theme(legend.position = "none"),
+          
+          hystplotfunlin(mysite = "Buck Creek", wy = 2022, months = c(7:9)) + theme(legend.position = "none"),
+          hystplotfunlin(mysite = "Dugout Creek", wy = 2022, months = c(7:9)) + theme(legend.position = "none"),
+          hystplotfunlin(mysite = "EF Duck Creek be HF", wy = 2022, months = c(7:9)) + theme(legend.position = "none"),
+          get_legend(hystplotfunlin(mysite = "EF Duck Creek be HF", wy = 2022, months = c(7:9))),
+          
+          nrow = 4, ncol = 4) %>%
+  annotate_figure(left = text_grob("log(Yield, mm) at headwater gage", rot = 90),
+                  bottom = text_grob("log(Yield, mm) at reference gage"))
+```
+
 
 #### West Brook
 ::: panel-tabset
@@ -903,25 +926,703 @@ ggplotly(hystplotfun(mysite = "EF Duck Creek be HF", wy = 2022))
 :::
 
 
+### Frequency and magnitude
 
-## Objective 2
+Conduct baseflow extraction, event delineation, and calculate event-specific hysteresis index using dynamic time warping (Xue et al. 2024).
+```{r warning=FALSE}
+# set baseflow extraction and event delineation parameters
+alp <- 0.95
+numpass <- 3
+thresh <- 0.75
+
+# empty list to story site-year data
+hysteresis_list <- list()
+
+for (j in 1:nrow(mysiteyrs)) {
+  # filter data by site name and water year
+  dd <- dat_clean_hyst %>% filter(site_name == mysiteyrs$site_name[j], WaterYear == mysiteyrs$WaterYear[j])
+  
+  # baseflow extraction on big G yield
+  dd <- dd %>% 
+    filter(!is.na(Yield_mm_big)) %>% 
+    mutate(bf = baseflowB(Yield_mm_big, alpha = alp, passes = numpass)$bf, 
+           bfi = baseflowB(Yield_mm_big, alpha = alp, passes = numpass)$bfi) %>%
+    ungroup()
+  
+  # delineate events
+  events <- eventBaseflow(dd$Yield_mm_big, BFI_Th = thresh, bfi = dd$bfi)
+  events <- events %>% mutate(len = end - srt + 1)
+  
+  #print("Done - baseflow extraction and event delineation")
+  
+  ## Tidy events
+  # define positions of non-events
+  # srt <- c(1)
+  # end <- c(events$srt[1]-1)
+  # for (i in 2:(dim(events)[1])) {
+  #   srt[i] <- events$end[i-1]+1
+  #   end[i] <- events$srt[i]-1
+  # }
+  # nonevents <- data.frame(tibble(srt, end) %>% 
+  #                           mutate(len = end - srt) %>% 
+  #                           filter(len >= 0) %>% select(-len) %>% 
+  #                           add_row(srt = events$end[dim(events)[1]]+1, end = dim(dd)[1])
+  #                        )
+
+  # create vectors of binary event/non-event and event IDs
+  isevent_vec <- rep(2, times = dim(dd)[1])
+  eventid_vec <- rep(NA, times = dim(dd)[1])
+  for (i in 1:dim(events)[1]) { 
+    isevent_vec[c(events[i,1]:events[i,2])] <- 1 
+    eventid_vec[c(events[i,1]:events[i,2])] <- i
+  }
+
+  # # create vector of non-event IDs
+  # noneventid_vec <- rep(NA, times = dim(dd)[1])
+  # for (i in 1:dim(nonevents)[1]) { noneventid_vec[c(nonevents[i,1]:nonevents[i,2])] <- i }
+  # 
+  # # create vector of "agnostic events": combined hydro events and non-events
+  # agnevents <- rbind(events %>% select(srt, end) %>% mutate(event = 1), nonevents %>% mutate(event = 0)) %>% arrange((srt))
+  # agneventid_vec <- c()
+  # for (i in 1:dim(agnevents)[1]){ agneventid_vec[c(agnevents[i,1]:agnevents[i,2])] <- i }
+
+  # add event/non-event vectors to Big G data
+  dd <- dd %>% 
+    mutate(isevent = isevent_vec, 
+           eventid = eventid_vec,
+           #noneventid = noneventid_vec,
+           #agneventid = agneventid_vec,
+           big_event_yield = ifelse(isevent_vec == 1, Yield_mm_big, NA),
+           big_nonevent_yield = ifelse(isevent_vec == 2, Yield_mm_big, NA),
+           big_event_quick = big_event_yield - bf) %>%
+    rename(big_bf = bf, big_bfi = bfi)
+  
+  #print("Done - tidy events")
+  
+  # calculate hysteresis index for each event using dynamic time warping
+  event_list <- list()
+  for (i in 1:max(dd$eventid, na.rm = TRUE)) {
+    # filter by each event and normalized big and little Yield
+    ddd <- dd %>% filter(eventid == i)
+    dddd <- dd %>% filter(date %in% c(min(ddd$date)-1, max(ddd$date)+1))
+    ddd <- ddd %>% 
+      bind_rows(dddd) %>% 
+      arrange(date) %>% 
+      mutate(weight = (logYield_big - min(logYield_big)) / (max(logYield_big) - min(logYield_big)),
+             yield_little_norm = (logYield - min(logYield)) / (max(logYield) - min(logYield)),
+             yield_big_norm = (logYield_big - min(logYield_big)) / (max(logYield_big) - min(logYield_big)))
+    # ddd %>%
+    #   ggplot(aes(x = yield_big_norm, y = yield_little_norm, color = date)) +
+    #   geom_segment(aes(xend = c(tail(yield_big_norm, n = -1), NA), yend = c(tail(yield_little_norm, n = -1), NA)), 
+    #                arrow = arrow(length = unit(0.2, "cm")), color = "black") +
+    #   geom_point() + 
+    #   geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+    #   scale_color_gradientn(colors = cet_pal(250, name = "r1"), trans = "date") +
+    #   theme_bw() + 
+    #   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  
+    # align data using dynamic time warping, allow for error handling (e.g., skips if either big or little g is constant during event, b/c normalization returns NaN)
+    skip_to_next <- FALSE
+    tryCatch(align <- dtw(x = unlist(ddd %>% select(yield_big_norm)), y = unlist(ddd %>% select(yield_little_norm)), step = asymmetric, keep = TRUE), error = function(e) { skip_to_next <<- TRUE })
+    if(skip_to_next) { next }
+    #align <- dtw(x = unlist(ddd %>% select(yield_big_norm)), y = unlist(ddd %>% select(yield_little_norm)), step = asymmetric, keep = TRUE)
+    # plot(align, type = "threeway")
+    # plot(align, type = "twoway", offset = -1)
+  
+    # find time-warped distance, S_i in Xue et al. (2024)
+    ddd <- ddd %>% mutate(distance = align$index1 - align$index2)
+    # ddd %>% 
+    #   ggplot(aes(x = date, y = distance*weight)) + 
+    #   geom_bar(stat = "identity") +
+    #   theme_bw()
+  
+    # summarize event
+    event_list[[i]] <- ddd %>% 
+      group_by(site_name, basin, subbasin, region, WaterYear) %>%
+      summarize(eventdays = n(),
+                eventid = i,
+                mindate = min(date),
+                maxdate = max(date),
+                totalyieldevent_little = sum(Yield_mm),
+                totalyieldevent_big = sum(Yield_mm_big),
+                hysteresis = sum(ddd$weight * ddd$distance) / sum(ddd$weight) # hysteresis index as in Xue et al (2024)
+                ) %>%
+      ungroup()
+  }
+  #print("Done - dynamic time warping")
+  hysteresis_list[[j]] <- do.call(bind_rows, event_list)
+  print(j)
+}
+
+# bind to tibble
+hysteresis <- do.call(bind_rows, hysteresis_list) %>% 
+  left_join(mysiteyrs %>% select(site_name, basin, subbasin, region, WaterYear, numdays, totalyield_site)) %>%
+  mutate(propyield = totalyieldevent_little / totalyield_site)
+
+```
+
+#### Summary plots
+
+Distribution of hystersis index by subbasin
+```{r}
+hysteresis %>%
+  ggplot(aes(x = subbasin, y = hysteresis, fill = subbasin)) + 
+  geom_boxplot(outlier.shape = NA) + 
+  geom_jitter(height = 0, width = 0.25, alpha = 0.2) +
+  xlab("Sub-basin") + ylab("Xue hysteresis index") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.4))
+```
+
+Magnitude of hysteresis by length of event
+```{r fig.width=5.5, fig.height=4}
+hysteresis %>%
+  ggplot(aes(x = eventdays, y = abs(hysteresis), color = subbasin)) + 
+  geom_point() +
+  xlab("Event length (days)") + ylab("Xue hysteresis index (absolute value)") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+
+Magnitude of hysteresis by length of event, by subbasin and site
+```{r fig.width=7, fig.height=6.5}
+hysteresis %>%
+  #filter(eventdays >= 6) %>%
+  ggplot(aes(x = eventdays, y = abs(hysteresis), color = site_name, group = site_name)) + 
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~subbasin, scales = "free") +
+  xlab("Event length (days)") + ylab("Xue hysteresis index (absolute value)") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
+```
+
+Magnitude of hysteresis by proportion of annual yield in event
+```{r fig.width=5.5, fig.height=4}
+hysteresis %>%
+  ggplot(aes(x = propyield, y = abs(hysteresis), color = subbasin)) + 
+  geom_point() +
+  xlab("Proportion of annual yield in event") + ylab("Xue hysteresis index (absolute value)") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+
+Magnitude of hysteresis by proportion of annual yield in event, by subbasin and site
+```{r fig.width=7, fig.height=6.5}
+hysteresis %>%
+  ggplot(aes(x = propyield, y = abs(hysteresis), color = site_name, group = site_name)) + 
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~subbasin, scales = "free") +
+  xlab("Proportion of annual yield in event") + ylab("Xue hysteresis index (absolute value)") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
+```
+
+
+#### Bi-plots
+
+Summarize hysteresis by site and year
+```{r}
+temp <- hysteresis %>% 
+  group_by(subbasin, site_name, WaterYear) %>% 
+  summarize(freq = n(), 
+            meanpropyield = mean(propyield),
+            meanhyst = mean(abs(hysteresis))) %>%
+  mutate(logmeanhyst = log(meanhyst)) %>%
+  ungroup() 
+temp
+```
+
+Characterize sites/subbasins along axes of event frequency and magnitude (mean annual proportion of flow within event).
+```{r}
+hull <- temp %>% group_by(subbasin) %>% slice(chull(freq, meanpropyield))
+temp %>%
+  ggplot(aes(x = freq, y = meanpropyield)) + 
+  #geom_polygon(data = hull, aes(fill = subbasin), alpha = 0.5) +
+  #geom_smooth(color = "black", method = "lm") +
+  geom_point(aes(color = subbasin)) + 
+  xlab("Events per year") + ylab("Proportion of annual yield in event (mean over events)") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+
+Plot the mean annual magnitude (absolute value) of event-specific hysteresis by event frequency (events per year), with LOESS smoothing.
+```{r fig.width=9, fig.height=4}
+p1 <- temp %>%
+  ggplot(aes(x = freq, y = (meanhyst))) + 
+  geom_smooth(color = "black") +
+  #geom_smooth(color = "black", method = "glm", formula = y~x, method.args = list(family = gaussian(link = 'log'))) +
+  geom_point(aes(color = subbasin)) + 
+  xlab("Events per year") + ylab("Mean annual magnitude of hysteresis") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+p2 <- temp %>%
+  ggplot(aes(x = meanpropyield, y = (meanhyst))) + 
+  geom_smooth(color = "black") +
+  #geom_smooth(color = "black", method = "glm", formula = y~x, method.args = list(family = gaussian(link = 'log'))) +
+  geom_point(aes(color = subbasin)) + 
+  xlab("Proportion of annual yield in event") + ylab("Mean annual magnitude of hysteresis") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+ggarrange(p1, p2, nrow = 1, common.legend = TRUE, legend = "right")
+```
+
+Same as above but plot on log scale (magnitude):
+```{r fig.width=9, fig.height=4}
+p1 <- temp %>%
+  ggplot(aes(x = freq, y = logmeanhyst)) + 
+  geom_smooth(color = "black", method = "lm") +
+  geom_point(aes(color = subbasin)) + 
+  xlab("Events per year") + ylab("(log) Mean annual magnitude of hysteresis") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+p2 <- temp %>%
+  ggplot(aes(x = meanpropyield, y = logmeanhyst)) + 
+  geom_smooth(color = "black", method = "lm") +
+  geom_point(aes(color = subbasin)) + 
+  xlab("Proportion of annual yield in event") + ylab("(log) Mean annual magnitude of hysteresis") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+ggarrange(p1, p2, nrow = 1, common.legend = TRUE, legend = "right")
+```
+
+Replace regression line with convex hulls
+```{r fig.width=9, fig.height=4}
+hull <- temp %>% group_by(subbasin) %>% slice(chull(freq, logmeanhyst))
+p1 <- temp %>%
+  ggplot(aes(x = freq, y = logmeanhyst)) + 
+  geom_polygon(data = hull, aes(fill = subbasin), alpha = 0.4) +
+  geom_point(aes(color = subbasin)) + 
+  xlab("Events per year") + ylab("(log) Mean annual magnitude of hysteresis") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+hull <- temp %>% group_by(subbasin) %>% slice(chull(meanpropyield, logmeanhyst))
+p2 <- temp %>%
+  ggplot(aes(x = meanpropyield, y = logmeanhyst)) + 
+  geom_polygon(data = hull, aes(fill = subbasin), alpha = 0.4) +
+  geom_point(aes(color = subbasin)) + 
+  xlab("Proportion of annual yield in event") + ylab("(log) Mean annual magnitude of hysteresis") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+ggarrange(p1, p2, nrow = 1, common.legend = TRUE, legend = "right")
+```
+
+Alternatively, plot frequency by magnitude and with point color/size. I don't think this tells the story as well as the convex hull plots. 
+```{r fig.width=6, fig.height=5}
+temp %>%
+  ggplot(aes(x = meanpropyield, y = freq)) + 
+  # geom_polygon(data = hull, aes(fill = subbasin), alpha = 0.5) +
+  geom_point(aes(color = subbasin, size = logmeanhyst)) + 
+  scale_size_continuous(range = c(0.1,5)) +
+  xlab("Proportion of annual yield in event") + ylab("Events per year") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+temp %>%
+  ggplot(aes(x = meanpropyield, y = freq)) + 
+  # geom_polygon(data = hull, aes(fill = subbasin), alpha = 0.5) +
+  geom_point(aes(color = logmeanhyst), size = 2) + 
+  xlab("Proportion of annual yield in event") + ylab("Events per year") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+
+
+
+#### Site-year specific
+
+Conduct baseflow separation, event delineation, and dynamic time warping as above, but only for a single site year. For troubleshooting and data visualization
+
+Set parameters and site-year
+```{r eval=FALSE}
+alp <- 0.95
+numpass <- 3
+thresh <- 0.75
+dd <- dat_clean_hyst %>% filter(site_name == "West Brook Reservoir", WaterYear == 2023)
+```
+
+baseflow separation
+```{r eval=FALSE}
+dd <- dd %>% 
+  filter(!is.na(Yield_mm_big)) %>% 
+  mutate(bf = baseflowB(Yield_mm_big, alpha = alp, passes = numpass)$bf, 
+         bfi = baseflowB(Yield_mm_big, alpha = alp, passes = numpass)$bfi) %>%
+  ungroup()
+head(dd)
+```
+
+Event delineation
+```{r eval=FALSE}
+events <- eventBaseflow(dd$Yield_mm_big, BFI_Th = thresh, bfi = dd$bfi)
+events <- events %>% mutate(len = end - srt + 1)
+(events)
+```
+
+Tidy events: now add variables to the Big G time series data specifying events and non-events 
+```{r eval=FALSE}
+# define positions of non-events
+srt <- c(1)
+end <- c(events$srt[1]-1)
+for (i in 2:(dim(events)[1])) {
+  srt[i] <- events$end[i-1]+1
+  end[i] <- events$srt[i]-1
+}
+nonevents <- data.frame(tibble(srt, end) %>% mutate(len = end - srt) %>% filter(len >= 0) %>% select(-len) %>% add_row(srt = events$end[dim(events)[1]]+1, end = dim(dd)[1]))
+
+# create vectors of binary event/non-event and event IDs
+isevent_vec <- rep(2, times = dim(dd)[1])
+eventid_vec <- rep(NA, times = dim(dd)[1])
+for (i in 1:dim(events)[1]) { 
+  isevent_vec[c(events[i,1]:events[i,2])] <- 1 
+  eventid_vec[c(events[i,1]:events[i,2])] <- i
+}
+
+# create vector of non-event IDs
+noneventid_vec <- rep(NA, times = dim(dd)[1])
+for (i in 1:dim(nonevents)[1]) { noneventid_vec[c(nonevents[i,1]:nonevents[i,2])] <- i }
+
+# create vector of "agnostic events": combined hydro events and non-events
+agnevents <- rbind(events %>% select(srt, end) %>% mutate(event = 1), nonevents %>% mutate(event = 0)) %>% arrange((srt))
+agneventid_vec <- c()
+for (i in 1:dim(agnevents)[1]){ agneventid_vec[c(agnevents[i,1]:agnevents[i,2])] <- i }
+
+# add event/non-event vectors to Big G data
+dd <- dd %>% 
+  mutate(isevent = isevent_vec, 
+         eventid = eventid_vec,
+         noneventid = noneventid_vec,
+         agneventid = agneventid_vec,
+         big_event_yield = ifelse(isevent_vec == 1, Yield_mm_big, NA),
+         big_nonevent_yield = ifelse(isevent_vec == 2, Yield_mm_big, NA),
+         big_event_quick = big_event_yield - bf) %>%
+  rename(big_bf = bf, big_bfi = bfi)
+(dd)
+```
+
+View time series data with Big G event delineation
+```{r eval=FALSE}
+#| fig-cap: "Time series of hydrologic events at Big G, identified using eventBaseflow()."
+dd %>% select(date, Yield_mm_big, Yield_mm, big_event_yield, big_nonevent_yield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "Yield (mm)") %>% dyOptions(fillGraph = TRUE, drawGrid = FALSE, axisLineWidth = 1.5)
+```
+
+View hysteresis loops: g~G
+```{r fig.width=9, fig.height=9,  eval=FALSE}
+dd %>%
+  filter(isevent == 1) %>%
+  ggplot(aes(x = logYield_big, y = logYield, color = date)) +
+  geom_segment(aes(xend = c(tail(logYield_big, n = -1), NA), yend = c(tail(logYield, n = -1), NA)), 
+               arrow = arrow(length = unit(0.2, "cm")), color = "black") +
+  geom_point() + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  scale_color_gradientn(colors = cet_pal(250, name = "r1"), trans = "date") + 
+  facet_wrap(~eventid) +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+
+Select and view specific event and normalize data
+```{r eval=FALSE}
+ddd <- dd %>% filter(eventid == 2)
+dddd <- dd %>% filter(date %in% c(min(ddd$date)-1, max(ddd$date)+1))
+ddd <- ddd %>% 
+  bind_rows(dddd) %>% 
+  arrange(date) %>% 
+  mutate(weight = (logYield_big - min(logYield_big)) / (max(logYield_big) - min(logYield_big)),
+         yield_little_norm = (logYield - min(logYield)) / (max(logYield) - min(logYield)),
+         yield_big_norm = (logYield_big - min(logYield_big)) / (max(logYield_big) - min(logYield_big)))
+
+ddd %>%
+  ggplot(aes(x = yield_big_norm, y = yield_little_norm, color = date)) +
+  geom_segment(aes(xend = c(tail(yield_big_norm, n = -1), NA), yend = c(tail(yield_little_norm, n = -1), NA)), 
+               arrow = arrow(length = unit(0.2, "cm")), color = "black") +
+  geom_point() + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  scale_color_gradientn(colors = cet_pal(250, name = "r1"), trans = "date") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+
+Align data using dynamic time warping
+```{r eval=FALSE}
+align <- dtw(x = unlist(ddd %>% select(yield_big_norm)), y = unlist(ddd %>% select(yield_little_norm)), step = asymmetric, keep = TRUE)
+# align <- dtw(x = unlist(ddd %>% select(Yield_mm_big)), y = unlist(ddd %>% select(Yield_mm)), step = asymmetric, keep = TRUE)
+plot(align, type = "threeway")
+plot(align, type = "twoway", offset = -1)
+```
+
+Calculate hysteresis index as in Xue et al (2024)
+```{r eval=FALSE}
+ddd <- ddd %>% mutate(distance = align$index1 - align$index2)
+ddd %>% 
+  ggplot(aes(x = date, y = distance*weight)) + 
+  geom_bar(stat = "identity") +
+  theme_bw()
+sum(ddd$weight * ddd$distance) / sum(ddd$weight)
+```
+
+
 
 
 ## Objective 3
 
-*Objective 3:* Demonstrate how drought-related low flow conditions manifest differently in streams across headwater networks. 
+Suitability of existing modeling techniques
+
+
+*Purpose:* Quantify the suitability of existing modeling techniques for predicting streamflow in headwater systems.
 
 *Approach:*
 
-* Using fixed and seasonally variable low flow/drought thresholds derived from long-term (1970-present) big G data (*sensu* Hammond *et al.* 2022), show how streamflow drought duration and deficit vary among headwater streams (relative to big G). 
-  - Heat maps showing the timing/onset of low flow conditions across big G and little g'sG
-  - Drought deficit/duration violin plots with points for little g's relative to big G
-* Show how does the spread of values (spatial variation in drought duration and deficit) changes among years that differ in regional water availability
+* Download monthly Stream Stats, PRMS (for the Donner-Blitzen only), and UM's neural net streamflow estimates for each site
+* Use NSE (Nash-Sutcliffe efficiency) to compare the performance of existing tools. How does this change as a function of basin size and time scale of data aggregation (e.g., daily to monthly)?
 
 
-*Notes:*
+### USGS Stream Stats
 
-* not sure how to accomplish (2) given that the number and collection of sites per (sub)basin changes considerably among years/months
+
+### PRMS (DB)
+
+
+### UM Climatology
+
+Pull HUC-10 streamflow predictions from Montana Climate Office’s (University of Montana) Streamflow API
+
+Get HUC-10 watershed codes
+```{r}
+myhucs <- c()
+for (i in 1:dim(siteinfo_sp)[1]) { myhucs[i] <- get_huc(AOI = siteinfo_sp[i,], type = "huc10")$huc10 }
+siteinfo <- siteinfo %>% mutate(huc10 = myhucs)
+myhucs <- unique(myhucs)
+length(myhucs)
+```
+
+Query UM Climatology
+```{r}
+request = httr::GET(
+  # can replace this with /predictions/raw, the only query parameter that isn't shared is aggregations.
+  "https://data.climate.umt.edu/streamflow-api/predictions/",
+  query = list(
+    locations = paste(myhucs, collapse = ","),
+    date_start = "2015-01-01",
+    date_end = "2025-01-01",
+    aggregations = "mean", 
+    as_csv = TRUE,
+    units = "mm"
+  )
+)
+umpreds <- httr::content(request)
+umpreds <- umpreds %>% rename(huc10 = location)
+print(umpreds)
+```
+
+View data
+```{r}
+umpreds %>% 
+  ggplot(aes(x = date, y = value)) + 
+  geom_line() +
+  facet_wrap(~huc10, scales = "free_y")
+```
+
+Join to observed data
+```{r}
+dat_umpred <- dat_clean %>%
+  left_join(siteinfo %>% select(site_name, huc10)) %>%
+  left_join(umpreds %>% select(huc10, date, value)) 
+```
+
+View example sites
+::: panel-tabset
+#### Jimmy
+```{r}
+dat_umpred %>% filter(site_name == "Jimmy Brook") %>% select(date, Yield_mm, value) %>% dygraph() %>% dySeries("Yield_mm", color = "black") %>% dySeries("value", color = "red") %>% dyRangeSelector() 
+```
+#### Staunton 06
+```{r}
+dat_umpred %>% filter(site_name == "Staunton River 06") %>% select(date, Yield_mm, value) %>% dygraph() %>% dySeries("Yield_mm", color = "black") %>% dySeries("value", color = "red") %>% dyRangeSelector() 
+```
+#### Hallowatt Creek NWIS
+```{r}
+dat_umpred %>% filter(site_name == "Hallowat Creek NWIS") %>% select(date, Yield_mm, value) %>% dygraph() %>% dySeries("Yield_mm", color = "black") %>% dySeries("value", color = "red") %>% dyRangeSelector() 
+```
+#### SF Spread Ck Lower
+```{r}
+dat_umpred %>% filter(site_name == "SF Spread Creek Lower") %>% select(date, Yield_mm, value) %>% dygraph() %>% dySeries("Yield_mm", color = "black") %>% dySeries("value", color = "red") %>% dyRangeSelector() 
+```
+#### Dugout Creek
+```{r}
+dat_umpred %>% filter(site_name == "Dugout Creek") %>% select(date, Yield_mm, value) %>% dygraph() %>% dySeries("Yield_mm", color = "black") %>% dySeries("value", color = "red") %>% dyRangeSelector() 
+```
+#### DB ab Indian NWIS
+```{r}
+dat_umpred %>% filter(site_name == "Donner Blitzen ab Indian NWIS") %>% select(date, Yield_mm, value) %>% dygraph() %>% dySeries("Yield_mm", color = "black") %>% dySeries("value", color = "red") %>% dyRangeSelector() 
+```
+:::
+
+
+NSE ratings per Moriasi et al. "Model evaluation guidelines for systematic quantification of accuracy in watershed simulations." Transactions of the ASABE 50.3 (2007): 885-900.
+
+* Very good: 0.75-1.00
+* Good: 0.65-0.75
+* Satisfactory: 0.50-0.65
+* Unsatisfactory: <0.50
+
+Note that there is no effort to ensure consistant data availability among sites/basins/years. Would it be better to restrict these?
+
+```{r}
+# all data...
+dat_umpred %>% 
+  group_by(site_name, subbasin) %>% 
+  summarize(nse = NSE(sim = log(value), obs = log(Yield_mm))) %>%
+  ggplot(aes(x = subbasin, y = nse)) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 0.50, alpha = 0.3, fill = "red") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.50, ymax = 0.65, alpha = 0.3, fill = "orange") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.65, ymax = 0.75, alpha = 0.3, fill = "yellow") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.75, ymax = 1.00, alpha = 0.3, fill = "green") +
+  geom_boxplot(fill = "grey", outlier.shape = NA) +
+  geom_jitter(height = 0, width = 0.2, shape = 1) +
+  geom_abline(slope = 0, intercept = 1, color = "black", linetype = "dashed") +
+  xlab("Sub-basin") + ylab("Nash-Sutcliffe efficiency") + ggtitle("All data") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.4)) +
+  scale_y_continuous(limits = c(-8.5,1), expand = c(0,0))
+
+# summer only
+dat_umpred %>% 
+  filter(Month %in% c(7:9)) %>%
+  group_by(site_name, subbasin) %>% 
+  summarize(nse = NSE(sim = log(value), obs = log(Yield_mm))) %>%
+  ggplot(aes(x = subbasin, y = nse)) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 0.50, alpha = 0.3, fill = "red") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.50, ymax = 0.65, alpha = 0.3, fill = "orange") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.65, ymax = 0.75, alpha = 0.3, fill = "yellow") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.75, ymax = 1.00, alpha = 0.3, fill = "green") +
+  geom_boxplot(fill = "grey", outlier.shape = NA) +
+  geom_jitter(height = 0, width = 0.2, shape = 1) +
+  geom_abline(slope = 0, intercept = 1, color = "black", linetype = "dashed") +
+  xlab("Sub-basin") + ylab("Nash-Sutcliffe efficiency") + ggtitle("July-September") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.4)) +
+  scale_y_continuous(limits = c(-12.5,1), expand = c(0,0))
+
+
+```
+
+How does NSE vary through time?
+```{r}
+# all data...
+dat_umpred %>% 
+  group_by(site_name, subbasin, Month) %>% 
+  summarize(nse = NSE(sim = log(value), obs = log(Yield_mm))) %>%
+  ggplot(aes(x = Month, y = nse)) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 0.50, alpha = 0.3, fill = "red") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.50, ymax = 0.65, alpha = 0.3, fill = "orange") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.65, ymax = 0.75, alpha = 0.3, fill = "yellow") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.75, ymax = 1.00, alpha = 0.3, fill = "green") +
+  geom_point(aes(group = site_name)) +
+  geom_abline(slope = 0, intercept = 1, color = "black", linetype = "dashed") +
+  xlab("Month") + ylab("Nash-Sutcliffe efficiency") + ggtitle("All data") +
+  facet_wrap(~subbasin, scales = "free_y") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  scale_y_continuous(expand = c(0,0))
+
+# West Brook
+dat_umpred %>% 
+  mutate(yearmonth = floor_date(date, "month")) %>% 
+  filter(subbasin == "West Brook") %>%
+  group_by(site_name, subbasin, yearmonth) %>% 
+  summarize(nobs = n(), nse = NSE(sim = log(value), obs = log(Yield_mm))) %>%
+  ungroup() %>%
+  filter(nobs >= 25) %>%
+  ggplot(aes(x = yearmonth, y = nse)) + 
+  # annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 0.50, alpha = 0.3, fill = "red") +
+  # annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.50, ymax = 0.65, alpha = 0.3, fill = "orange") +
+  # annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.65, ymax = 0.75, alpha = 0.3, fill = "yellow") +
+  # annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.75, ymax = 1.00, alpha = 0.3, fill = "green") +
+  geom_point(aes(color = site_name)) +
+  geom_line(aes(color = site_name)) +
+  geom_abline(slope = 0, intercept = 1, color = "black", linetype = "dashed") +
+  xlab("Time") + ylab("Nash-Sutcliffe efficiency") + ggtitle("West Brook (truncated y-axis limits)") +
+  #facet_wrap(~subbasin, scales = "free") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  ylim(-50,1)
+
+```
+
+
+
+```{r fig.width = 4, fig.height=6}
+daily <- dat_umpred %>% 
+  group_by(site_name, subbasin) %>% 
+  summarize(nse = NSE(sim = log(value), obs = log(Yield_mm))) %>%
+  ungroup() %>%
+  mutate(timescale = "daily")
+
+weekly <- dat_umpred %>% 
+  mutate(date = floor_date(date, "week")) %>% 
+  group_by(site_name, subbasin, date) %>% 
+  summarise(nobs = n(), Yield_mm = mean(Yield_mm), value = mean(value)) %>%
+  ungroup() %>%
+  filter(nobs == 7) %>%
+  group_by(site_name, subbasin) %>% 
+  summarize(nse = NSE(sim = log(value), obs = log(Yield_mm))) %>%
+  ungroup() %>%
+  mutate(timescale = "weekly")
+
+monthly <- dat_umpred %>% 
+  mutate(date = floor_date(date, "month")) %>% 
+  group_by(site_name, subbasin, date) %>% 
+  summarise(nobs = n(), Yield_mm = mean(Yield_mm), value = mean(value)) %>%
+  ungroup() %>%
+  filter(nobs >= 27) %>%
+  group_by(site_name, subbasin) %>% 
+  summarize(nse = NSE(sim = log(value), obs = log(Yield_mm))) %>%
+  ungroup() %>%
+  mutate(timescale = "monthly")
+
+timescale <- bind_rows(daily, weekly, monthly) %>%
+  mutate(timescale = factor(timescale, levels = c("daily", "weekly", "monthly"))) 
+
+timescale %>%
+  ggplot(aes(x = timescale, y = nse, group = site_name)) +
+  geom_point() +
+  geom_line() +
+  xlab("Time scale") + ylab("Nash-Sutcliffe efficiency") + 
+  theme_bw() + ylim(-6,1) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+
+```{r}
+timescale %>%
+  ggplot(aes(x = timescale, y = nse, group = site_name)) +
+  geom_point() +
+  geom_line() +
+  xlab("Time scale") + ylab("Nash-Sutcliffe efficiency") + 
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  facet_wrap(~subbasin, scales = "free_y")
+```
+
+
+
+## Objective 4
+
+4. Demonstrate how drought-related low flow conditions manifest differently in streams across headwater networks. 
+    + Using site-specific low flow thresholds derived from contemporary data (sensu Hammond et al. 2022), show how streamflow drought duration and deficit vary among headwater streams and relative to big G (heatmaps and barplots)
+    + Explore how network heterogeneity changes with threshold magnitude and among years that differ in regional water availability (scatterplots)
+
+
+*Purpose:* Demonstrate spatial variation in drought-related low flow conditions across headwater stream networks. 
+
+*Approach:*
+
+* Derive site-specific low flow thresholds from contemporary data (*sensu* Hammond *et al.* 2022). 
+* Use heatmaps and barplots to show duration and severity of low flow conditions and variation among sites and relative to big G.
+* Use scatterplots (or something similar) to explore how network heterogeneity changes with threshold magnitude and among years that differ in regional water availability
 
 
 ### Low flow thresholds
@@ -2113,7 +2814,96 @@ deficitplotfun_sub(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Fr
 
 
 
-## Objective 4
+
+
+## Boxes
+
+### Box 1
+
+*Purpose:* Show what high-resolution temporal data (hourly) reveals about network diversity in streamflow response to individual storms (peak flow magnitude and timing and recession rates) and during low flow (diel fluctuations)
+
+
+### Box 2
+
+*The Wedge Model for the West Brook*
+
+*Purpose:* At coarser time scales (summarized by event/baseflow periods), show how streamflow heterogeneity expands and contracts during wet to dry periods.
+
+
+### Box 3
+
+*Purpose:* Show what high-resolution spatial data reveals about network diversity in streamflow at a single point in time.
+
+
+### Box 4
+
+*Purpose:* Explore the effect of groundwater on relative summer (July-September) water availability. 
+
+Load PASTA daily derived parameters: summarize as July-September site-specific means (across all years)
+```{r}
+pasta <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Covariates/pasta_derived_parameters_daily.csv") %>%
+  mutate(Month = month(date)) %>%
+  rename(CalendarYear = year) %>%
+  filter(Month %in% c(7:9)) %>%
+  group_by(site_name) %>%
+  summarize(meanRatio = mean(meanRatio, na.rm = TRUE),
+            phaseLag = mean(phaseLag, na.rm = TRUE),
+            amplitudeRatio = mean(amplitudeRatio, na.rm = TRUE))
+pasta
+```
+
+Create flow by groundwater plotting function.
+```{r}
+mdaystib <- tibble(Month = c(1:12), mdays = c(31,28,31,30,31,30,31,31,30,31,30,31))
+
+gwflowfun <- function (subbas, years, dropsites, months = c(1:12)) {
+  dat_clean %>% 
+  filter(subbasin == subbas, CalendarYear %in% years, Month %in% months) %>%
+  group_by(site_name, subbasin, designation, CalendarYear) %>% #, Month, MonthName) %>%
+  summarise(ss = n(),
+            logYield = mean(logYield, na.rm = TRUE)) %>%
+  ungroup() %>%
+  #left_join(mdaystib) %>%
+  mutate(pdays = ss/92#,
+         #YearMonth = paste(CalendarYear, "_", Month, sep = "")
+         ) %>%
+  filter(pdays > 0.9,
+         !site_name %in% dropsites) %>%
+  group_by(CalendarYear) %>%
+  mutate(z_logYield = scale(logYield, center = TRUE, scale = TRUE)[,1]) %>%
+  ungroup() %>%
+  left_join(pasta) %>%
+  ggplot(aes(x = amplitudeRatio, y = z_logYield)) +
+  geom_abline(intercept = 0, slope = 0, linetype = 2) +
+  geom_smooth(method = "lm", color = "black") +
+  geom_point(aes(color = site_name)) +
+  facet_wrap(~CalendarYear, nrow = 1) +
+  #facet_wrap2(~CalendarYear, nrow = 1, ncol = 5, trim_blank = FALSE) +
+  #facet_grid(cols = vars(Month), rows = vars(CalendarYear)) + 
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) 
+}
+```
+
+Plot the relationship between standardized annual summer mean discharge and amplitude ratio from PASTA, where lower amplitude ratio values are indicative of greater groundwater availability. Mean flow for each site is standardized by year to remove interannual variation in climate/regional water availability
+
+::: panel-tabset
+#### West Brook
+```{r}
+gwflowfun(subbas = "West Brook", dropsites = c("West Brook Reservoir", "Mitchell Brook"), years = c(2020:2024))
+```
+#### Staunton River
+```{r}
+gwflowfun(subbas = "Staunton River", dropsites = NA, years = c(2019:2022))
+```
+#### Snake River
+```{r}
+gwflowfun(subbas = "Snake River", dropsites = NA, years = c(2018, 2020:2022), months = c(7:9))
+```
+#### Shields River
+```{r}
+gwflowfun(subbas = "Shields River", dropsites = NA, years = c(2017,2019,2020,2022,2023), months = c(7:9))
+```
+:::
 
 
 

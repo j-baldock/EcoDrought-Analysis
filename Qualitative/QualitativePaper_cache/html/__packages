@@ -30,3 +30,9 @@ scico
 cetcolor
 plotly
 cowplot
+hydroEvents
+dtw
+nhdplusTools
+glue
+zoo
+hydroGOF
