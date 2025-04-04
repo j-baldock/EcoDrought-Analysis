@@ -1,0 +1,395 @@
+---
+title: "Overview"
+---
+
+
+**Significance:** Headwater streams account for a majority of river networks worldwide and have a disproportionately large influence on the functioning of aquatic ecosystems. Headwater streams also support critical habitat for many species, including cold-water fishes, many of which are declining or at risk of extinction. 
+
+
+**Problem:** Headwater streams are largely underrepresented in streamflow monitoring networks, which place greater emphasis on mainstem rivers. As a result, less is known about how headwaters respond to changing water availability. Headwater streams therefore represent a blind spot in understanding flow regime variability and assessing the vulnerability of cold-water fish to changing climatic conditions, including the increasing frequency and severity of drought.
+
+
+**Existential question:** How do streamflow regimes vary spatially in headwater stream networks and what does this imply about the sensitivity of these systems (and the species they support) to changing climatic conditions (i.e., drought)?
+
+
+**Objectives:**
+
+1. Evaluate the extent and magnitude of spatial and temporal variation in headwater streamflow.
+    + Visualize time series data to show difference in streamflow regimes between reference gages (big G/NWIS) and upstream gages (little g's). Use CVPE to summarize the magnitude of the portfolio effect in headwater flow regimes.
+    + Back up with ridgeline plots and exceedance curves to describe spatial diversity in distribution of flow values, generally (at monthly time scales and within the "dry" season, respectively) 
+2. Explore non-linear and hysteretic relationship between flow at reference vs. at headwater gages
+    + Trim data to complete site-years and use scatterplots to show diversity in g~G relationships within and among basins. 
+    + Conduct event delineation and calculate the (modified) Lloyd index for each g~G pair of storms. Arrange sites on a  frequency/magnitude bi-plot and highlight differences among (rain-snow) basins. 
+3. Quantify the suitability of existing modeling techniques for predicting streamflow in headwater systems.
+    + Use NSE (Nash-Sutcliffe efficiency) to compare the performance of Stream Stats, PRMS (in the Donner-Blitzen only), and Hoyleman's neural net model to understand the utility of existing tools for modeling headwater streamflow. (How well do these tools perform when applied to catchments smaller than those used paramertize each tool?)
+    + Maybe this is a box or a discussion point?
+4. Demonstrate how drought-related low flow conditions manifest differently in streams across headwater networks. 
+    + Using site-specific low flow thresholds derived from contemporary data (sensu Hammond et al. 2022), show how streamflow drought duration and deficit vary among headwater streams and relative to big G (heatmaps and barplots)
+    + Explore how network heterogeneity changes with threshold magnitude and among years that differ in regional water availability (scatterplots)
+  
+
+**Conceptual Model:** develop a conceptual framework and set of hypotheses based on the objectives above How do we link/combine what we have learned so far to enhance our understanding of spatial diversity in headwater streamflow regimes? 
+
+* Moving beyond "The Natural Flow Regime" - understanding and quantifying flow regime diversity in headwater stream networks
+* Perhaps the fluvial synchrogram concept will be helpful as a starting point. Also see Scholl *et al.* (*in review*) and Rossi *et al.* (2024) for inspiration 
+
+
+**Boxes:** Use boxes to highlight additional details of the data, vignettes, and case studies that demonstrate spatiotemporal streamflow heterogeneity
+
+1. High temporal resolution data reveals network diverse in streamflow response to individual storms and during low flow
+    + Show sub-daily/hourly flow data for selected storms and baseflow periods (diurnal cycles during very low flows) to show heterogeneity at very fine temporal resolutions
+2. The Wedge Hypothesis/model for rain-dominated basins (West Brook)
+    + Fit the basic wedge model for the West Brook...and develop hypotheses for how this would play out in snow-dominated basins (bowtie hypothesis)
+    + What does this this tell us about how diversity in flow regimes is driven by climate regime, antecedent conditions, and catchment storage capacity? See Dralle *et al.* (2023)
+3. Synoptic surveys reveal super fine-scale spatial variation in flow at a single point in time. (perhaps separate boxes for DB and Shen)
+    + Donner-Blitzen: longitudinal temperature and flow surveys and aerial thermal imagery show how localized groundwater inflow from geologic faults drives abrupt changes in stream conditions. (Christian Torgersen, Brandon Overstreet)
+    + Shanandoah: dewatering surveys show how longitudinal flow variability can affect habitat connectivity within headwater streams, but this is mediated by catchment characteristics and changing regional water availability among years. See Hitt *et al.* (2024). (Karli Rogers, Than Hitt). Could show relationship between size of largest patch (or number of patches, distribution of patch sizes) and regional annual water availability (or flow at big G/UVA gages).
+4. Effects of groundwater on relative flow within basins. 
+    + Show the effect of groundwater availability (derived from PASTA) on mean summer flow (or distribution of summer values).
+    + This could be combined with the above box(es), but is potentially less powerful. *Low priority*
+
+
+
+
+```{r, include = FALSE}
+library(tidyverse)
+library(mapview)
+library(sf)
+library(ggpubr)
+library(fasstr)
+library(dygraphs)
+library(htmlwidgets)
+library(knitr)
+library(RColorBrewer)
+library(scales)
+library(GGally)
+library(DT)
+library(TSdist)
+library(ggridges)
+library(ggh4x)
+library(viridis)
+library(daymetr)
+library(scico)
+library(cetcolor)
+library(plotly)
+library(cowplot)
+library(hydroEvents)
+library(dtw)
+library(nhdplusTools)
+library(glue)
+library(hydroGOF)
+```
+
+
+## Site information
+
+View site information
+```{r}
+siteinfo <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv")
+datatable(siteinfo)
+```
+
+Map sites
+```{r}
+siteinfo_sp <- st_as_sf(siteinfo, coords = c("long", "lat"), crs = 4326)
+mapview(siteinfo_sp, zcol = "designation")
+```
+
+
+## Little g data
+
+Little g daily data
+```{r}
+# flow/yield (and temp) data 
+dat <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv") %>%
+  mutate(site_name = dplyr::recode(site_name, "Leidy Creek Mouth NWIS" = "Leidy Creek Mouth", "SF Spread Creek Lower NWIS" = "SF Spread Creek Lower", "Dugout Creek NWIS" = "Dugout Creek", "Shields River ab Smith NWIS" = "Shields River Valley Ranch")) %>%
+  filter(!site_name %in% c("Avery Brook NWIS", "West Brook 0", "BigCreekMiddle",                # drop co-located sites
+                           "South River Conway NWIS", "North Fork Flathead River NWIS",         # drop big Gs
+                           "Pacific Creek at Moran NWIS", "Shields River nr Livingston NWIS",   # drop big Gs
+                           "Donner Blitzen River nr Frenchglen NWIS",                           # drop big Gs
+                           "WoundedBuckCreek")) %>%                                             # drop little g outside of focal basin
+  group_by(site_name, basin, subbasin, region, date) %>%
+  summarize(flow_mean = mean(flow_mean),
+            tempc_mean = mean(tempc_mean),
+            Yield_mm = mean(Yield_mm),
+            Yield_filled_mm = mean(Yield_filled_mm)) %>%
+  ungroup()
+
+# add water/climate year variables and fill missing dates
+dat <- fill_missing_dates(dat, dates = date, groups = site_name)
+dat <- add_date_variables(dat, dates = date, water_year_start = 10)
+```
+
+
+Clean and bind little g data (for each basin, restrict to time period for which data quality/availability is ~consistent)
+```{r}
+dat_clean <- bind_rows(
+  dat %>% filter(site_name %in% unlist(siteinfo %>% filter(subbasin == "West Brook") %>% select(site_name)), year(date) >= 2020, date <= date("2025-01-03")) %>% 
+    mutate(Yield_filled_mm = ifelse(site_name == "West Brook Upper" & date > date("2024-10-06"), NA, Yield_filled_mm)) %>%
+    mutate(Yield_filled_mm = ifelse(site_name == "Mitchell Brook" & date > date("2021-02-28") & date < date("2021-03-26"), NA, Yield_filled_mm)) %>% 
+    mutate(Yield_filled_mm = ifelse(site_name == "Mitchell Brook" & date > date("2021-11-01") & date < date("2022-05-01"), NA, Yield_filled_mm)) %>% 
+    mutate(Yield_filled_mm = ifelse(site_name == "Jimmy Brook" & date > date("2024-12-10"), NA, Yield_filled_mm)) %>% 
+    mutate(subbasin = "West Brook"),
+  
+  dat %>% filter(site_name %in% unlist(siteinfo %>% filter(subbasin == "Paine Run") %>% select(site_name)), date >= as_date("2018-11-07"), date <= as_date("2023-05-15")) %>% mutate(subbasin = "Paine Run"),
+  
+  dat %>% filter(site_name %in% unlist(siteinfo %>% filter(subbasin == "Staunton River") %>% select(site_name)), date >= as_date("2018-11-07"), date <= as_date("2022-10-19")) %>% mutate(subbasin = "Staunton River"),
+  
+  dat %>% filter(site_name %in% c(unlist(siteinfo %>% filter(subbasin == "Big Creek") %>% select(site_name)), "North Fork Flathead River NWIS"), date >= date("2018-08-08"), date <= date("2023-08-03"), site_name != "SkookoleelCreek", Yield_filled_mm > 0)  %>% mutate(subbasin = "Big Creek"),
+  
+  dat %>% filter(site_name %in% c(unlist(siteinfo %>% filter(subbasin == "Coal Creek") %>% select(site_name)), "North Fork Flathead River NWIS"), date >= date("2018-07-29"), date <= date("2023-08-03")) %>% mutate(subbasin = "Coal Creek"),
+  
+  dat %>% filter(site_name %in% c(unlist(siteinfo %>% filter(subbasin == "McGee Creek") %>% select(site_name)), "North Fork Flathead River NWIS"), date >= date("2017-07-30"), date <= date("2023-12-11")) %>% mutate(subbasin = "McGee Creek"),
+  
+  dat %>% filter(subbasin == "Snake River", date >= date("2016-04-01"), date <= date("2023-10-03"), site_name != "Leidy Creek Upper") %>% mutate(subbasin = "Snake River"),
+  
+  dat %>% filter(subbasin == "Shields River", date >= date("2016-04-01"), date <= date("2023-12-31"), site_name != "Brackett Creek") %>% 
+  mutate(logYield = log10(Yield_filled_mm)) %>% mutate(subbasin = "Shields River"),
+  
+  dat %>% filter(subbasin == "Duck Creek", date >= date("2015-04-01"), date <= date("2023-12-31")) %>% mutate(subbasin = "Duck Creek"),
+  
+  dat %>% filter(subbasin == "Donner Blitzen", date >= as_date("2019-04-23"), date <= as_date("2022-12-31"), !site_name %in% c("Indian Creek NWIS", "Little Blizten River NWIS")) %>% mutate(subbasin = "Donner Blitzen")
+) %>%
+  filter(Yield_filled_mm > 0) %>%
+  mutate(logYield = log10(Yield_filled_mm), 
+         designation = "little", 
+         doy_calendar = yday(date)) %>%
+  select(-Yield_mm) %>%
+  rename(Yield_mm = Yield_filled_mm)
+head(dat_clean)
+```
+
+
+View streamflow data availability by subbasin and site
+
+::: panel-tabset
+### West Brook
+```{r, echo=FALSE}
+dat_clean %>%
+  filter(subbasin == "West Brook", !is.na(flow_mean)) %>% 
+  ggplot(aes(x = date, y = site_name)) +
+  geom_point()
+```
+### Paine Run
+```{r, echo=FALSE}
+dat_clean %>%
+  filter(subbasin == "Paine Run", !is.na(flow_mean)) %>% 
+  ggplot(aes(x = date, y = site_name)) +
+  geom_point()
+```
+### Staunton River
+```{r, echo=FALSE}
+dat_clean %>%
+  filter(subbasin == "Staunton River", !is.na(flow_mean)) %>% 
+  ggplot(aes(x = date, y = site_name)) +
+  geom_point()
+```
+### Big Creek
+```{r, echo=FALSE}
+dat_clean %>%
+  filter(subbasin == "Big Creek", !is.na(flow_mean)) %>% 
+  ggplot(aes(x = date, y = site_name)) +
+  geom_point()
+```
+### Coal Creek
+```{r, echo=FALSE}
+dat_clean %>%
+  filter(subbasin == "Coal Creek", !is.na(flow_mean)) %>% 
+  ggplot(aes(x = date, y = site_name)) +
+  geom_point()
+```
+### McGee Creek
+```{r, echo=FALSE}
+dat_clean %>%
+  filter(subbasin == "McGee Creek", !is.na(flow_mean)) %>% 
+  ggplot(aes(x = date, y = site_name)) +
+  geom_point()
+```
+### Snake River
+```{r, echo=FALSE}
+dat_clean %>%
+  filter(subbasin == "Snake River", !is.na(flow_mean)) %>% 
+  ggplot(aes(x = date, y = site_name)) +
+  geom_point()
+```
+### Shields River
+```{r, echo=FALSE}
+dat_clean %>%
+  filter(subbasin == "Shields River", !is.na(flow_mean)) %>% 
+  ggplot(aes(x = date, y = site_name)) +
+  geom_point()
+```
+### Duck Creek
+```{r, echo=FALSE}
+dat_clean %>%
+  filter(subbasin == "Duck Creek", !is.na(flow_mean)) %>% 
+  ggplot(aes(x = date, y = site_name)) +
+  geom_point()
+```
+### Donner Blitzen
+```{r, echo=FALSE}
+dat_clean %>%
+  filter(subbasin == "Donner Blitzen", !is.na(flow_mean)) %>% 
+  ggplot(aes(x = date, y = site_name)) +
+  geom_point()
+```
+:::
+
+Write to file
+```{r}
+write_csv(dat_clean, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/LittleG_data_clean.csv")
+```
+
+
+## Big G data
+
+Load big/super G data
+```{r}
+nwis_daily <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_NWIS_FlowTempData_Raw_Daily.csv") %>%
+  filter(designation == "big", 
+         year(date) >= 1970,
+         site_name != "Shields River nr Livingston NWIS") %>%
+  mutate(flowcfs = ifelse(site_name == "Rapidan River NWIS" & date > date("1995-06-26") & date < date("1995-07-01"), NA, flowcfs),
+         flow_mean_cms = flowcfs*0.02831683199881, 
+         area_sqkm = area_sqmi*2.58999)
+
+# sites
+sites <- unique(nwis_daily$site_name)
+
+# site-specific basin area in square km
+basinarea <- nwis_daily %>% filter(!is.na(site_id)) %>% group_by(site_name) %>% summarize(area_sqkm = unique(area_sqkm))
+
+# calculate yield
+yield_list <- list()
+for (i in 1:length(sites)) {
+  d <- nwis_daily %>% filter(site_name == sites[i])
+  ba <- unlist(basinarea %>% filter(site_name == sites[i]) %>% select(area_sqkm))
+  yield_list[[i]] <-  add_daily_yield(data = d, values = flow_mean_cms, basin_area = as.numeric(ba))
+}
+nwis_daily_wyield <- do.call(rbind, yield_list)
+
+dat_clean_big <- nwis_daily_wyield %>% 
+  select(site_name, basin, subbasin, region, date, Yield_mm, tempc, flowcfs) %>% 
+  mutate(logYield = log10(Yield_mm), doy_calendar = yday(date)) %>%
+  rename(tempc_mean = tempc, flow_mean = flowcfs)
+
+# add water/climate year variables and fill missing dates
+dat_clean_big <- fill_missing_dates(dat_clean_big, dates = date, groups = site_name)
+dat_clean_big <- add_date_variables(dat_clean_big, dates = date, water_year_start = 10)
+
+head(dat_clean_big)
+```
+
+Write to file
+```{r}
+write_csv(dat_clean_big, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/BigG_data_clean.csv")
+```
+
+View big G streamflow time series data
+```{r, fig.width=8, fig.height=8}
+dat_clean_big %>% ggplot() + geom_line(aes(x = date, y = logYield)) + facet_wrap(~site_name, nrow = 8) + theme_bw()
+```
+
+
+## Climate data
+
+Download Daymet precip data and summarize by water year
+```{r}
+# big G site lat/long
+mysites <- nwis_daily %>% group_by(site_name, basin, subbasin, region) %>% summarize(lat = unique(lat), long = unique(long)) %>% ungroup()
+
+# download point location Daymet data
+climlist <- vector("list", length = dim(mysites)[1])
+for (i in 1:dim(mysites)[1]) {
+  clim <- download_daymet(site = mysites$site_name[i], lat = mysites$lat[i], lon = mysites$long[i], start = 1980, end = 2024, internal = T)
+  climlist[[i]] <- tibble(clim$data) %>% 
+    mutate(air_temp_mean = (tmax..deg.c. + tmin..deg.c.)/2, 
+           date = as.Date(paste(year, yday, sep = "-"), "%Y-%j"),
+           site_name = mysites$site_name[i]) %>%
+    select(12,2,11,10,4,6) %>% rename(precip_mmday = 5, swe_kgm2 = 6)
+  print(i)
+}
+
+# combine and add water years
+climdf <- do.call(rbind, climlist) %>% left_join(mysites) %>% mutate(year = year(date))
+climdf <- add_date_variables(climdf, dates = date, water_year_start = 10)
+
+# calculate total annual precipitation in mm, by site and water year
+climdf_summ <- climdf %>% 
+  group_by(site_name, basin, subbasin, region, WaterYear) %>% 
+  summarize(precip_total = sum(precip_mmday), sampsize = n()) %>% 
+  mutate(precip_total_z = scale(precip_total)[,1]) %>%
+  ungroup() %>% 
+  filter(sampsize >= 350)
+```
+
+Write to file(s)
+```{r}
+write_csv(climdf, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/Daymet_climate.csv")
+
+write_csv(climdf_summ, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/Daymet_climate_summary.csv")
+```
+
+Calculate annual water availability at big g as sum of daily yield values...retain only years with >95% data coverage (at least 350 days)
+```{r}
+wateravail <- dat_clean_big %>% 
+  filter(!is.na(Yield_mm)) %>%
+  group_by(basin, site_name, WaterYear) %>% 
+  summarize(sampsize = n(), totalyield = sum(Yield_mm, na.rm = TRUE)) %>% 
+  mutate(totalyield_z = scale(totalyield)[,1]) %>%
+  ungroup() %>%
+  filter(sampsize >= 350) %>% 
+  complete(basin, WaterYear = 1971:2024, fill = list(sampsize = NA, totalyield = NA))
+
+# get range of years for little g data
+daterange <- dat_clean %>% group_by(basin) %>% summarize(minyear = year(min(date)), maxyear = year(max(date)))
+
+# spread ecod years
+mylist <- vector("list", length = dim(daterange)[1])
+for (i in 1:dim(daterange)[1]) {
+  mylist[[i]] <- tibble(basin = daterange$basin[i], WaterYear = seq(from = daterange$minyear[i], to = daterange$maxyear[i], by = 1))
+}
+yrdf <- do.call(rbind, mylist) %>% mutate(ecodyr = "yes")
+```
+
+Write water availability to file
+```{r}
+write_csv(wateravail, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/BigG_wateravailability_annual.csv")
+```
+
+
+View time series and scatter plots of big G water availability (total annual yield, sum of daily values, black lines) and precipitation (total annual precip, blues lines). Note that the panel labels indicate basins, not NWIS gage names. In the manuscript, pair these plots with CONUS map and detailed inset maps of focal basins (Figure 1)
+
+::: panel-tabset
+### Raw values
+```{r, fig.width=8, fig.height=8}
+ggplot() + 
+  geom_rect(data = daterange, aes(xmin = minyear-0.5, xmax = maxyear+0.5, ymin = -Inf, ymax = +Inf), fill = "grey") +
+  geom_line(data = wateravail, aes(x = WaterYear, y = totalyield), linewidth = 1) + 
+  geom_line(data = climdf_summ, aes(x = WaterYear, y = precip_total), linewidth = 0.5, col = "blue") +
+  facet_wrap(~basin) + 
+  xlab("Water year") + ylab("Total annual yield (mm) / Total annual precipitation (mm)") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+### z-scores
+```{r, fig.width=8, fig.height=8}
+ggplot() + 
+  geom_rect(data = daterange, aes(xmin = minyear-0.5, xmax = maxyear+0.5, ymin = -Inf, ymax = +Inf), fill = "grey") +
+  geom_line(data = wateravail, aes(x = WaterYear, y = totalyield_z), linewidth = 1) + 
+  geom_line(data = climdf_summ, aes(x = WaterYear, y = precip_total_z), linewidth = 0.5, col = "blue") +
+  facet_wrap(~basin) + 
+  xlab("Water year") + ylab("Total annual yield (scaled) / Total annual precipitation (scaled)") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+### scatter
+```{r fig.width=8, fig.height=8, warning=FALSE}
+wateravail %>% select(-sampsize) %>% left_join(climdf_summ %>% select(-sampsize)) %>% left_join(yrdf) %>%
+  ggplot(aes(x = precip_total_z, y = totalyield_z)) +
+  geom_point(aes(color = ecodyr)) +
+  facet_wrap(~basin) + 
+  xlab("Total annual precipitation (scaled)") + ylab("Total annual yield (scaled)") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none") +
+  stat_cor(method = "pearson", aes(label = ..r.label..))
+```
+:::
+

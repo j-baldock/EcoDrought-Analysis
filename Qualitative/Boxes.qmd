@@ -1,0 +1,158 @@
+---
+title: "Boxes"
+---
+
+```{r, include = FALSE}
+library(tidyverse)
+library(mapview)
+library(sf)
+library(ggpubr)
+library(fasstr)
+library(dygraphs)
+library(htmlwidgets)
+library(knitr)
+library(RColorBrewer)
+library(scales)
+library(GGally)
+library(DT)
+library(TSdist)
+library(ggridges)
+library(ggh4x)
+library(viridis)
+library(daymetr)
+library(scico)
+library(cetcolor)
+library(plotly)
+library(cowplot)
+library(hydroEvents)
+library(dtw)
+library(nhdplusTools)
+library(glue)
+library(hydroGOF)
+```
+
+
+**Purpose:** Use boxes to highlight additional details of the data, vignettes, and case studies that demonstrate spatiotemporal streamflow heterogeneity
+
+
+
+## Data
+
+Site information
+```{r}
+siteinfo <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv")
+siteinfo_sp <- st_as_sf(siteinfo, coords = c("long", "lat"), crs = 4326)
+```
+
+Little g's
+```{r}
+dat_clean <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/LittleG_data_clean.csv")
+```
+
+Big G's
+```{r}
+dat_clean_big <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/BigG_data_clean.csv")
+```
+
+Climate
+```{r}
+climdf <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/Daymet_climate.csv")
+climdf_summ <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/Daymet_climate_summary.csv")
+```
+
+Water availability
+```{r}
+wateravail <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/BigG_wateravailability_annual.csv")
+```
+
+
+
+
+## Box 1
+
+*Purpose:* Show what high-resolution temporal data (hourly) reveals about network diversity in streamflow response to individual storms (peak flow magnitude and timing and recession rates) and during low flow (diel fluctuations)
+
+
+## Box 2
+
+*The Wedge Model for the West Brook*
+
+*Purpose:* At coarser time scales (summarized by event/baseflow periods), show how streamflow heterogeneity expands and contracts during wet to dry periods.
+
+
+## Box 3
+
+*Purpose:* Show what high-resolution spatial data reveals about network diversity in streamflow at a single point in time.
+
+
+## Box 4
+
+*Purpose:* Explore the effect of groundwater on relative summer (July-September) water availability. 
+
+Load PASTA daily derived parameters: summarize as July-September site-specific means (across all years)
+```{r}
+pasta <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Covariates/pasta_derived_parameters_daily.csv") %>%
+  mutate(Month = month(date)) %>%
+  rename(CalendarYear = year) %>%
+  filter(Month %in% c(7:9)) %>%
+  group_by(site_name) %>%
+  summarize(meanRatio = mean(meanRatio, na.rm = TRUE),
+            phaseLag = mean(phaseLag, na.rm = TRUE),
+            amplitudeRatio = mean(amplitudeRatio, na.rm = TRUE))
+pasta
+```
+
+Create flow by groundwater plotting function.
+```{r}
+mdaystib <- tibble(Month = c(1:12), mdays = c(31,28,31,30,31,30,31,31,30,31,30,31))
+
+gwflowfun <- function (subbas, years, dropsites, months = c(1:12)) {
+  dat_clean %>% 
+  filter(subbasin == subbas, CalendarYear %in% years, Month %in% months) %>%
+  group_by(site_name, subbasin, designation, CalendarYear) %>% #, Month, MonthName) %>%
+  summarise(ss = n(),
+            logYield = mean(logYield, na.rm = TRUE)) %>%
+  ungroup() %>%
+  #left_join(mdaystib) %>%
+  mutate(pdays = ss/92#,
+         #YearMonth = paste(CalendarYear, "_", Month, sep = "")
+         ) %>%
+  filter(pdays > 0.9,
+         !site_name %in% dropsites) %>%
+  group_by(CalendarYear) %>%
+  mutate(z_logYield = scale(logYield, center = TRUE, scale = TRUE)[,1]) %>%
+  ungroup() %>%
+  left_join(pasta) %>%
+  ggplot(aes(x = amplitudeRatio, y = z_logYield)) +
+  geom_abline(intercept = 0, slope = 0, linetype = 2) +
+  geom_smooth(method = "lm", color = "black") +
+  geom_point(aes(color = site_name)) +
+  facet_wrap(~CalendarYear, nrow = 1) +
+  #facet_wrap2(~CalendarYear, nrow = 1, ncol = 5, trim_blank = FALSE) +
+  #facet_grid(cols = vars(Month), rows = vars(CalendarYear)) + 
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) 
+}
+```
+
+Plot the relationship between standardized annual summer mean discharge and amplitude ratio from PASTA, where lower amplitude ratio values are indicative of greater groundwater availability. Mean flow for each site is standardized by year to remove interannual variation in climate/regional water availability
+
+::: panel-tabset
+### West Brook
+```{r}
+gwflowfun(subbas = "West Brook", dropsites = c("West Brook Reservoir", "Mitchell Brook"), years = c(2020:2024))
+```
+### Staunton River
+```{r}
+gwflowfun(subbas = "Staunton River", dropsites = NA, years = c(2019:2022))
+```
+### Snake River
+```{r}
+gwflowfun(subbas = "Snake River", dropsites = NA, years = c(2018, 2020:2022), months = c(7:9))
+```
+### Shields River
+```{r}
+gwflowfun(subbas = "Shields River", dropsites = NA, years = c(2017,2019,2020,2022,2023), months = c(7:9))
+```
+:::
+
+

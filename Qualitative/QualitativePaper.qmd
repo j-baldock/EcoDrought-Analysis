@@ -1432,35 +1432,37 @@ dat_umpred <- dat_clean %>%
 ```
 
 View example sites
+
 ::: panel-tabset
-#### Jimmy
+##### Jimmy
 ```{r}
 dat_umpred %>% filter(site_name == "Jimmy Brook") %>% select(date, Yield_mm, value) %>% dygraph() %>% dySeries("Yield_mm", color = "black") %>% dySeries("value", color = "red") %>% dyRangeSelector() 
 ```
-#### Staunton 06
+##### Staunton 06
 ```{r}
 dat_umpred %>% filter(site_name == "Staunton River 06") %>% select(date, Yield_mm, value) %>% dygraph() %>% dySeries("Yield_mm", color = "black") %>% dySeries("value", color = "red") %>% dyRangeSelector() 
 ```
-#### Hallowatt Creek NWIS
+##### Hallowatt Creek NWIS
 ```{r}
 dat_umpred %>% filter(site_name == "Hallowat Creek NWIS") %>% select(date, Yield_mm, value) %>% dygraph() %>% dySeries("Yield_mm", color = "black") %>% dySeries("value", color = "red") %>% dyRangeSelector() 
 ```
-#### SF Spread Ck Lower
+##### SF Spread Ck Lower
 ```{r}
 dat_umpred %>% filter(site_name == "SF Spread Creek Lower") %>% select(date, Yield_mm, value) %>% dygraph() %>% dySeries("Yield_mm", color = "black") %>% dySeries("value", color = "red") %>% dyRangeSelector() 
 ```
-#### Dugout Creek
+##### Dugout Creek
 ```{r}
 dat_umpred %>% filter(site_name == "Dugout Creek") %>% select(date, Yield_mm, value) %>% dygraph() %>% dySeries("Yield_mm", color = "black") %>% dySeries("value", color = "red") %>% dyRangeSelector() 
 ```
-#### DB ab Indian NWIS
+##### DB ab Indian NWIS
 ```{r}
 dat_umpred %>% filter(site_name == "Donner Blitzen ab Indian NWIS") %>% select(date, Yield_mm, value) %>% dygraph() %>% dySeries("Yield_mm", color = "black") %>% dySeries("value", color = "red") %>% dyRangeSelector() 
 ```
 :::
 
+#### Efficiency
 
-NSE ratings per Moriasi et al. "Model evaluation guidelines for systematic quantification of accuracy in watershed simulations." Transactions of the ASABE 50.3 (2007): 885-900.
+NSE scores and categories per Moriasi et al. "Model evaluation guidelines for systematic quantification of accuracy in watershed simulations." Transactions of the ASABE 50.3 (2007): 885-900.
 
 * Very good: 0.75-1.00
 * Good: 0.65-0.75
@@ -1560,7 +1562,7 @@ daily <- dat_umpred %>%
   group_by(site_name, subbasin) %>% 
   summarize(nse = NSE(sim = log(value), obs = log(Yield_mm))) %>%
   ungroup() %>%
-  mutate(timescale = "daily")
+  mutate(timescale = "day")
 
 weekly <- dat_umpred %>% 
   mutate(date = floor_date(date, "week")) %>% 
@@ -1571,7 +1573,7 @@ weekly <- dat_umpred %>%
   group_by(site_name, subbasin) %>% 
   summarize(nse = NSE(sim = log(value), obs = log(Yield_mm))) %>%
   ungroup() %>%
-  mutate(timescale = "weekly")
+  mutate(timescale = "week")
 
 monthly <- dat_umpred %>% 
   mutate(date = floor_date(date, "month")) %>% 
@@ -1582,23 +1584,32 @@ monthly <- dat_umpred %>%
   group_by(site_name, subbasin) %>% 
   summarize(nse = NSE(sim = log(value), obs = log(Yield_mm))) %>%
   ungroup() %>%
-  mutate(timescale = "monthly")
+  mutate(timescale = "month")
 
 timescale <- bind_rows(daily, weekly, monthly) %>%
-  mutate(timescale = factor(timescale, levels = c("daily", "weekly", "monthly"))) 
+  mutate(timescale = factor(timescale, levels = c("day", "week", "month"))) 
 
 timescale %>%
   ggplot(aes(x = timescale, y = nse, group = site_name)) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 0.50, alpha = 0.3, fill = "red") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.50, ymax = 0.65, alpha = 0.3, fill = "orange") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.65, ymax = 0.75, alpha = 0.3, fill = "yellow") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.75, ymax = 1.00, alpha = 0.3, fill = "green") +
   geom_point() +
   geom_line() +
   xlab("Time scale") + ylab("Nash-Sutcliffe efficiency") + 
   theme_bw() + ylim(-6,1) +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  scale_y_continuous(limits = c(-14,1), expand = c(0,0))
 ```
 
 ```{r}
 timescale %>%
   ggplot(aes(x = timescale, y = nse, group = site_name)) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 0.50, alpha = 0.3, fill = "red") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.50, ymax = 0.65, alpha = 0.3, fill = "orange") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.65, ymax = 0.75, alpha = 0.3, fill = "yellow") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.75, ymax = 1.00, alpha = 0.3, fill = "green") +
   geom_point() +
   geom_line() +
   xlab("Time scale") + ylab("Nash-Sutcliffe efficiency") + 

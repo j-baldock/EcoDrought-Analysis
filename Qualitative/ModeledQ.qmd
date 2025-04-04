@@ -1,0 +1,491 @@
+---
+title: "Objective 3"
+---
+
+```{r, include = FALSE}
+library(tidyverse)
+library(mapview)
+library(sf)
+library(ggpubr)
+library(fasstr)
+library(dygraphs)
+library(htmlwidgets)
+library(knitr)
+library(RColorBrewer)
+library(scales)
+library(GGally)
+library(DT)
+library(TSdist)
+library(ggridges)
+library(ggh4x)
+library(viridis)
+library(daymetr)
+library(scico)
+library(cetcolor)
+library(plotly)
+library(cowplot)
+library(hydroEvents)
+library(dtw)
+library(nhdplusTools)
+library(glue)
+library(hydroGOF)
+```
+
+
+**Purpose:** Quantify the suitability of existing modeling techniques for predicting streamflow in headwater systems.
+
+**Approach:**
+
+* Download monthly Stream Stats, PRMS (for the Donner-Blitzen only), and UM's neural net streamflow estimates for each site
+* Use NSE (Nash-Sutcliffe efficiency) to compare the performance of existing tools. How does this change as a function of basin size and time scale of data aggregation (e.g., daily to monthly)?
+
+
+## Data
+
+Site information
+```{r}
+siteinfo <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv")
+siteinfo_sp <- st_as_sf(siteinfo, coords = c("long", "lat"), crs = 4326)
+```
+
+Little g's
+```{r}
+dat_clean <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/LittleG_data_clean.csv")
+```
+
+Big G's
+```{r}
+dat_clean_big <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/BigG_data_clean.csv")
+```
+
+Climate
+```{r}
+climdf <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/Daymet_climate.csv")
+climdf_summ <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/Daymet_climate_summary.csv")
+```
+
+Water availability
+```{r}
+wateravail <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/BigG_wateravailability_annual.csv")
+```
+
+
+## Stream Stats
+
+Write out point shape files for each state to feed into Stream Stats batch processor
+```{r eval=FALSE}
+siteinfo_sp_wy <- siteinfo_sp %>% filter(region == "Snake")
+st_write(siteinfo_sp_wy, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/points/points_wy.shp")
+
+siteinfo_sp_mt <- siteinfo_sp %>% filter(region %in% c("Flat", "Shields"))
+st_write(siteinfo_sp_mt, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/points/points_mt.shp")
+
+siteinfo_sp_ma <- siteinfo_sp %>% filter(region == "Mass")
+st_write(siteinfo_sp_ma, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/points/points_ma.shp")
+
+siteinfo_sp_va <- siteinfo_sp %>% filter(region %in% c("Shen"))
+st_write(siteinfo_sp_va, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/points/points_va.shp")
+
+siteinfo_sp_or <- siteinfo_sp %>% filter(region %in% c("Oreg"))
+st_write(siteinfo_sp_or, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/points/points_or.shp")
+```
+
+List geodatabase layer names
+```{r}
+st_layers(dsn = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/StreamStats/points_mt7617/points_mt7617.gdb")
+```
+
+Read watershed boundaries
+```{r}
+sheds_montana <- st_read("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/StreamStats/points_mt7617/points_mt7617.gdb", layer = "GlobalWatershed")
+sheds_massach <- st_read("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/StreamStats/points_ma7625/points_ma7625.gdb", layer = "GlobalWatershed")
+sheds_oregon <- st_read("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/StreamStats/points_or7626/points_or7626.gdb", layer = "GlobalWatershed")
+sheds_virginia <- st_read("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/StreamStats/points_va7627/points_va7627.gdb", layer = "GlobalWatershed")
+sheds_wyoming <- st_read("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/StreamStats/points_wy7628/points_wy7628.gdb", layer = "GlobalWatershed")
+
+sheds <- bind_rows(sheds_massach, sheds_montana, sheds_oregon, sheds_virginia, sheds_wyoming)
+mapview(sheds) 
+```
+
+Find sites that were delineated incorrectly
+```{r}
+options(scipen=999)
+badsites <- tibble(sheds) %>% select(Name, Shape_Area, DRNAREA, ELEV) %>% rename(site_id = Name) %>% left_join(siteinfo %>% select(site_id, site_name, area_sqmi, elev_ft)) %>% select(site_id, site_name, DRNAREA, area_sqmi) %>% mutate(percerror = (DRNAREA - area_sqmi) / area_sqmi) %>% filter(percerror >= 0.15 | percerror <= -0.15)
+badsites
+```
+
+
+Stream stats site information
+```{r}
+streamstats_info <- tibble(sheds) %>% select(Name, DRNAREA) %>% rename(site_id = Name) %>% left_join(siteinfo %>% select(site_id, site_name))
+streamstats_info
+```
+
+
+Read flow statistics from geodatabases
+```{r}
+montana <- st_read("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/StreamStats/points_mt7617/points_mt7617.gdb", layer = "FLOWSTATS")
+massach <- st_read("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/StreamStats/points_ma7625/points_ma7625.gdb", layer = "FLOWSTATS")
+oregon <- st_read("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/StreamStats/points_or7626/points_or7626.gdb", layer = "FLOWSTATS")
+virginia <- st_read("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/StreamStats/points_va7627/points_va7627.gdb", layer = "FLOWSTATS")
+wyoming <- st_read("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/StreamStats/points_wy7628/points_wy7628.gdb", layer = "FLOWSTATS")
+
+streamstats <- bind_rows(montana, massach, oregon, virginia, wyoming) %>% filter(!Name %in% c(badsites$site_id)) %>% rename(site_id = Name) %>% left_join(siteinfo %>% select(site_id, site_name)) %>% left_join(streamstats_info)
+streamstats
+```
+
+View provided flow statistics for each state. What is relevant to this paper?
+
+* Montana: annual & monthly duration (80, 50, 20), monthly mean flow, 7 day 10 year low flow
+* Massachusetts: annual duration (99, 98, 95, 90, 85, 80, 75, 70, 60, 50), 7 day 10 and 2 year low flow
+* Oregon: annual and monthly duration (95, 50, 25, 10, 5), monthly and annual 7 day 10 and 2 year low flow
+* Virginia: lots of flow flow stats including 7 day 10 and 2 year low flow
+* Wyoming: nothing relevant
+
+```{r}
+print("MONTANA")
+unique(montana$StatName)
+print("MASSACHUSETTS")
+unique(massach$StatName)
+print("OREGON")
+unique(oregon$StatName)
+print("VIRGINA")
+unique(virginia$StatName)
+print("WYOMING")
+unique(wyoming$StatName)
+```
+
+What statistics do all states have in common (minus Wyoming)? Only 7 day 10 year low flow. 
+```{r}
+Reduce(intersect, list(unique(montana$StatName), unique(massach$StatName), unique(oregon$StatName), unique(virginia$StatName)))
+```
+
+Create observed exceedance plotting function
+```{r}
+
+vars <- unique(massach$StatName)[grep("Duration", unique(massach$StatName))][-1]
+
+# create plotting function
+myplotfun_ex <- function(sitename) {
+  obs <- dat_clean %>% filter(site_name == sitename)
+  preds <- streamstats %>% 
+    filter(site_name == unique(obs$site_name), StatName %in% vars) %>% 
+    mutate(percentile = parse_number(StatName)) %>% 
+    mutate(flow_cms = Value*0.02831683199881, area_sqkm = DRNAREA*2.58999)
+  preds <- add_daily_yield(data = preds %>% select(site_id, site_name, DRNAREA, area_sqkm, StatName, percentile, flow_cms), values = flow_cms, basin_area = as.numeric(unique(preds$area_sqkm)))
+  preds <- preds %>% mutate(logYield = log(Yield_mm))
+  # calculate exceedance probability by site
+  exceeddat <- obs %>% 
+    filter(!is.na(logYield)) %>%
+    arrange(desc(logYield)) %>%
+    mutate(exceedance = 100/length(logYield)*1:length(logYield))
+  # plot
+  print(ggplot() +
+    geom_line(data = exceeddat, aes(x = exceedance, y = logYield), size = 1) +
+    geom_line(data = preds, aes(x = percentile, y = logYield), color = "red") + 
+    geom_point(data = preds, aes(x = percentile, y = logYield), color = "red") +
+    xlab("Exceedance probability") + ylab("log(Yield, mm)") + ggtitle(sitename) +
+    theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()))
+}  
+
+
+myplotfun_ex("Avery Brook")
+myplotfun_ex("Sanderson Brook")
+myplotfun_ex("Obear Brook Lower")
+myplotfun_ex("Mitchell Brook")
+myplotfun_ex("West Brook Reservoir")
+
+
+```
+
+
+
+
+
+
+## PRMS
+
+
+## UM Climatology
+
+### Get predictions
+
+Pull streamflow predictions from Montana Climate Office’s (University of Montana) Streamflow API. The finest spatial resolution of streamflow predictions is HUC-10. This means that all sites within subbasins have the *same* predicted streamflow. This makes we wonder how relevant/useful these comparisons are, beyond g/G comparisons shown for objective 1. 
+
+Get HUC-10 watershed codes
+```{r message=FALSE}
+myhucs <- c()
+for (i in 1:dim(siteinfo_sp)[1]) { myhucs[i] <- get_huc(AOI = siteinfo_sp[i,], type = "huc10")$huc10 }
+siteinfo <- siteinfo %>% mutate(huc10 = myhucs)
+myhucs <- unique(myhucs)
+#length(myhucs)
+```
+
+Query UM Climatology
+```{r eval=FALSE}
+request = httr::GET(
+  # can replace this with /predictions/raw, the only query parameter that isn't shared is aggregations.
+  "https://data.climate.umt.edu/streamflow-api/predictions/",
+  query = list(
+    locations = paste(myhucs, collapse = ","),
+    date_start = "2015-01-01",
+    date_end = "2025-01-01",
+    aggregations = "mean", 
+    as_csv = TRUE,
+    units = "mm"
+  )
+)
+umpreds <- httr::content(request)
+umpreds <- umpreds %>% rename(huc10 = location)
+print(umpreds)
+write_csv(umpreds, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/UM_Climatology_PredictedQ.shp")
+```
+
+Load UM Climatrology predicted flow data
+```{r}
+umpreds <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/UM_Climatology_PredictedQ.shp")
+umpreds
+```
+
+Join to observed data
+```{r}
+dat_umpred <- dat_clean %>%
+  left_join(siteinfo %>% select(site_name, huc10)) %>%
+  left_join(umpreds %>% select(huc10, date, value)) 
+```
+
+
+### View predictions
+
+#### All HUCs
+
+Plot all time series data
+```{r}
+umpreds %>% 
+  ggplot(aes(x = date, y = value)) + 
+  geom_line() +
+  facet_wrap(~huc10, scales = "free_y")
+```
+
+
+#### Compare gG
+
+Compare predicted (red) and observed (black) streamflow data for select sites/basins. For some sites, modeled flow captures the general patterns/shapes of observed hydrographs well, but accuracy is reduced at fine temporal resolutions. For other sites, modeled flow fails to capture both the general and finer resolution asepcts of observed data.
+
+::: panel-tabset
+##### Jimmy
+```{r}
+dat_umpred %>% filter(site_name == "Jimmy Brook") %>% select(date, Yield_mm, value) %>% dygraph() %>% dySeries("Yield_mm", color = "black") %>% dySeries("value", color = "red") %>% dyRangeSelector() %>% dyAxis("y", label = "Yield (mm)") 
+```
+##### Staunton 06
+```{r}
+dat_umpred %>% filter(site_name == "Staunton River 06") %>% select(date, Yield_mm, value) %>% dygraph() %>% dySeries("Yield_mm", color = "black") %>% dySeries("value", color = "red") %>% dyRangeSelector()  %>% dyAxis("y", label = "Yield (mm)") 
+```
+##### Hallowatt Creek NWIS
+```{r}
+dat_umpred %>% filter(site_name == "Hallowat Creek NWIS") %>% select(date, Yield_mm, value) %>% dygraph() %>% dySeries("Yield_mm", color = "black") %>% dySeries("value", color = "red") %>% dyRangeSelector()  %>% dyAxis("y", label = "Yield (mm)") 
+```
+##### SF Spread Ck Lower
+```{r}
+dat_umpred %>% filter(site_name == "SF Spread Creek Lower") %>% select(date, Yield_mm, value) %>% dygraph() %>% dySeries("Yield_mm", color = "black") %>% dySeries("value", color = "red") %>% dyRangeSelector()  %>% dyAxis("y", label = "Yield (mm)") 
+```
+##### Dugout Creek
+```{r}
+dat_umpred %>% filter(site_name == "Dugout Creek") %>% select(date, Yield_mm, value) %>% dygraph() %>% dySeries("Yield_mm", color = "black") %>% dySeries("value", color = "red") %>% dyRangeSelector()  %>% dyAxis("y", label = "Yield (mm)") 
+```
+##### DB ab Indian NWIS
+```{r}
+dat_umpred %>% filter(site_name == "Donner Blitzen ab Indian NWIS") %>% select(date, Yield_mm, value) %>% dygraph() %>% dySeries("Yield_mm", color = "black") %>% dySeries("value", color = "red") %>% dyRangeSelector()  %>% dyAxis("y", label = "Yield (mm)") 
+```
+:::
+
+
+### Efficiency
+
+NSE scores and categories per Moriasi et al. "Model evaluation guidelines for systematic quantification of accuracy in watershed simulations." Transactions of the ASABE 50.3 (2007): 885-900.
+
+|Category       | NSE range     |
+|---------------|---------------|
+|Very good      | 0.75-1.00     |
+|Good           | 0.65-0.75     |
+|Satisfactory   | 0.50-0.65     |
+|Unsatisfactory | <0.50         |
+
+
+*Note that there is no effort to ensure consistant data availability among sites/basins/years. Would it be better to restrict these?*
+
+#### Overall
+
+NSE by subbasin for all available data.
+```{r}
+dat_umpred %>% 
+  group_by(site_name, subbasin) %>% 
+  summarize(nse = NSE(sim = log(value), obs = log(Yield_mm))) %>%
+  ungroup() %>%
+  mutate(subbasin = factor(subbasin, levels = c("West Brook", "Paine Run", "Staunton River", "Big Creek", "Coal Creek", "McGee Creek", "Snake River", "Shields River", "Duck Creek", "Donner Blitzen"))) %>%
+  ggplot(aes(x = subbasin, y = nse)) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 0.50, alpha = 0.3, fill = "red") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.50, ymax = 0.65, alpha = 0.3, fill = "orange") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.65, ymax = 0.75, alpha = 0.3, fill = "yellow") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.75, ymax = 1.00, alpha = 0.3, fill = "green") +
+  geom_boxplot(fill = "grey", outlier.shape = NA) +
+  geom_jitter(height = 0, width = 0.2, shape = 1) +
+  geom_abline(slope = 0, intercept = 1, color = "black", linetype = "dashed") +
+  xlab("Sub-basin") + ylab("Nash-Sutcliffe efficiency") + ggtitle("All data") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.4)) +
+  scale_y_continuous(limits = c(-8.5,1), expand = c(0,0))
+```
+
+NSE by subbasin, summer (July-August) only, all available years. 
+```{r}
+dat_umpred %>% 
+  filter(Month %in% c(7:9)) %>%
+  group_by(site_name, subbasin) %>% 
+  summarize(nse = NSE(sim = log(value), obs = log(Yield_mm))) %>%
+  ungroup() %>%
+  mutate(subbasin = factor(subbasin, levels = c("West Brook", "Paine Run", "Staunton River", "Big Creek", "Coal Creek", "McGee Creek", "Snake River", "Shields River", "Duck Creek", "Donner Blitzen"))) %>%
+  ggplot(aes(x = subbasin, y = nse)) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 0.50, alpha = 0.3, fill = "red") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.50, ymax = 0.65, alpha = 0.3, fill = "orange") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.65, ymax = 0.75, alpha = 0.3, fill = "yellow") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.75, ymax = 1.00, alpha = 0.3, fill = "green") +
+  geom_boxplot(fill = "grey", outlier.shape = NA) +
+  geom_jitter(height = 0, width = 0.2, shape = 1) +
+  geom_abline(slope = 0, intercept = 1, color = "black", linetype = "dashed") +
+  xlab("Sub-basin") + ylab("Nash-Sutcliffe efficiency") + ggtitle("July-September") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.4)) +
+  scale_y_continuous(limits = c(-12.5,1), expand = c(0,0))
+```
+
+
+#### By time
+
+How does NSE vary through time?
+
+NSE by subbasin and month, pooled across all available years
+```{r}
+dat_umpred %>% 
+  group_by(site_name, subbasin, MonthName) %>% 
+  summarize(nse = NSE(sim = log(value), obs = log(Yield_mm))) %>%
+  ungroup() %>%
+  mutate(subbasin = factor(subbasin, levels = c("West Brook", "Paine Run", "Staunton River", "Big Creek", "Coal Creek", "McGee Creek", "Snake River", "Shields River", "Duck Creek", "Donner Blitzen")),
+         MonthName = factor(MonthName, levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))) %>%
+  ggplot(aes(x = MonthName, y = nse)) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 0.50, alpha = 0.3, fill = "red") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.50, ymax = 0.65, alpha = 0.3, fill = "orange") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.65, ymax = 0.75, alpha = 0.3, fill = "yellow") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.75, ymax = 1.00, alpha = 0.3, fill = "green") +
+  geom_point(aes(group = site_name)) +
+  geom_abline(slope = 0, intercept = 1, color = "black", linetype = "dashed") +
+  scale_x_discrete(labels = c("Jan" = "J", "Feb" = "F", "Mar" = "M", "Apr" = "A", "May" = "M", "Jun" = "J", "Jul" = "J", "Aug" = "A", "Sep" = "S", "Oct" = "O", "Nov" = "N", "Dec" = "D")) +
+  xlab("Month") + ylab("Nash-Sutcliffe efficiency") + ggtitle("All data") +
+  facet_wrap(~subbasin, scales = "free_y") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  scale_y_continuous(expand = c(0,0))
+```
+
+For the West Brook, show NSE by time and site, no pooling.
+```{r}
+dat_umpred %>% 
+  mutate(yearmonth = floor_date(date, "month")) %>% 
+  filter(subbasin == "West Brook") %>%
+  group_by(site_name, subbasin, yearmonth) %>% 
+  summarize(nobs = n(), nse = NSE(sim = log(value), obs = log(Yield_mm))) %>%
+  ungroup() %>%
+  filter(nobs >= 25) %>%
+  ggplot(aes(x = yearmonth, y = nse)) + 
+  # annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 0.50, alpha = 0.3, fill = "red") +
+  # annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.50, ymax = 0.65, alpha = 0.3, fill = "orange") +
+  # annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.65, ymax = 0.75, alpha = 0.3, fill = "yellow") +
+  # annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.75, ymax = 1.00, alpha = 0.3, fill = "green") +
+  geom_point(aes(color = site_name)) +
+  geom_line(aes(color = site_name)) +
+  geom_abline(slope = 0, intercept = 1, color = "black", linetype = "dashed") +
+  xlab("Time") + ylab("Nash-Sutcliffe efficiency") + ggtitle("West Brook (truncated y-axis limits)") +
+  #facet_wrap(~subbasin, scales = "free") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  ylim(-50,1)
+
+```
+
+#### Timescale
+
+Often, ecological studyies use flow data aggregated at coarser temporal resolutions. How does efficiency change with the time scale of aggregation? Do flow predictions become more accurate when aggregated from daily to weekly or monthly means? 
+
+Aggregate data (or not), calculate NSE for each site, and combine.
+```{r}
+daily <- dat_umpred %>% 
+  group_by(site_name, subbasin) %>% 
+  summarize(nse = NSE(sim = log(value), obs = log(Yield_mm))) %>%
+  ungroup() %>%
+  mutate(timescale = "day")
+
+weekly <- dat_umpred %>% 
+  mutate(date = floor_date(date, "week")) %>% 
+  group_by(site_name, subbasin, date) %>% 
+  summarise(nobs = n(), Yield_mm = mean(Yield_mm), value = mean(value)) %>%
+  ungroup() %>%
+  filter(nobs == 7) %>%
+  group_by(site_name, subbasin) %>% 
+  summarize(nse = NSE(sim = log(value), obs = log(Yield_mm))) %>%
+  ungroup() %>%
+  mutate(timescale = "week")
+
+monthly <- dat_umpred %>% 
+  mutate(date = floor_date(date, "month")) %>% 
+  group_by(site_name, subbasin, date) %>% 
+  summarise(nobs = n(), Yield_mm = mean(Yield_mm), value = mean(value)) %>%
+  ungroup() %>%
+  filter(nobs >= 27) %>%
+  group_by(site_name, subbasin) %>% 
+  summarize(nse = NSE(sim = log(value), obs = log(Yield_mm))) %>%
+  ungroup() %>%
+  mutate(timescale = "month")
+
+timescale <- bind_rows(daily, weekly, monthly) %>%
+  mutate(timescale = factor(timescale, levels = c("day", "week", "month"))) 
+```
+
+Plot all sites
+```{r fig.width = 3, fig.height=5}
+timescale %>%
+  ggplot(aes(x = timescale, y = nse, group = site_name)) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 0.50, alpha = 0.3, fill = "red") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.50, ymax = 0.65, alpha = 0.3, fill = "orange") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.65, ymax = 0.75, alpha = 0.3, fill = "yellow") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.75, ymax = 1.00, alpha = 0.3, fill = "green") +
+  geom_point() +
+  geom_line() +
+  xlab("Time scale") + ylab("Nash-Sutcliffe efficiency") + 
+  theme_bw() + ylim(-6,1) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  scale_y_continuous(limits = c(-14,1), expand = c(0,0))
+```
+
+Plot all sites, facet by subbasin
+```{r}
+timescale %>%
+  mutate(subbasin = factor(subbasin, levels = c("West Brook", "Paine Run", "Staunton River", "Big Creek", "Coal Creek", "McGee Creek", "Snake River", "Shields River", "Duck Creek", "Donner Blitzen"))) %>%
+  ggplot(aes(x = timescale, y = nse, group = site_name)) +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 0.50, alpha = 0.3, fill = "red") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.50, ymax = 0.65, alpha = 0.3, fill = "orange") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.65, ymax = 0.75, alpha = 0.3, fill = "yellow") +
+  annotate("rect", xmin = -Inf, xmax = Inf, ymin = 0.75, ymax = 1.00, alpha = 0.3, fill = "green") +
+  geom_point() +
+  geom_line() +
+  xlab("Time scale") + ylab("Nash-Sutcliffe efficiency") + 
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  facet_wrap(~subbasin, scales = "free_y")
+```
+
+Generally, aggregating daily flow predictions to weekly or monthly means does not substantially change the accuracy of predicted data. However, there is a slight trend for accuracy (NSE) to increase with temporal aggregation for sites at which daily predictions are already fairly accurate. In contrast, for sites for which daily predictions are not accurate, temporal aggregation further decreases accuracy. 
+
+
+
