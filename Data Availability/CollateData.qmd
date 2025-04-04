@@ -33,6 +33,7 @@ library(rmarkdown)
 library(shiny)
 library(htmlwidgets)
 library(knitr)
+library(DT)
 ```
 
 ## Gather site information
@@ -48,7 +49,7 @@ siteinfo_wb <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrou
 siteinfo_shen <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Raw data/Virg/VA_site_info.csv") %>%
   mutate(Station_No = factor(Station_No), Site_Name = factor(Site_Name)) %>%
   rename(site_id = Site_ID, station_no = Station_No, site_name = Site_Name, lat = Latitude_dec_deg, long = Longitude_dec_deg, elev_ft = Elevation_ft, area_sqmi = Drainage_Area_sqmi) %>%
-  mutate(designation = ifelse(str_detect(site_id, "10FL"), "big", "little"), 
+  mutate(designation = ifelse(str_detect(site_id, "10FL"), "medium", "little"), 
          basin = str_sub(site_name, 1, str_length(site_name)-3), region = "Shen") #%>% select(-c(elev_ft, area_sqmi))
 
 # Flathead/Muhlfeld
@@ -73,6 +74,10 @@ sites <- c("01169900", # South River at Conway, Massachusetts
            "06195600", # Shields River at Livingston, Montana
            "12355500", # North Fork Flathead River, Montana
            "10396000", # Donner Blitzen River near Frenchglen, Oregon
+           "06192500", # Yellowstone River near Livingston
+           "01665500", # Rapidan River near Ruckersville
+           "01662800", # Battle Run near Laurel Mills
+           "01627500", # South River at Harriston
            # Medium G
            "12355347", # Big Creek (Flathead)
            "12355342", # Hallowat Creek (Flathead)
@@ -91,29 +96,122 @@ sites <- c("01169900", # South River at Conway, Massachusetts
            )
 siteinfo_nwis <- tibble(readNWISsite(sites)[,c(2:3,7,8,20,30)]) # get site info
 names(siteinfo_nwis) <- c("station_no", "site_name", "lat", "long", "elev_ft", "area_sqmi") # rename columns
-siteinfo_nwis <- siteinfo_nwis %>% mutate(site_name = c("South River Conway NWIS", 
-                                                        "Avery Brook NWIS", 
-                                                        "West Brook NWIS", 
-                                                        "Dugout Creek NWIS", 
-                                                        "Shields River ab Smith NWIS", 
-                                                        "Shields River nr Livingston NWIS", 
-                                                        "Donner Blitzen River nr Frenchglen NWIS", 
-                                                        "Hallowat Creek NWIS", 
-                                                        "Big Creek NWIS", 
-                                                        "North Fork Flathead River NWIS", 
-                                                        "Pacific Creek at Moran NWIS", 
-                                                        "Leidy Creek Mouth NWIS", 
-                                                        "SF Spread Creek Lower NWIS",
-                                                        "Donner Blitzen ab Indian NWIS",
-                                                        "Indian Creek NWIS",
-                                                        "Little Blizten River NWIS",
-                                                        "Donner Blitzen nr Burnt Car NWIS",
-                                                        "Donner Blitzen ab Fish NWIS",
-                                                        "Fish Creek NWIS"),
-                                          site_id = c("SRC", "AVB", "WBR", "DUG", "SRS", "SRL", "DBF", "HAL", "BIG", "NFF", "PCM", "LEI", "SFS", "DBI", "IND", "LBL", "DBB", "DBA", "FSH"),
-                                          designation = c("big", "medium", "medium", "medium", "medium", "big", "big", "medium", "medium", "big", "big", "medium", "medium", "medium", "medium", "medium", "medium", "medium", "medium"),
-                                          basin = c("West Brook", "West Brook", "West Brook", "Shields River", "Shields River", "Shields River", "Donner Blitzen", "Flathead", "Flathead", "Flathead", "Snake River", "Snake River", "Snake River", "Donner Blitzen", "Donner Blitzen", "Donner Blitzen", "Donner Blitzen", "Donner Blitzen", "Donner Blitzen"),
-                                          region = c("Mass", "Mass", "Mass", "Shields", "Shields", "Shields", "Oreg", "Flat", "Flat", "Flat", "Snake", "Snake", "Snake","Oreg", "Oreg", "Oreg", "Oreg", "Oreg", "Oreg")) %>% 
+siteinfo_nwis <- siteinfo_nwis %>% 
+  mutate(site_name = c("South River Conway NWIS", 
+                       "Avery Brook NWIS", 
+                       "West Brook NWIS", 
+                       "South River Harriston NWIS",
+                       "Battle Run NWIS",
+                       "Rapidan River NWIS",
+                       "Yellowstone River Livingston NWIS",
+                       "Dugout Creek NWIS", 
+                       "Shields River ab Smith NWIS", 
+                       "Shields River nr Livingston NWIS",
+                       "Donner Blitzen River nr Frenchglen NWIS", 
+                       "Hallowat Creek NWIS", 
+                       "Big Creek NWIS", 
+                       "North Fork Flathead River NWIS",
+                       "Pacific Creek at Moran NWIS", 
+                       "Leidy Creek Mouth NWIS", 
+                       "SF Spread Creek Lower NWIS",
+                       "Donner Blitzen ab Indian NWIS",
+                       "Indian Creek NWIS",
+                       "Little Blizten River NWIS",
+                       "Donner Blitzen nr Burnt Car NWIS",
+                       "Donner Blitzen ab Fish NWIS",
+                       "Fish Creek NWIS"),
+         site_id = c("SRC", 
+                     "AVB", 
+                     "WBR", 
+                     "SRH",
+                     "BAT",
+                     "RAP",
+                     "YEL",
+                     "DUG", 
+                     "SRS", 
+                     "SRL", 
+                     "DBF", 
+                     "HAL", 
+                     "BIG", 
+                     "NFF", 
+                     "PCM", 
+                     "LEI", 
+                     "SFS", 
+                     "DBI", 
+                     "IND", 
+                     "LBL", 
+                     "DBB", 
+                     "DBA", 
+                     "FSH"),
+         designation = c("big", 
+                         "medium", 
+                         "medium",
+                         "big",
+                         "big",
+                         "big",
+                         "big",
+                         "medium", 
+                         "medium", 
+                         "big", 
+                         "big", 
+                         "medium",
+                         "medium", 
+                         "big", 
+                         "big", 
+                         "medium", 
+                         "medium", 
+                         "medium", 
+                         "medium", 
+                         "medium", 
+                         "medium", 
+                         "medium", 
+                         "medium"),
+         basin = c("West Brook", 
+                   "West Brook", 
+                   "West Brook", 
+                   "Paine Run",
+                   "Piney River",
+                   "Staunton River",
+                   "Shields River",
+                   "Shields River", 
+                   "Shields River", 
+                   "Shields River", 
+                   "Donner Blitzen", 
+                   "Flathead", 
+                   "Flathead", 
+                   "Flathead", 
+                   "Snake River", 
+                   "Snake River", 
+                   "Snake River", 
+                   "Donner Blitzen", 
+                   "Donner Blitzen", 
+                   "Donner Blitzen", 
+                   "Donner Blitzen", 
+                   "Donner Blitzen", 
+                   "Donner Blitzen"),
+         region = c("Mass", 
+                    "Mass",
+                    "Mass", 
+                    "Shen",
+                    "Shen",
+                    "Shen",
+                    "Shields",
+                    "Shields", 
+                    "Shields", 
+                    "Shields", 
+                    "Oreg", 
+                    "Flat", 
+                    "Flat", 
+                    "Flat", 
+                    "Snake", 
+                    "Snake", 
+                    "Snake",
+                    "Oreg",
+                    "Oreg", 
+                    "Oreg", 
+                    "Oreg", 
+                    "Oreg", 
+                    "Oreg")) %>% 
   select(site_id, site_name, lat, long, station_no, designation, basin, region, elev_ft, area_sqmi)
 #mapview(st_as_sf(siteinfo_nwis, coords = c("long", "lat"), crs = 4326))
 
@@ -122,6 +220,7 @@ siteinfo_nwis <- siteinfo_nwis %>% mutate(site_name = c("South River Conway NWIS
 siteinfo <- bind_rows(siteinfo_wb, siteinfo_shen, siteinfo_flat, siteinfo_gya, siteinfo_nwis)
 siteinfo$subbasin[siteinfo$site_name == "Hallowat Creek NWIS"] <- "Big Creek"
 siteinfo$subbasin[siteinfo$site_name == "Big Creek NWIS"] <- "Big Creek"
+siteinfo$subbasin[siteinfo$site_id %in% c("DU01", "DU02", "DU03")] <- "Duck Creek"
 siteinfo <- siteinfo %>% mutate(subbasin = ifelse(is.na(subbasin), basin, subbasin))
 
 
@@ -141,7 +240,12 @@ areaelev <- do.call(rbind, arealist)
 # siteinfo %>% left_join(areaelev, by = "site_id") %>% ggplot() + geom_point(aes(x = area_sqmi.x, y = area_sqmi.y)) + geom_abline(intercept = 0, slope = 1) + facet_wrap(~basin, scales = "free")
 # test %>% ggplot() + geom_point(aes(x = elev_ft.x, y = elev_ft.y)) + geom_abline(intercept = 0, slope = 1) + facet_wrap(~basin, scales = "free")
 # add delineated variables
-siteinfo <- siteinfo %>% select(-c(area_sqmi, elev_ft)) %>% left_join(areaelev)
+siteinfo <- siteinfo %>% 
+  rename(area_sqmi_prov = area_sqmi, elev_ft_prov = elev_ft) %>% 
+  left_join(areaelev) %>% 
+  mutate(area_sqmi = ifelse(is.na(area_sqmi), area_sqmi_prov, area_sqmi),
+         elev_ft = ifelse(is.na(elev_ft), elev_ft_prov, elev_ft)) %>%
+  select(-c(area_sqmi_prov, elev_ft_prov))
 # fix NF Flathead (no dem from Canada)
 siteinfo$area_sqmi[siteinfo$site_id == "NFF"] <- 1556
 ```
@@ -154,7 +258,7 @@ write_csv(siteinfo, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/
 
 ```{r}
 siteinfo <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv")
-head(siteinfo)
+datatable(siteinfo)
 ```
 
 
@@ -164,10 +268,10 @@ View unique basin names
 unique(siteinfo$basin)
 ```
 
-View unique site names
+View unique subbasin names
 
 ```{r}
-unique(siteinfo$site_name)
+unique(siteinfo$subbasin)
 ```
 
 Map sites
@@ -316,7 +420,7 @@ write_csv(bind_rows(dat_flat, dat_gya), "C:/Users/jbaldock/OneDrive - DOI/Docume
 ```
 
 
-Bind EcoD hourly flow/temp data with siteinfo and write to file
+Bind EcoD hourly flow/temp data from across basins
 ```{r}
 dat <- bind_rows(dat_wb, dat_shen, dat_flat, dat_gya)
 ```
@@ -393,9 +497,32 @@ nwis_subdaily$datetime <- with_tz(nwis_subdaily$datetime, "UTC")
 head(nwis_subdaily)
 ```
 
+
+Download daily flow and temp data from NWIS
+```{r eval=FALSE}
+nwis_list <- list()
+for (i in 1:length(sites)) {
+  nwis_list[[i]] <- tibble(readNWISdata(sites = sites[i], service = "dv", parameterCd = c("00010", "00060"), 
+                                        startDate = "1950-01-01", endDate = Sys.Date(), tz = "UTC"))
+  print(i)
+}
+nwis_daily <- do.call(bind_rows, nwis_list)
+nwis_daily <- nwis_daily %>% select(-c(1,7,8,9,10))
+names(nwis_daily) <- c("station_no", "date", "flowcfs", "flowcfs_appcd", "tz", "tempc", "tempc_appcd")
+nwis_daily <- nwis_daily %>% left_join(siteinfo %>% filter(source == "NWIS"))
+write_csv(nwis_daily, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_NWIS_FlowTempData_Raw_Daily.csv")
+```
+
+```{r}
+nwis_daily <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_NWIS_FlowTempData_Raw_Daily.csv")
+head(nwis_daily)
+```
+
+
 ### Check approval
 
 * *A*, *A[91]*, *A[92]*, *A[93]*: approved and historical daily values ~match observed data
+* *A R*: approved and revised (limited)
 * *A e*: approved estimated data, often during ice affected periods (smoothed data)
 * *P*: provisional data yet to be approved, typically these are just more recent observations
 * *P e*: provisional estimated data, often during ice affected periods
@@ -405,15 +532,14 @@ head(nwis_subdaily)
 
 Flow approval codes
 ```{r}
-unique(nwis_subdaily$flowcfs_appcd)
+unique(nwis_daily$flowcfs_appcd)
 ```
 Temp approval codes
 ```{r}
-unique(nwis_subdaily$tempc_appcd)
+unique(nwis_daily$tempc_appcd)
 ```
 
-Check approval for key sites:
-
+Check approval for key sites: Sub-daily
 ::: panel-tabset
 #### West Brook
 ```{r, echo=FALSE}
@@ -438,6 +564,43 @@ nwis_subdaily %>% filter(site_name == "SF Spread Creek Lower NWIS") %>% select(d
 :::
 
 
+Check approval for key sites: Daily
+::: panel-tabset
+#### South River Conway (West Brook)
+```{r, echo=FALSE}
+nwis_daily %>% filter(site_name == "South River Conway NWIS") %>% select(date, flowcfs, flowcfs_appcd) %>% spread(key = flowcfs_appcd, value = flowcfs) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)")%>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5, fillGraph = TRUE)
+```
+#### Donner Blitzen (DB)
+```{r, echo=FALSE}
+nwis_daily %>% filter(site_name == "Donner Blitzen River nr Frenchglen NWIS") %>% select(date, flowcfs, flowcfs_appcd) %>% spread(key = flowcfs_appcd, value = flowcfs) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)")%>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5, fillGraph = TRUE)
+```
+#### NF Flathead (Big, Coal, McGee)
+```{r, echo=FALSE}
+nwis_daily %>% filter(site_name == "North Fork Flathead River NWIS") %>% select(date, flowcfs, flowcfs_appcd) %>% spread(key = flowcfs_appcd, value = flowcfs) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)")%>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5, fillGraph = TRUE)
+```
+#### Pacific Creek (Snake)
+```{r, echo=FALSE}
+nwis_daily %>% filter(site_name == "Pacific Creek at Moran NWIS") %>% select(date, flowcfs, flowcfs_appcd) %>% spread(key = flowcfs_appcd, value = flowcfs) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)")%>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5, fillGraph = TRUE)
+```
+#### Yellowstone (Shields/Duck)
+```{r, echo=FALSE}
+nwis_daily %>% filter(site_name == "Yellowstone River Livingston NWIS") %>% select(date, flowcfs, flowcfs_appcd) %>% spread(key = flowcfs_appcd, value = flowcfs) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)")%>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5, fillGraph = TRUE)
+```
+#### Rapidan River (Staunton)
+```{r, echo=FALSE}
+nwis_daily %>% filter(site_name == "Rapidan River NWIS") %>% select(date, flowcfs, flowcfs_appcd) %>% spread(key = flowcfs_appcd, value = flowcfs) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)")%>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5, fillGraph = TRUE)
+```
+#### Battle Run (Piney)
+```{r, echo=FALSE}
+nwis_daily %>% filter(site_name == "Battle Run NWIS") %>% select(date, flowcfs, flowcfs_appcd) %>% spread(key = flowcfs_appcd, value = flowcfs) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)")%>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5, fillGraph = TRUE)
+```
+#### South River (Paine)
+```{r, echo=FALSE}
+nwis_daily %>% filter(site_name == "South River Harriston NWIS") %>% select(date, flowcfs, flowcfs_appcd) %>% spread(key = flowcfs_appcd, value = flowcfs) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "flow (cfs)")%>% dyOptions(drawGrid = FALSE, axisLineWidth = 1.5, fillGraph = TRUE)
+```
+:::
+
+
 ### View data
 
 ```{r, fig.height=8, fig.width=10}
@@ -448,6 +611,16 @@ nwis_subdaily %>% filter(designation == "big") %>% ggplot() + geom_line(aes(x = 
 ```{r, fig.height=8, fig.width=10}
 #| fig-cap: "Stream flow (cfs) for Medium G NWIS gages"
 nwis_subdaily %>% filter(designation == "medium") %>% ggplot() + geom_line(aes(x = datetime, y = flowcfs)) + facet_wrap(~site_name, scales = "free_y" )
+```
+
+```{r, fig.height=8, fig.width=10}
+#| fig-cap: "Daily mean stream flow (cfs) for Big/Super G NWIS gages"
+nwis_daily %>% filter(designation == "big") %>% ggplot() + geom_line(aes(x = date, y = flowcfs)) + facet_wrap(~site_name, scales = "free_y")
+```
+
+```{r, fig.height=8, fig.width=10}
+#| fig-cap: "Stream flow (cfs) for Medium G NWIS gages"
+nwis_daily %>% filter(designation == "medium") %>% ggplot() + geom_line(aes(x = date, y = flowcfs)) + facet_wrap(~site_name, scales = "free_y" )
 ```
 
 ## Bind EcoD and NWIS
