@@ -6,6 +6,7 @@ execute:
   warning: FALSE
   message: FALSE
   cache: true
+  freeze: auto
 
 comments:
   hypothesis: 
@@ -34,7 +35,12 @@ book:
         - Big G Little g/WedgeModel.qmd
     - part: "Paper"
       chapters:
-        - Qualitative/QualitativePaper.qmd
+        - Qualitative/Overview.qmd
+        - Qualitative/SpaceTimeVar.qmd
+        - Qualitative/Hysteresis.qmd
+        - Qualitative/ModeledQ.qmd
+        - Qualitative/LowFlow.qmd
+        - Qualitative/Boxes.qmd
     - part: "DEPRECATED"   
       chapters:
         - Big G Little g/GgDiffKS.qmd
