@@ -114,13 +114,11 @@ badsites <- tibble(sheds) %>% select(Name, Shape_Area, DRNAREA, ELEV) %>% rename
 badsites
 ```
 
-
 Stream stats site information
 ```{r}
 streamstats_info <- tibble(sheds) %>% select(Name, DRNAREA) %>% rename(site_id = Name) %>% left_join(siteinfo %>% select(site_id, site_name))
-streamstats_info
+# streamstats_info
 ```
-
 
 Read flow statistics from geodatabases
 ```{r}
@@ -131,7 +129,7 @@ virginia <- st_read("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/
 wyoming <- st_read("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/StreamStats/points_wy7628/points_wy7628.gdb", layer = "FLOWSTATS")
 
 streamstats <- bind_rows(montana, massach, oregon, virginia, wyoming) %>% filter(!Name %in% c(badsites$site_id)) %>% rename(site_id = Name) %>% left_join(siteinfo %>% select(site_id, site_name)) %>% left_join(streamstats_info)
-streamstats
+head(streamstats)
 ```
 
 View provided flow statistics for each state. What is relevant to this paper?
@@ -142,7 +140,7 @@ View provided flow statistics for each state. What is relevant to this paper?
 * Virginia: lots of flow flow stats including 7 day 10 and 2 year low flow
 * Wyoming: nothing relevant
 
-```{r}
+```{r eval=FALSE}
 print("MONTANA")
 unique(montana$StatName)
 print("MASSACHUSETTS")
@@ -155,25 +153,34 @@ print("WYOMING")
 unique(wyoming$StatName)
 ```
 
-What statistics do all states have in common (minus Wyoming)? Only 7 day 10 year low flow. 
+Availability of flow statistics varies greatly by state. What statistics do all states have in common (minus Wyoming)? Only 7 day 10 year low flow is relevant. 
 ```{r}
 Reduce(intersect, list(unique(montana$StatName), unique(massach$StatName), unique(oregon$StatName), unique(virginia$StatName)))
 ```
 
-Create observed exceedance plotting function
-```{r}
 
+### West Brook exceedance
+
+For the West Brook, plot (annual) observed and StreamStats exceedance/duration curves and calculate absolute error
+```{r eval=FALSE, include=FALSE}
 vars <- unique(massach$StatName)[grep("Duration", unique(massach$StatName))][-1]
 
 # create plotting function
 myplotfun_ex <- function(sitename) {
   obs <- dat_clean %>% filter(site_name == sitename)
+  # stream stats duration
   preds <- streamstats %>% 
     filter(site_name == unique(obs$site_name), StatName %in% vars) %>% 
     mutate(percentile = parse_number(StatName)) %>% 
     mutate(flow_cms = Value*0.02831683199881, area_sqkm = DRNAREA*2.58999)
   preds <- add_daily_yield(data = preds %>% select(site_id, site_name, DRNAREA, area_sqkm, StatName, percentile, flow_cms), values = flow_cms, basin_area = as.numeric(unique(preds$area_sqkm)))
   preds <- preds %>% mutate(logYield = log(Yield_mm))
+  # stream stats low flow, 7 day 10 year
+  lowflow <- streamstats %>% 
+    filter(site_name == sitename, StatName == "7 Day 10 Year Low Flow") %>% 
+    mutate(flow_cms = Value*0.02831683199881, area_sqkm = DRNAREA*2.58999)
+  lowflow <- add_daily_yield(data = lowflow %>% select(site_id, site_name, DRNAREA, area_sqkm, StatName, flow_cms), values = flow_cms, basin_area = as.numeric(unique(lowflow$area_sqkm)))
+  lowflow <- lowflow %>% mutate(logYield = log(Yield_mm))
   # calculate exceedance probability by site
   exceeddat <- obs %>% 
     filter(!is.na(logYield)) %>%
@@ -184,26 +191,301 @@ myplotfun_ex <- function(sitename) {
     geom_line(data = exceeddat, aes(x = exceedance, y = logYield), size = 1) +
     geom_line(data = preds, aes(x = percentile, y = logYield), color = "red") + 
     geom_point(data = preds, aes(x = percentile, y = logYield), color = "red") +
+    geom_abline(intercept = unlist(lowflow$logYield), slope = 0, color = "red", linetype = "dashed") +
     xlab("Exceedance probability") + ylab("log(Yield, mm)") + ggtitle(sitename) +
     theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()))
 }  
-
 
 myplotfun_ex("Avery Brook")
 myplotfun_ex("Sanderson Brook")
 myplotfun_ex("Obear Brook Lower")
 myplotfun_ex("Mitchell Brook")
 myplotfun_ex("West Brook Reservoir")
+myplotfun_ex("West Brook Upper")
+myplotfun_ex("West Brook NWIS")
+```
 
+```{r}
+# set up
+vars <- unique(massach$StatName)[grep("Duration", unique(massach$StatName))][-1]
+sites <- c("Avery Brook", "Sanderson Brook", "Mitchell Brook", "Obear Brook Lower", "West Brook NWIS", "West Brook Upper")
+preds <- list()
+exceed <- list()
+joined <- list()
 
+# calcualte 
+for (i in 1:length(sites)) {
+  obs <- dat_clean %>% filter(site_name == sites[i])
+  # stream stats duration
+  p <- streamstats %>% 
+    filter(site_name == unique(obs$site_name), StatName %in% vars) %>% 
+    mutate(exceedance = parse_number(StatName)) %>% 
+    mutate(flow_cms = Value*0.02831683199881, area_sqkm = DRNAREA*2.58999)
+  p <- add_daily_yield(data = p %>% select(site_id, site_name, DRNAREA, area_sqkm, StatName, exceedance, flow_cms), values = flow_cms, basin_area = as.numeric(unique(p$area_sqkm)))
+  p <- p %>% mutate(logYield = log(Yield_mm))
+  preds[[i]] <- p
+  # calculate exceedance probability by site
+  exceeddat <- obs %>% 
+    filter(!is.na(logYield)) %>%
+    arrange(desc(logYield)) %>%
+    mutate(exceedance = 100/length(logYield)*1:length(logYield))
+  exceed[[i]] <- exceeddat
+  # join observed and streamstats exceedance, calculate error
+  joined[[i]] <- exceeddat %>% 
+    select(site_name, exceedance, logYield) %>%
+    mutate(exceedance = round(exceedance, digits = 0)) %>%
+    group_by(site_name, exceedance) %>%
+    summarize(logYield = mean(logYield)) %>%
+    ungroup() %>%
+    left_join(p %>%
+                select(site_name, exceedance, logYield) %>%
+                rename(logYield_ss = logYield)) %>%
+    mutate(error_abs = logYield_ss - logYield,
+           error_abs_real = exp(logYield_ss) - exp(logYield),
+           error_rel = (exp(logYield_ss) - exp(logYield)) / exp(logYield)) %>% 
+    filter(!is.na(error_abs))
+}
+preds <- do.call(rbind, preds) 
+exceed <- do.call(rbind, exceed)
+joined <- do.call(rbind, joined)
+joined_mean <- joined %>% group_by(exceedance) %>% summarize(error_abs = mean(error_abs, na.rm = TRUE))
+
+# preds <- preds %>% mutate(site_name = factor(site_name, levels = sites))
+# exceed <- exceed %>% mutate(site_name = factor(site_name, levels = sites))
+# joined <- joined %>% mutate(site_name = factor(site_name, levels = sites))
+
+# tibble for site labels
+siteslabs <- tibble(site_name = sites)
+
+### Colored by site
+# exceedance curves
+p1 <- ggplot() +
+  geom_line(data = exceed, aes(x = exceedance, y = logYield, color = site_name), size = 1) +
+  geom_line(data = preds, aes(x = exceedance, y = logYield), color = "black") + 
+  geom_point(data = preds, aes(x = exceedance, y = logYield), color = "black") +
+  geom_text(data = siteslabs, aes(x = Inf, y = Inf, label = site_name), vjust = 1.5, hjust = 1.05, size = 3) +
+  facet_wrap(~site_name, nrow = 3) +
+  xlab("Exceedance probability") + ylab("log(Yield, mm)") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                     panel.grid = element_blank(), strip.text.x = element_blank(), strip.background = element_blank(),
+                     legend.position = "none")
+# absolute error
+p2 <- ggplot(data = joined) +
+  geom_line(aes(x = exceedance, y = error_abs, group = site_name, color = site_name)) +
+  geom_point(aes(x = exceedance, y = error_abs, group = site_name, color = site_name)) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  geom_line(data = joined_mean, aes(x = exceedance, y = error_abs), size = 1) +
+  xlab("Exceedance probability") + ylab("Absolute error") + ylim(-2.1,0) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                     legend.position = "none")
+# combine
+annotate_figure(ggarrange(p1, p2, ncol = 2, labels = "auto"), top = text_grob("The West Brook, Massachusetts"))
+
+### No Color
+# exceedance curves
+p1 <- ggplot() +
+  geom_line(data = exceed, aes(x = exceedance, y = logYield), size = 1) +
+  geom_line(data = preds, aes(x = exceedance, y = logYield), color = "red") + 
+  geom_point(data = preds, aes(x = exceedance, y = logYield), color = "red") +
+  geom_text(data = siteslabs, aes(x = Inf, y = Inf, label = site_name), vjust = 1.5, hjust = 1.05, size = 3) +
+  facet_wrap(~site_name, nrow = 3) +
+  xlab("Exceedance probability") + ylab("log(Yield, mm)") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                     panel.grid = element_blank(), strip.text.x = element_blank(), strip.background = element_blank(),
+                     legend.position = "none")
+# absolute error
+p2 <- ggplot(data = joined) +
+  geom_line(aes(x = exceedance, y = error_abs, group = site_name)) +
+  geom_point(aes(x = exceedance, y = error_abs, group = site_name)) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  geom_line(data = joined_mean, aes(x = exceedance, y = error_abs), size = 1, col = "red") +
+  xlab("Exceedance probability") + ylab("Absolute error") + ylim(-2.1,0) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                     legend.position = "none")
+# combine
+annotate_figure(ggarrange(p1, p2, ncol = 2, labels = "auto"), top = text_grob("The West Brook, Massachusetts"))
 ```
 
 
+### Flathead mean monthly yield
+
+For the Flathead (Big Creek), plot observed and StreamStats mean monthly flow/yield and calculate absolute error
+```{r eval=FALSE, include=FALSE}
+vars <- unique(montana$StatName)[grep("Mean Flow", unique(montana$StatName))]
+
+# create plotting function
+myplotfun_mon <- function(sitename) {
+  # filter observed data
+  obs <- dat_clean %>% 
+  filter(site_name == sitename) %>%
+    mutate(MonthName = factor(MonthName, levels = c("Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep")))
+  # calculate monthly means
+  obs_mon <- obs %>%
+    group_by(WaterYear, MonthName) %>%
+    summarize(logYield = mean(logYield)) %>%
+    ungroup() %>%
+    mutate(MonthName = factor(MonthName, levels = c("Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep")),
+           WaterYear = factor(WaterYear)) %>% 
+    complete(WaterYear, MonthName)
+  # get monthly min/max for ribbon
+  hull <- obs_mon %>% 
+    group_by(MonthName) %>% 
+    summarize(min_logYield = min(logYield, na.rm = TRUE), max_logYield = max(logYield, na.rm = TRUE)) %>% 
+    ungroup()
+  # get StreamStats mean monthly flow
+  preds <- streamstats %>% 
+    filter(site_name == sitename, StatName %in% vars, !is.na(AreaSqMi)) %>% 
+    mutate(MonthName = substr(StatName, 1, nchar(StatName)-10),
+           Month = parse_number(StatLabel)) %>% 
+    mutate(MonthName = factor(recode(MonthName, "January" = "Jan", "February" = "Feb", "March" = "Mar", "April" = "Apr", "June" = "Jun", "July" = "Jul", "August" = "Aug", "September" = "Sep", "October" = "Oct", "November" = "Nov", "December" = "Dec"), levels = c("Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep"))) %>%
+    mutate(flow_cms = Value*0.02831683199881, area_sqkm = AreaSqMi*2.58999)
+  preds <- add_daily_yield(data = preds %>% select(site_id, site_name, area_sqkm, MonthName, Month, flow_cms), values = flow_cms, basin_area = as.numeric(unique(preds$area_sqkm)))
+  preds <- preds %>% mutate(logYield = log(Yield_mm))
+  # stream stats low flow, 7 day 10 year
+  lowflow <- streamstats %>% 
+    filter(site_name == sitename, StatName == "7 Day 10 Year Low Flow") %>% 
+    mutate(flow_cms = Value*0.02831683199881, area_sqkm = DRNAREA*2.58999)
+  lowflow <- add_daily_yield(data = lowflow %>% select(site_id, site_name, DRNAREA, area_sqkm, StatName, flow_cms), values = flow_cms, basin_area = as.numeric(unique(lowflow$area_sqkm)))
+  lowflow <- lowflow %>% mutate(logYield = log(Yield_mm))
+  # plot
+  print(ggplot() +
+          geom_ribbon(data = hull, aes(ymin = min_logYield, ymax = max_logYield, x = as.numeric(MonthName)), fill = "gray") +
+          geom_line(data = obs_mon, aes(y = logYield, x = as.numeric(MonthName), group = WaterYear)) +
+          geom_point(data = obs_mon, aes(y = logYield, x = as.numeric(MonthName), group = WaterYear, shape = WaterYear)) +
+          geom_line(data = preds, aes(y = logYield, x = as.numeric(MonthName), group = site_name), color = "red") +
+          geom_point(data = preds, aes(y = logYield, x = as.numeric(MonthName)), color = "red") +
+          geom_abline(intercept = unlist(lowflow$logYield), slope = 0, color = "red", linetype = "dashed") +
+          theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +  
+          ylab("Monthly mean log(Yield, mm/day)") + xlab("Month") + ggtitle(sitename) +
+          scale_x_continuous(breaks = 1:12, labels = levels(obs_mon$MonthName)))
+}
+
+myplotfun_mon("Big Creek NWIS")
+myplotfun_mon("Hallowat Creek NWIS")
+myplotfun_mon("WernerCreek")
+myplotfun_mon("LangfordCreekUpper")
+myplotfun_mon("HallowattCreekLower")
+
+```
+
+```{r}
+# set up
+vars <- unique(montana$StatName)[grep("Mean Flow", unique(montana$StatName))]
+sites <- c("Hallowat Creek NWIS", "HallowattCreekLower", "WernerCreek", "LangfordCreekUpper", "Big Creek NWIS", "McGeeCreekLower")
+preds_list <- list()
+obs_list <- list()
+hull_list <- list()
+join_list <- list()
+
+# calcualate 
+for (i in 1:length(sites)) {
+  # filter observed data
+  obs <- dat_clean %>% 
+  filter(site_name == sites[i]) %>%
+    mutate(MonthName = factor(MonthName, levels = c("Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep")))
+  # calculate monthly means
+  obs_mon <- obs %>%
+    group_by(site_name, WaterYear, MonthName) %>%
+    summarize(logYield = mean(logYield)) %>%
+    ungroup() %>%
+    mutate(MonthName = factor(MonthName, levels = c("Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep")),
+           WaterYear = factor(WaterYear)) %>% 
+    complete(site_name, WaterYear, MonthName)
+  # get monthly min/max for ribbon
+  hull <- obs_mon %>% 
+    group_by(site_name, MonthName) %>% 
+    summarize(min_logYield = min(logYield, na.rm = TRUE), max_logYield = max(logYield, na.rm = TRUE)) %>% 
+    ungroup()
+  # get StreamStats mean monthly flow
+  preds <- streamstats %>% 
+    filter(site_name == sites[i], StatName %in% vars, !is.na(AreaSqMi)) %>% 
+    mutate(MonthName = substr(StatName, 1, nchar(StatName)-10),
+           Month = parse_number(StatLabel)) %>% 
+    mutate(MonthName = factor(recode(MonthName, "January" = "Jan", "February" = "Feb", "March" = "Mar", "April" = "Apr", "June" = "Jun", "July" = "Jul", "August" = "Aug", "September" = "Sep", "October" = "Oct", "November" = "Nov", "December" = "Dec"), levels = c("Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep"))) %>%
+    mutate(flow_cms = Value*0.02831683199881, area_sqkm = AreaSqMi*2.58999)
+  preds <- add_daily_yield(data = preds %>% select(site_id, site_name, area_sqkm, MonthName, Month, flow_cms), values = flow_cms, basin_area = as.numeric(unique(preds$area_sqkm)))
+  preds <- preds %>% mutate(logYield = log(Yield_mm))
+  # join and calculate error
+  join_list[[i]] <- obs_mon %>%
+    left_join(preds %>% select(site_name, MonthName, logYield) %>% rename(logYield_ss = logYield)) %>%
+    mutate(error_abs = logYield_ss - logYield,
+           error_abs_real = exp(logYield_ss) - exp(logYield),
+           error_rel = (exp(logYield_ss) - exp(logYield)) / exp(logYield))
+  # store in list
+  preds_list[[i]] <- preds
+  obs_list[[i]] <- obs_mon
+  hull_list[[i]] <- hull
+}
+preds <- do.call(rbind, preds_list) 
+obs_mon <- do.call(rbind, obs_list)
+hull <- do.call(rbind, hull_list)
+joined <- do.call(rbind, join_list)
+joined_mean <- joined %>% group_by(MonthName) %>% summarise(error_abs = mean(error_abs, na.rm = TRUE))
+
+# tibble for site labels
+siteslabs <- tibble(site_name = sites, site_lab = c("Hallowatt Upper", "Hallowatt Lower", "Werner", "Langford Upper", "Big NWIS", "McGee Lower"))
 
 
+### Colored by site
+# observed and StreamStats monthly flow
+p1 <- ggplot() +
+  geom_ribbon(data = hull, aes(ymin = min_logYield, ymax = max_logYield, x = as.numeric(MonthName), fill = site_name), alpha = 0.3) +
+  geom_line(data = obs_mon, aes(y = logYield, x = as.numeric(MonthName), group = WaterYear, color = site_name)) +
+  geom_point(data = obs_mon, aes(y = logYield, x = as.numeric(MonthName), group = WaterYear, shape = WaterYear, color = site_name)) +
+  geom_line(data = preds, aes(y = logYield, x = as.numeric(MonthName), group = site_name), color = "black") +
+  geom_point(data = preds, aes(y = logYield, x = as.numeric(MonthName)), color = "black") +
+  geom_text(data = siteslabs, aes(x = -Inf, y = Inf, label = site_lab), vjust = 1.5, hjust = -0.05, size = 3) +
+  facet_wrap(~site_name, ncol = 2) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
+                     strip.text.x = element_blank(), strip.background = element_blank()) +  
+  ylab("Monthly mean log(Yield)") + xlab("Month") +
+  scale_x_continuous(breaks = 1:12, labels = c("O", "N", "D", "J", "F", "M", "A", "M", "J", "J", "A", "S"))
+# absolute error by month
+p2 <- ggplot() +
+  geom_line(data = joined, aes(x = as.numeric(MonthName), y = error_abs, shape = WaterYear, color = site_name)) +
+  geom_point(data = joined, aes(x = as.numeric(MonthName), y = error_abs, shape = WaterYear, color = site_name)) +
+  geom_line(data = joined_mean, aes(x = as.numeric(MonthName), y = error_abs), size = 1) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  xlab("Month") + ylab("Absolute error") +
+  scale_x_continuous(breaks = 1:12, labels = c("O", "N", "D", "J", "F", "M", "A", "M", "J", "J", "A", "S")) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                     legend.position = "none")
+# combine
+annotate_figure(ggarrange(p1, p2, ncol = 2, labels = "auto"), top = text_grob("North Fork Flathead River, Montana"))
+
+
+### No color
+# observed and StreamStats monthly flow
+p1 <- ggplot() +
+  geom_ribbon(data = hull, aes(ymin = min_logYield, ymax = max_logYield, x = as.numeric(MonthName)), fill = "grey80") +
+  geom_line(data = obs_mon, aes(y = logYield, x = as.numeric(MonthName), group = WaterYear)) +
+  geom_point(data = obs_mon, aes(y = logYield, x = as.numeric(MonthName), group = WaterYear, shape = WaterYear)) +
+  geom_line(data = preds, aes(y = logYield, x = as.numeric(MonthName), group = site_name), color = "red") +
+  geom_point(data = preds, aes(y = logYield, x = as.numeric(MonthName)), color = "red") +
+  geom_text(data = siteslabs, aes(x = -Inf, y = Inf, label = site_lab), vjust = 1.5, hjust = -0.05, size = 3) +
+  facet_wrap(~site_name, ncol = 2) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
+                     strip.text.x = element_blank(), strip.background = element_blank()) +  
+  ylab("Monthly mean log(Yield)") + xlab("Month") +
+  scale_x_continuous(breaks = 1:12, labels = c("O", "N", "D", "J", "F", "M", "A", "M", "J", "J", "A", "S"))
+# absolute error by month
+p2 <- ggplot() +
+  geom_line(data = joined, aes(x = as.numeric(MonthName), y = error_abs, group = interaction(site_name, WaterYear))) +
+  geom_point(data = joined, aes(x = as.numeric(MonthName), y = error_abs, shape = WaterYear)) +
+  geom_line(data = joined_mean, aes(x = as.numeric(MonthName), y = error_abs), size = 1, col = "red") +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  xlab("Month") + ylab("Absolute error") +
+  scale_x_continuous(breaks = 1:12, labels = c("O", "N", "D", "J", "F", "M", "A", "M", "J", "J", "A", "S")) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                     legend.position = "none")
+# combine
+annotate_figure(ggarrange(p1, p2, ncol = 2, labels = "auto"), top = text_grob("North Fork Flathead River, Montana"))
+```
 
 
 ## PRMS
+
+
 
 
 ## UM Climatology
