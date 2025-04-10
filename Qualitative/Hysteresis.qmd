@@ -79,7 +79,7 @@ wateravail <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDroug
 
 Find little g site/water years with at least 90% data completeness, join big and little g daily yield data
 ```{r}
-# find little g site/water yeras with at least 90% data availability
+# find little g site/water years with at least 90% data availability
 mysiteyrs <- dat_clean %>% 
   group_by(site_name, basin, subbasin, region, WaterYear) %>% 
   summarize(numdays = n(),
@@ -90,11 +90,31 @@ mysiteyrs <- dat_clean %>%
   left_join(wateravail %>% select(basin, WaterYear, totalyield_z))
 
 # join big G data to little g
-dat_clean_hyst <- dat_clean %>% 
-  left_join(mysiteyrs) %>%
-  filter(forhyst == 1) %>%
-  left_join(dat_clean_big %>% select(basin, date, Yield_mm, logYield) %>% rename(Yield_mm_big = Yield_mm, logYield_big = logYield)) %>%
-  left_join(wateravail %>% select(basin, WaterYear, totalyield_z))
+# dat_clean_hyst <- dat_clean %>% 
+#   left_join(mysiteyrs) %>%
+#   filter(forhyst == 1) %>%
+#   left_join(dat_clean_big %>% select(basin, date, Yield_mm, logYield) %>% rename(Yield_mm_big = Yield_mm, logYield_big = logYield)) %>%
+#   left_join(wateravail %>% select(basin, WaterYear, totalyield_z))
+
+hystlist <- list()
+for (i in 1:dim(mysiteyrs)[1]) {
+  tt <- dat_clean %>% filter(site_name == mysiteyrs$site_name[i], WaterYear == mysiteyrs$WaterYear[i])
+  tt <- fill_missing_dates(tt, dates = date, water_year_start = 10, pad_ends = TRUE)
+  tt <- tt %>% 
+    mutate(site_name = mysiteyrs$site_name[i],
+           basin = mysiteyrs$basin[i],
+           subbasin = mysiteyrs$subbasin[i],
+           region = mysiteyrs$region[i]) %>%
+    select(site_name, basin, subbasin, region, date, Yield_mm, logYield)
+  tt <- add_date_variables(tt, dates = date, water_year_start = 10)
+  hystlist[[i]] <- tt %>% 
+    left_join(dat_clean_big %>% 
+                select(basin, date, Yield_mm, logYield) %>% 
+                rename(Yield_mm_big = Yield_mm, logYield_big = logYield)) %>%
+    mutate(logYield_big = na.approx(logYield_big)) %>%
+    left_join(wateravail %>% select(basin, WaterYear, totalyield_z))
+}
+dat_clean_hyst <- do.call(rbind, hystlist)
 
 # view data
 mysiteyrs
@@ -364,7 +384,7 @@ for (j in 1:nrow(mysiteyrs)) {
   event_list <- list()
   for (i in 1:max(dd$eventid, na.rm = TRUE)) {
     # filter by each event and normalized big and little Yield
-    ddd <- dd %>% filter(eventid == i)
+    ddd <- dd %>% filter(eventid == i, !is.na(logYield), !is.na(logYield_big))
     dddd <- dd %>% filter(date %in% c(min(ddd$date)-1, max(ddd$date)+1))
     ddd <- ddd %>% 
       bind_rows(dddd) %>% 
@@ -427,13 +447,13 @@ write_csv(hysteresis, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrough
 Load hysteresis file
 ```{r}
 hysteresis <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/hysteresis.csv")
-hysteresis <- hysteresis %>% 
-  group_by(subbasin, WaterYear) %>%
-  mutate(eventid = as.numeric(as.factor(mindate))) %>%
-  ungroup()
+# hysteresis <- hysteresis %>% 
+#   group_by(subbasin, WaterYear) %>%
+#   mutate(eventid = as.numeric(as.factor(mindate))) %>%
+#   ungroup()
 ```
 
-### Summary plots
+### Visualize hysteresis
 
 Distribution of hystersis index by subbasin
 ```{r}
@@ -493,7 +513,7 @@ hysteresis %>%
 ```
 
 
-### Bi-plots
+### Site-year summary
 
 Characterize site-years along axes of mean annual event duration/magnitude and magnitude of hysteres.
 
@@ -606,7 +626,7 @@ ggarrange(p1, p2, nrow = 1)
 ```
 
 
-## Single events
+## By event
 
 ```{r}
 mycols <- c(brewer.pal(8, "Dark2"), "dodgerblue", "darkorchid")
@@ -643,9 +663,123 @@ dat_clean_hyst %>%
   theme_bw() + 
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
   
-
 ```
 
+
+```{r warning=FALSE}
+temp2 <- hysteresis %>% 
+  #filter(subbasin == "West Brook") %>%
+  mutate(eventid_global = paste(WaterYear, eventid, sep = "-")) %>%
+  group_by(subbasin, eventid_global, mindate, totalyieldevent_big) %>%
+  summarize(nsites = n(), sdhyst = sd(hysteresis), meanhyst = mean(abs(hysteresis)), sd_totalyieldevent_little = sd(totalyieldevent_little)) %>%
+  ungroup()
+
+temp2$antecedant <- NA
+for (i in 1:dim(temp2)[1]) {
+  temp2$antecedant[i] <- sum(unlist(dat_clean_big %>% filter(subbasin == unique(temp2$subbasin), date < temp2$mindate[i], date >= temp2$mindate[i]-days(30)) %>% select(Yield_mm)))
+}
+head(temp2)
+```
+
+Larger events at big G (cumulative flow) tend to be associated with larger events at little g's.
+```{r}
+hysteresis %>% #filter(subbasin == "West Brook") %>%
+  mutate(eventid_global = paste(WaterYear, eventid, sep = "-")) %>%
+  ggplot(aes(x = totalyieldevent_big, y = totalyieldevent_little)) + 
+  geom_point(aes(color = eventid_global)) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+  geom_quantile(color = "black") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none") +
+  facet_wrap(~subbasin, scales = "free")
+```
+
+Variation among little g flow volume also increases with event magnitude.
+```{r}
+temp2 %>%
+  ggplot(aes(x = log(totalyieldevent_big), y = log(sd_totalyieldevent_little))) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  xlab("(log) Cumulative yield at big G") + ylab("(log) SD cumulative yield at little G") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none") +
+  facet_wrap(~subbasin, scales = "free")
+```
+
+Events with greater average hysteresis also tend to be more variable among the little g's
+```{r fig.width=8, fig.height=4}
+p1 <- temp2 %>%
+  ggplot(aes(x = meanhyst, y = sdhyst)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  xlab("Mean hysteresis (among little g's)") + ylab("SD hysteresis (among little g's)") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
+
+p2 <- temp2 %>%
+  ggplot(aes(x = log(meanhyst), y = log(sdhyst))) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  xlab("(log) Mean hysteresis (among little g's)") + ylab("(log) SD hysteresis (among little g's)") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
+
+ggarrange(p1, p2, ncol = 2)
+```
+
+
+Generally, larger events (cumulative yield at big G) lead to greater mean hysteresis among little g's and more variation in hysteresis among little g's
+```{r}
+p1 <- temp2 %>%
+  filter(sdhyst > 0) %>%
+  ggplot(aes(x = (totalyieldevent_big), y = (meanhyst))) +
+  geom_point() +
+  geom_smooth() +
+  xlab("Cumulative yield at big G") + ylab("Mean hysteresis") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
+
+p2 <- temp2 %>%
+  filter(sdhyst > 0) %>%
+  ggplot(aes(x = (totalyieldevent_big), y = (sdhyst))) +
+  geom_point() +
+  geom_smooth() +
+  xlab("Cumulative yield at big G") + ylab("SD hysteresis)") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
+
+p3 <- temp2 %>%
+  filter(sdhyst > 0) %>%
+  ggplot(aes(x = log(totalyieldevent_big), y = log(meanhyst))) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  xlab("(log) Cumulative yield at big G") + ylab("(log) Mean hysteresis") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
+
+p4 <- temp2 %>%
+  filter(sdhyst > 0) %>%
+  ggplot(aes(x = log(totalyieldevent_big), y = log(sdhyst))) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  xlab("(log) Cumulative yield at big G") + ylab("(log) SD hysteresis") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
+
+ggarrange(p1, p2, p3, p4, nrow = 2, ncol = 2)
+```
+
+
+Events with greater average hysteresis also tend to be more variable among the little g's
+```{r fig.width=8, fig.height=4}
+p1 <- temp2 %>%
+  ggplot(aes(x = antecedant, y = meanhyst)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  xlab("Antecedant cumulative flow (30 days)") + ylab("Mean hysteresis") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
+
+p2 <- temp2 %>%
+  ggplot(aes(x = antecedant, y = sdhyst)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  xlab("Antecedant cumulative flow (30 days)") + ylab("SD hysteresis") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
+
+ggarrange(p1, p2, ncol = 2)
+```
 
 
 
@@ -659,7 +793,7 @@ Set parameters and site-year
 alp <- 0.95
 numpass <- 3
 thresh <- 0.75
-dd <- dat_clean_hyst %>% filter(site_name == "West Brook Reservoir", WaterYear == 2023)
+dd <- dat_clean_hyst %>% filter(site_name == "McGeeCreekLower", WaterYear == 2019)
 ```
 
 baseflow separation
@@ -743,14 +877,14 @@ dd %>%
 
 Select and view specific event and normalize data
 ```{r eval=FALSE}
-ddd <- dd %>% filter(eventid == 2)
+ddd <- dd %>% filter(eventid == 1, !is.na(logYield), !is.na(logYield_big))
 dddd <- dd %>% filter(date %in% c(min(ddd$date)-1, max(ddd$date)+1))
 ddd <- ddd %>% 
   bind_rows(dddd) %>% 
   arrange(date) %>% 
-  mutate(weight = (logYield_big - min(logYield_big)) / (max(logYield_big) - min(logYield_big)),
-         yield_little_norm = (logYield - min(logYield)) / (max(logYield) - min(logYield)),
-         yield_big_norm = (logYield_big - min(logYield_big)) / (max(logYield_big) - min(logYield_big)))
+  mutate(weight = (logYield_big - min(logYield_big, na.rm = TRUE)) / (max(logYield_big, na.rm = TRUE) - min(logYield_big, na.rm = TRUE)),
+         yield_little_norm = (logYield - min(logYield, na.rm = TRUE)) / (max(logYield, na.rm = TRUE) - min(logYield, na.rm = TRUE)),
+         yield_big_norm = (logYield_big - min(logYield_big, na.rm = TRUE)) / (max(logYield_big, na.rm = TRUE) - min(logYield_big, na.rm = TRUE)))
 
 ddd %>%
   ggplot(aes(x = yield_big_norm, y = yield_little_norm, color = date)) +
