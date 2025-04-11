@@ -212,8 +212,9 @@ sites <- c("Avery Brook", "Sanderson Brook", "Mitchell Brook", "Obear Brook Lowe
 preds <- list()
 exceed <- list()
 joined <- list()
+joined_full <- list()
 
-# calcualte 
+# calcualate 
 for (i in 1:length(sites)) {
   obs <- dat_clean %>% filter(site_name == sites[i])
   # stream stats duration
@@ -231,7 +232,7 @@ for (i in 1:length(sites)) {
     mutate(exceedance = 100/length(logYield)*1:length(logYield))
   exceed[[i]] <- exceeddat
   # join observed and streamstats exceedance, calculate error
-  joined[[i]] <- exceeddat %>% 
+  j <- exceeddat %>% 
     select(site_name, exceedance, logYield) %>%
     mutate(exceedance = round(exceedance, digits = 0)) %>%
     group_by(site_name, exceedance) %>%
@@ -242,21 +243,31 @@ for (i in 1:length(sites)) {
                 rename(logYield_ss = logYield)) %>%
     mutate(error_abs = logYield_ss - logYield,
            error_abs_real = exp(logYield_ss) - exp(logYield),
-           error_rel = (exp(logYield_ss) - exp(logYield)) / exp(logYield)) %>% 
-    filter(!is.na(error_abs))
+           error_rel = (exp(logYield_ss) - exp(logYield)) / exp(logYield))
+  joined[[i]] <- j %>% filter(!is.na(error_abs))
+  joined_full[[i]] <- j
 }
 preds <- do.call(rbind, preds) 
 exceed <- do.call(rbind, exceed)
 joined <- do.call(rbind, joined)
+joined_full <- do.call(rbind, joined_full)
 joined_mean <- joined %>% group_by(exceedance) %>% summarize(error_abs = mean(error_abs, na.rm = TRUE))
 
 # preds <- preds %>% mutate(site_name = factor(site_name, levels = sites))
 # exceed <- exceed %>% mutate(site_name = factor(site_name, levels = sites))
 # joined <- joined %>% mutate(site_name = factor(site_name, levels = sites))
 
+# calculate among size variation for StreamStats and observed exceedance 
+vardat_ss <- joined %>% group_by(exceedance) %>% summarize(exdsd = sd(logYield_ss))
+vardat_obs <- joined_full %>% group_by(exceedance) %>% summarize(exdsd = sd(logYield))
+
 # tibble for site labels
 siteslabs <- tibble(site_name = sites)
+```
 
+::: panel-tabset
+#### Color
+```{r}
 ### Colored by site
 # exceedance curves
 p1 <- ggplot() +
@@ -280,7 +291,9 @@ p2 <- ggplot(data = joined) +
                      legend.position = "none")
 # combine
 annotate_figure(ggarrange(p1, p2, ncol = 2, labels = "auto"), top = text_grob("The West Brook, Massachusetts"))
-
+```
+#### No color
+```{r}
 ### No Color
 # exceedance curves
 p1 <- ggplot() +
@@ -303,6 +316,29 @@ p2 <- ggplot(data = joined) +
   theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
                      legend.position = "none")
 # combine
+annotate_figure(ggarrange(p1, p2, ncol = 2, labels = "auto"), top = text_grob("The West Brook, Massachusetts"))
+```
+:::
+
+Does StreamStats misrepresent among-site variation in flow duration?
+```{r}
+p1 <- ggplot() +
+  geom_line(data = vardat_obs, aes(x = exceedance, y = exdsd), size = 1, color = "grey60") +
+  geom_line(data = vardat_ss, aes(x = exceedance, y = exdsd), color = "black") + 
+  geom_point(data = vardat_ss, aes(x = exceedance, y = exdsd), color = "black") +
+  xlab("Exceedance probability") + ylab("Among-site standard deviation in log(Yield, mm)") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+p2 <- vardat_obs %>% 
+  left_join(vardat_ss %>% rename(exdsd_ss = exdsd)) %>% 
+  mutate(diff = exdsd_ss - exdsd) %>%
+  filter(!is.na(diff)) %>%
+  ggplot() +
+  geom_line(aes(x = exceedance, y = diff)) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  xlab("Exceedance probability") + ylab("Difference") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) 
+
 annotate_figure(ggarrange(p1, p2, ncol = 2, labels = "auto"), top = text_grob("The West Brook, Massachusetts"))
 ```
 
@@ -425,7 +461,25 @@ joined_mean <- joined %>% group_by(MonthName) %>% summarise(error_abs = mean(err
 # tibble for site labels
 siteslabs <- tibble(site_name = sites, site_lab = c("Hallowatt Upper", "Hallowatt Lower", "Werner", "Langford Upper", "Big NWIS", "McGee Lower"))
 
+# calculate among site variation for StreamStats and observed mean monthly flow (mean across years) 
+vardat <- preds %>% 
+  group_by(MonthName) %>% 
+  summarize(qsd_ss = sd(logYield)) %>%
+  ungroup() %>%
+  left_join(obs_mon %>% 
+  group_by(site_name, MonthName) %>% 
+  summarize(logYield = mean(logYield, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  group_by(MonthName) %>%
+  summarize(qsd_obs = sd(logYield)) %>%
+  ungroup()) %>%
+  mutate(diff = qsd_ss - qsd_obs, nummon = as.numeric(MonthName))
+```
 
+
+::: panel-tabset
+#### Color
+```{r}
 ### Colored by site
 # observed and StreamStats monthly flow
 p1 <- ggplot() +
@@ -452,8 +506,9 @@ p2 <- ggplot() +
                      legend.position = "none")
 # combine
 annotate_figure(ggarrange(p1, p2, ncol = 2, labels = "auto"), top = text_grob("North Fork Flathead River, Montana"))
-
-
+```
+#### No color
+```{r}
 ### No color
 # observed and StreamStats monthly flow
 p1 <- ggplot() +
@@ -481,7 +536,30 @@ p2 <- ggplot() +
 # combine
 annotate_figure(ggarrange(p1, p2, ncol = 2, labels = "auto"), top = text_grob("North Fork Flathead River, Montana"))
 ```
+:::
 
+
+Does StreamStats misrepresent among-site variation in mean monthly yield?
+```{r}
+p1 <- vardat %>%
+  ggplot() +
+  geom_line(aes(x = nummon, y = qsd_obs), size = 1, color = "grey60") +
+  geom_line(aes(x = nummon, y = qsd_ss), color = "black") + 
+  geom_point(aes(x = nummon, y = qsd_ss), color = "black") +
+  xlab("Month") + ylab("Among-site standard deviation in log(Yield, mm)") +
+  scale_x_continuous(breaks = 1:12, labels = c("O", "N", "D", "J", "F", "M", "A", "M", "J", "J", "A", "S")) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+p2 <- vardat %>%
+  ggplot() +
+  geom_line(aes(x = nummon, y = diff)) + 
+  xlab("Month") + ylab("Difference") +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  scale_x_continuous(breaks = 1:12, labels = c("O", "N", "D", "J", "F", "M", "A", "M", "J", "J", "A", "S")) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+annotate_figure(ggarrange(p1, p2, ncol = 2, labels = "auto"), top = text_grob("North Fork Flathead River, Montana"))
+```
 
 ## PRMS
 
