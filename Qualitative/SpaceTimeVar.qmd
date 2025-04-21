@@ -32,6 +32,8 @@ library(hydroGOF)
 library(rptR)
 library(moments)
 library(fmsb)
+library(terra)
+library(ggspatial)
 ```
 
 
@@ -77,9 +79,36 @@ climdf <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/E
 climdf_summ <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/Daymet_climate_summary.csv")
 ```
 
-Water availability
+Water availability. In western, snowmelt-dominated basins, annual (water year) total yield is strongly related to summer total yield. But in eastern, rain-dominated basins, the relationship is much weaker, suggesting "faster" response to climate forcing.
 ```{r}
-wateravail <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/BigG_wateravailability_annual.csv")
+wateravail <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/BigG_wateravailability_annual.csv") %>%
+  filter(!is.na(totalyield), !is.na(totalyield_sum)) %>%
+  group_by(site_name) %>%
+  mutate(tyz_perc = percentile(totalyield_z),
+         tyz_sum_perc = percentile(totalyield_sum_z)) %>%
+  mutate(tyz_perc = ifelse(is.na(tyz_perc), 0, tyz_perc),
+         tyz_sum_perc = ifelse(is.na(tyz_sum_perc), 0, tyz_sum_perc))
+
+wateravail %>% 
+  ggplot(aes(x = tyz_perc, y = tyz_sum_perc)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  xlab("Total annual yield (percentile)") + ylab("Total summer yield (percentile)") + 
+  facet_wrap(~basin) + theme_bw()
+```
+
+
+Watersheds
+```{r}
+sheds_list <- list()
+myfiles <- list.files(path = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/", pattern = ".shp")
+for (i in 1:length(myfiles)) {
+  sheds_list[[i]] <- st_read(paste("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/", myfiles[i], sep = ""))
+}
+sheds <- do.call(rbind, sheds_list) %>% 
+  mutate(site_id = ifelse(site_id == "SP01", "SP07", ifelse(site_id == "SP07", "SP01", site_id))) %>%
+  left_join(siteinfo)
+#mapview(sheds %>% arrange(desc(area_sqmi)), alpha.regions = 0.2)
 ```
 
 ## Order sites
@@ -96,6 +125,266 @@ donnerorder <- c("Fish Creek NWIS", "Donner Blitzen ab Fish NWIS", "Donner Blitz
 ```
 
 
+## Map objects
+
+Currently not being used...
+```{r WEST BROOK, eval=FALSE, include=FALSE}
+mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Mass_Watersheds.shp")
+mysheds <- mysheds[mysheds$site_id == "WBR",]
+mynet <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/Mass_Streams.shp")
+crs(mynet) <- crs(mysheds)
+mynet <- crop(mynet, mysheds)
+
+# hillshade
+myrast <- rast("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Spatial data/Elevation/WestBrook_DEM_10m_nc.tif")
+myrast <- mask(crop(myrast, mysheds), mysheds)
+slo <- terrain(myrast, "slope", unit = "radians") 
+asp <- terrain(myrast, "aspect", unit = "radians")
+hill <- shade(slope = slo, aspect = asp, angle = 40, direction = 270)
+hilldf <- as.data.frame(hill, xy = TRUE)
+
+# get lakes
+lakes <- get_waterbodies(AOI = siteinfo_sp %>% filter(site_name == "West Brook NWIS"), buffer = 10000)
+lakes <- lakes %>% filter(gnis_name %in% c("Northampton Reservoir Upper", "Northampton Reservoir"))
+
+# little g points
+mylittleg <- siteinfo_sp %>% filter(site_name %in% wborder) %>% mutate(site_name = factor(site_name, levels = wborder))
+
+# create map
+map_WB <- ggplot() +
+  geom_raster(data = hilldf, aes(x = x, y = y, fill = hillshade), show.legend = FALSE) +
+  scale_fill_distiller(palette = "Greys") +
+  geom_sf(data = st_as_sf(mysheds), color = "black", fill = NA, linewidth = 0.4) + 
+  geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 1) +
+  geom_sf(data = lakes, color = "royalblue4", fill = "lightskyblue1", linewidth = 0.5) +
+  geom_sf(data = mylittleg) +
+  labs(color = "") + annotation_scale() +
+  coord_sf(xlim = range(st_coordinates(mylittleg)[,1]), ylim = range(st_coordinates(mylittleg)[,2])) +
+  theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none")
+map_WB
+rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg")
+```
+
+```{r STAUNTON RIVER, eval=FALSE, include=FALSE}
+mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Shen_Watersheds.shp")
+mysheds <- mysheds[mysheds$site_id == "SR_10FL",]
+mynet <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/Shen_Streams.shp")
+crs(mynet) <- crs(mysheds)
+mynet <- crop(mynet, mysheds)
+
+# hillshade
+myrast <- rast("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Spatial data/Elevation/Shenandoah_DEM_10m_nc.tif")
+myrast <- mask(crop(myrast, mysheds), mysheds)
+slo <- terrain(myrast, "slope", unit = "radians") 
+asp <- terrain(myrast, "aspect", unit = "radians")
+hill <- shade(slope = slo, aspect = asp, angle = 40, direction = 270)
+hilldf <- as.data.frame(hill, xy = TRUE)
+
+# little g points
+mylittleg <- siteinfo_sp %>% filter(site_name %in% stauntorder) %>% mutate(site_name = factor(site_name, levels = stauntorder))
+
+# create map
+map_ST <- ggplot() +
+  geom_raster(data = hilldf, aes(x = x, y = y, fill = hillshade), show.legend = FALSE) +
+  scale_fill_distiller(palette = "Greys") +
+  geom_sf(data = st_as_sf(mysheds), color = "black", fill = NA, linewidth = 0.4) + 
+  geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 1) +
+  geom_sf(data = mylittleg) +
+  labs(color = "") + annotation_scale() +
+  coord_sf(xlim = range(st_coordinates(mylittleg)[,1]), ylim = range(st_coordinates(mylittleg)[,2])) +
+  theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none")
+map_ST
+rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg")
+```
+
+```{r PAINE RUN, eval=FALSE, include=FALSE}
+mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Shen_Watersheds.shp")
+mysheds <- mysheds[mysheds$site_id == "PA_10FL",]
+mynet <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/Shen_Streams.shp")
+crs(mynet) <- crs(mysheds)
+mynet <- crop(mynet, mysheds)
+
+# hillshade
+myrast <- rast("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Spatial data/Elevation/Shenandoah_DEM_10m_nc.tif")
+myrast <- mask(crop(myrast, mysheds), mysheds)
+slo <- terrain(myrast, "slope", unit = "radians") 
+asp <- terrain(myrast, "aspect", unit = "radians")
+hill <- shade(slope = slo, aspect = asp, angle = 40, direction = 270)
+hilldf <- as.data.frame(hill, xy = TRUE)
+
+# little g points
+mylittleg <- siteinfo_sp %>% filter(site_name %in% paineorder) %>% mutate(site_name = factor(site_name, levels = paineorder))
+
+# create map
+map_PA <- ggplot() +
+  geom_raster(data = hilldf, aes(x = x, y = y, fill = hillshade), show.legend = FALSE) +
+  scale_fill_distiller(palette = "Greys") +
+  geom_sf(data = st_as_sf(mysheds), color = "black", fill = NA, linewidth = 0.4) + 
+  geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 1) +
+  geom_sf(data = mylittleg) +
+  labs(color = "") + annotation_scale(location = "tl") +
+  coord_sf(xlim = range(st_coordinates(mylittleg)[,1]), ylim = range(st_coordinates(mylittleg)[,2])) +
+  theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none")
+map_PA
+rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg")
+```
+
+```{r FLATHEAD, eval=FALSE, include=FALSE}
+mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Flat_Watersheds.shp")
+mysheds <- mysheds[mysheds$site_id == "NFF",]
+mynet <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/Flat_Streams.shp")
+crs(mynet) <- crs(mysheds)
+mynet <- crop(mynet, mysheds)
+
+# hillshade
+myrast <- rast("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Spatial data/Elevation/NorthForkFlathead_DEM_10m_nc.tif")
+myrast <- mask(crop(myrast, mysheds), mysheds)
+slo <- terrain(myrast, "slope", unit = "radians") 
+asp <- terrain(myrast, "aspect", unit = "radians")
+hill <- shade(slope = slo, aspect = asp, angle = 40, direction = 270)
+hilldf <- as.data.frame(hill, xy = TRUE)
+
+# get lakes
+lakes <- get_waterbodies(AOI = siteinfo_sp %>% filter(site_name == "North Fork Flathead River NWIS"), buffer = 100000)
+lakes <- st_transform(lakes, crs(mysheds))
+lakes <- st_intersection(lakes, st_as_sf(mysheds))
+lakes <- lakes %>% filter(gnis_name %in% c("Moose Lake", "Mud Lake"))
+
+# points
+mylittleg <- siteinfo_sp %>% filter(site_name %in% flatorder) %>% mutate(site_name = factor(site_name, levels = flatorder))
+st_geometry(mylittleg)[mylittleg$site_name == "BigCreekUpper"] <- st_point(c(-114.31506, 48.57672))
+st_geometry(mylittleg)[mylittleg$site_name == "HallowattCreekLower"] <- st_point(c(-114.31914, 48.57256))
+
+# create map
+# mapview(mynet$UT_flowlines) + mapview((lakes)) + mapview(siteinfo_sp %>% filter(basin == "West Brook"))
+map_FLBC <- ggplot() +
+  geom_raster(data = hilldf, aes(x = x, y = y, fill = hillshade), show.legend = FALSE) +
+  scale_fill_distiller(palette = "Greys") +
+  geom_sf(data = st_as_sf(mysheds), color = "black", fill = NA, linewidth = 0.4) + 
+  geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 1) +
+  geom_sf(data = lakes, color = "royalblue4", fill = "lightskyblue1", linewidth = 0.5) +
+  geom_sf(data = mylittleg) +
+  labs(color = "") + annotation_scale(location = "br") +
+  coord_sf(xlim = range(st_coordinates(mylittleg)[,1]), ylim = range(st_coordinates(mylittleg)[,2])) +
+  theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none")
+map_FLBC
+rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg")
+```
+
+```{r SPREAD CREEK SNAKE, eval=FALSE, include=FALSE}
+mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Snake_Watersheds.shp")
+mysheds <- mysheds[mysheds$site_id == "SP11",]
+mynet <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/Snake_Streams.shp")
+crs(mynet) <- crs(mysheds)
+mynet <- crop(mynet, mysheds)
+
+# hillshade
+myrast <- rast("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Spatial data/Elevation/SpreadCreek_DEM_10m_nc.tif")
+myrast <- mask(crop(myrast, mysheds), mysheds)
+slo <- terrain(myrast, "slope", unit = "radians") 
+asp <- terrain(myrast, "aspect", unit = "radians")
+hill <- shade(slope = slo, aspect = asp, angle = 40, direction = 270)
+hilldf <- as.data.frame(hill, xy = TRUE)
+
+# get lakes
+lakes <- get_waterbodies(AOI = siteinfo_sp %>% filter(site_name == "Spread Creek Dam"), buffer = 100000)
+lakes <- st_transform(lakes, crs(mysheds))
+lakes <- st_intersection(lakes, st_as_sf(mysheds))
+lakes <- lakes %>% filter(gnis_name %in% c("Leidy Lake"))
+
+# points
+mylittleg <- siteinfo_sp %>% filter(site_name %in% snakeorder) %>% mutate(site_name = factor(site_name, levels = snakeorder))
+# edit geometry to reduce overlap
+st_geometry(mylittleg)[mylittleg$site_name == "SF Spread Creek Lower NWIS"] <- st_point(c(-110.32226, 43.76118))
+st_geometry(mylittleg)[mylittleg$site_name == "NF Spread Creek Lower"] <- st_point(c(-110.3199, 43.766533))
+st_geometry(mylittleg)[mylittleg$site_name == "Grizzly Creek"] <- st_point(c(-110.23289, 43.77433))
+st_geometry(mylittleg)[mylittleg$site_name == "NF Spread Creek Upper"] <- st_point(c(-110.23405, 43.77227))
+st_geometry(mylittleg)[mylittleg$site_name == "SF Spread Creek Upper"] <- st_point(c(-110.31475, 43.73661))
+
+# create map
+# mapview(mynet$UT_flowlines) + mapview((lakes)) + mapview(siteinfo_sp %>% filter(basin == "West Brook"))
+map_SN <- ggplot() +
+  geom_raster(data = hilldf, aes(x = x, y = y, fill = hillshade), show.legend = FALSE) +
+  scale_fill_distiller(palette = "Greys") +
+  geom_sf(data = st_as_sf(mysheds), color = "black", fill = NA, linewidth = 0.4) + 
+  geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 1) +
+  geom_sf(data = lakes, color = "royalblue4", fill = "lightskyblue1", linewidth = 0.5) +
+  geom_sf(data = mylittleg) +
+  labs(color = "") + annotation_scale() +
+  coord_sf(xlim = range(st_coordinates(mylittleg)[,1]), ylim = range(st_coordinates(mylittleg)[,2])) +
+  theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none")
+map_SN
+rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg")
+```
+
+```{r DONNER BLITZEN, eval=FALSE, include=FALSE}
+mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Oreg_Watersheds.shp")
+mysheds <- mysheds[mysheds$site_id == "DBF",]
+mynet <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/Oreg_Streams.shp")
+crs(mynet) <- crs(mysheds)
+mynet <- crop(mynet, mysheds)
+
+# hillshade
+myrast <- rast("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Spatial data/Elevation/DonnerBlitzen_DEM_10m_nc.tif")
+myrast <- mask(crop(myrast, mysheds), mysheds)
+slo <- terrain(myrast, "slope", unit = "radians") 
+asp <- terrain(myrast, "aspect", unit = "radians")
+hill <- shade(slope = slo, aspect = asp, angle = 40, direction = 270)
+hilldf <- as.data.frame(hill, xy = TRUE)
+
+# points
+mylittleg <- siteinfo_sp %>% filter(site_name %in% donnerorder) %>% mutate(site_name = factor(site_name, levels = donnerorder))
+# edit geometry to reduce overlap
+st_geometry(mylittleg)[mylittleg$site_name == "Donner Blitzen ab Fish NWIS"] <- st_point(c(-118.84315, 42.75476))
+st_geometry(mylittleg)[mylittleg$site_name == "Fish Creek"] <- st_point(c(-118.83173, 42.75911))
+
+# create map
+# mapview(mynet$UT_flowlines) + mapview((lakes)) + mapview(siteinfo_sp %>% filter(basin == "West Brook"))
+map_DB <- ggplot() +
+  geom_raster(data = hilldf, aes(x = x, y = y, fill = hillshade), show.legend = FALSE) +
+  scale_fill_distiller(palette = "Greys") +
+  geom_sf(data = st_as_sf(mysheds), color = "black", fill = NA, linewidth = 0.4) + 
+  geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 1) +
+  geom_sf(data = mylittleg) +
+  labs(color = "") + annotation_scale() +
+  coord_sf(xlim = range(st_coordinates(mylittleg)[,1]), ylim = range(st_coordinates(mylittleg)[,2])) +
+  theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none")
+map_DB
+rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg")
+```
+
+```{r SHIELDS RIVER, eval=FALSE, include=FALSE}
+mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Shields_Watersheds.shp")
+mysheds <- mysheds[mysheds$site_id == "SRS",]
+mynet <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/Shields_Streams.shp")
+crs(mynet) <- crs(mysheds)
+mynet <- crop(mynet, mysheds)
+
+# hillshade
+myrast <- rast("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Spatial data/Elevation/Shields_DEM_10m_nc.tif")
+myrast <- mask(crop(myrast, mysheds), mysheds)
+slo <- terrain(myrast, "slope", unit = "radians") 
+asp <- terrain(myrast, "aspect", unit = "radians")
+hill <- shade(slope = slo, aspect = asp, angle = 40, direction = 270)
+hilldf <- as.data.frame(hill, xy = TRUE)
+
+# points
+mylittleg <- siteinfo_sp %>% filter(site_name %in% yellorder) %>% mutate(site_name = factor(site_name, levels = yellorder)) %>% filter(subbasin != "Duck Creek")
+
+# create map
+# mapview(mynet$UT_flowlines) + mapview((lakes)) + mapview(siteinfo_sp %>% filter(basin == "West Brook"))
+map_YE <- ggplot() +
+  geom_raster(data = hilldf, aes(x = x, y = y, fill = hillshade), show.legend = FALSE) +
+  scale_fill_distiller(palette = "Greys") +
+  geom_sf(data = st_as_sf(mysheds), color = "black", fill = NA, linewidth = 0.4) + 
+  geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 1) +
+  geom_sf(data = mylittleg) +
+  labs(color = "") + annotation_scale() +
+  coord_sf(xlim = range(st_coordinates(mylittleg)[,1]), ylim = range(st_coordinates(mylittleg)[,2])) +
+  theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none")
+map_YE
+rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg")
+```
 
 
 ## Spaghetti plots
@@ -107,7 +396,6 @@ Big G NWIS sites/reference gages for each basin/subbasin:
 dat_clean_big %>% group_by(region, basin, subbasin) %>% summarize(site_name = unique(site_name)) %>% ungroup() %>% filter(!is.na(region)) %>% kable()
 
 dat_clean %>% group_by(region, basin) %>% summarize(subbasin = unique(subbasin)) %>% ungroup() #%>% filter(!is.na(region)) %>% kable()
-
 ```
 
 
@@ -1022,10 +1310,10 @@ annotate_figure(egg::ggarrange(p1 + theme(axis.title.x = element_blank(), axis.t
 
 Now compare distributions
 ```{r}
-portfolioplot <- function(bas, orderr, type = c("interann", "annual", "scatter")) {
+portfolioplot <- function(bas, orderr, type = c("interann", "annual", "scatter"), wtryrs) {
   # filter data
   tempdat <- dat_clean %>% 
-    filter(basin == bas, !is.na(logYield), Month %in% c(7:9)) %>%
+    filter(basin == bas, !is.na(logYield), Month %in% c(7:9), WaterYear %in% wtryrs) %>%
     mutate(site_name = factor(site_name, levels = orderr))
   nsites <- length(unique(tempdat$site_name))
   tempdat_big <- dat_clean_big %>% filter(basin == bas, !is.na(logYield), Month %in% c(7:9), WaterYear %in% unique(tempdat$WaterYear))
@@ -1039,7 +1327,9 @@ portfolioplot <- function(bas, orderr, type = c("interann", "annual", "scatter")
     ungroup()
 
   # calculate total summer water availability from reference gage
-  summerflow <- tempdat_big %>% group_by(WaterYear) %>% summarize(totalyield = sum(Yield_mm), totalyield_log = log(sum(Yield_mm))) %>% ungroup()
+  #summerflow <- tempdat_big %>% group_by(WaterYear) %>% summarize(summeryield = sum(Yield_mm), summeryield_log = log(sum(Yield_mm))) %>% ungroup()
+  #wateravail2 <- wateravail %>% select(basin, WaterYear, totalyield, totalyield_z)
+
 
   # calculate relative variation
   pedat <- tempdat %>% 
@@ -1053,8 +1343,9 @@ portfolioplot <- function(bas, orderr, type = c("interann", "annual", "scatter")
     mutate(pe_range = ((littlerange-bigrange)/bigrange),
            pe_sd = ((littlesd-bigsd)/bigsd),
            pe_var = ((littlevar-bigvar)/bigvar)) %>%
-    left_join(summerflow) %>% 
-    filter(nsites >= 4)
+    left_join(wateravail %>% select(basin, WaterYear, totalyield, totalyield_z, totalyield_sum, totalyield_sum_z)) %>% 
+    filter(WaterYear %in% wtryrs) %>%
+    mutate(wylab = substr(WaterYear, 3, 4))
 
   # interannual
   pint <- ggplot() + 
@@ -1067,22 +1358,23 @@ portfolioplot <- function(bas, orderr, type = c("interann", "annual", "scatter")
                        axis.text = element_text(color = "black"), legend.position = "none")
 
   # annual
-  pann <- ggplot() + 
+  pann <- ggplot() +
     geom_density(data = tempdat, aes(x = logYield, y = ..scaled.., color = site_name, fill = site_name), size = 0.8) +
     scale_color_manual(values = cet_pal(nsites, name = "i1")) +
     scale_fill_manual(values = alpha(cet_pal(nsites, name = "i1"), 0.1)) +
     geom_density(data = tempdat_big, aes(x = logYield, y = ..scaled..), color = "grey40", fill = alpha("grey40", 0.2), size = 0.8) +
     xlab("Summer log(Yield)") + ylab("Scaled density") +
-    theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+    theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
                        axis.text = element_text(color = "black"), legend.position = "none") +
-    facet_wrap(~WaterYear)
+    facet_wrap(~factor(WaterYear, levels = as.numeric(unlist(pedat %>% arrange(totalyield_sum_z) %>% select(WaterYear)))))
 
   # portfolio effect by water availability
   ppew <- pedat %>% 
-    ggplot(aes(x = totalyield_log, y = pe_range)) + 
+    ggplot(aes(x = totalyield_sum_z, y = pe_range, label = wylab)) + 
     geom_smooth(method = "lm", color = "black") + 
-    geom_point(shape = 1) +
-    xlab("Total yield at reference gage (logged)") + ylab("Relative difference in range") +
+    geom_point(shape = 21, fill = "skyblue1", size = 3) +
+    geom_text(vjust = -0.7, color = "grey40") +
+    xlab("Water availability") + ylab("Relative difference in range") +
     theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.text = element_text(color = "black")) +     
     guides(color = guide_legend(title="Water year"))
 
@@ -1093,86 +1385,737 @@ portfolioplot <- function(bas, orderr, type = c("interann", "annual", "scatter")
 }
 ```
 
+Test pit
+```{r}
+portfolioplot(bas = "West Brook", orderr = wborder, type = "scatter", wtryrs = c(2018:2024))
+portfolioplot(bas = "West Brook", orderr = wborder, type = "annual", wtryrs = c(2018:2024))
+```
+
 Generate plots
 ```{r, include=FALSE}
 # West Brook
-p1 <- egg::ggarrange(portfolioplot(bas = "West Brook", orderr = wborder, type = "interannual"),
-               portfolioplot(bas = "West Brook", orderr = wborder, type = "scatter"),
+p1 <- egg::ggarrange(portfolioplot(bas = "West Brook", orderr = wborder, type = "interannual", wtryrs = c(2020:2024)),
+               portfolioplot(bas = "West Brook", orderr = wborder, type = "scatter", wtryrs = c(2020:2024)),
                nrow = 2)
-p2 <- portfolioplot(bas = "West Brook", orderr = wborder, type = "annual")
+p2 <- portfolioplot(bas = "West Brook", orderr = wborder, type = "annual", wtryrs = c(2020:2024))
 denwb <- ggarrange(p1, p2, ncol = 2, widths = c(0.7,1))
 
 # Paine
-p1 <- egg::ggarrange(portfolioplot(bas = "Paine Run", orderr = paineorder, type = "interannual"),
-               portfolioplot(bas = "Paine Run", orderr = paineorder, type = "scatter"),
+p1 <- egg::ggarrange(portfolioplot(bas = "Paine Run", orderr = paineorder, type = "interannual", wtryrs = c(2019:2022)),
+               portfolioplot(bas = "Paine Run", orderr = paineorder, type = "scatter", wtryrs = c(2019:2022)),
                nrow = 2)
-p2 <- portfolioplot(bas = "Paine Run", orderr = paineorder, type = "annual")
+p2 <- portfolioplot(bas = "Paine Run", orderr = paineorder, type = "annual", wtryrs = c(2019:2022))
 denpa <- ggarrange(p1, p2, ncol = 2, widths = c(0.7,1))
 
 # Staunton
-p1 <- egg::ggarrange(portfolioplot(bas = "Staunton River", orderr = stauntorder, type = "interannual"),
-               portfolioplot(bas = "Staunton River", orderr = stauntorder, type = "scatter"),
+p1 <- egg::ggarrange(portfolioplot(bas = "Staunton River", orderr = stauntorder, type = "interannual", wtryrs = c(2019:2022)),
+               portfolioplot(bas = "Staunton River", orderr = stauntorder, type = "scatter", wtryrs = c(2019:2022)),
                nrow = 2)
-p2 <- portfolioplot(bas = "Staunton River", orderr = stauntorder, type = "annual")
+p2 <- portfolioplot(bas = "Staunton River", orderr = stauntorder, type = "annual", wtryrs = c(2019:2022))
 denst <- ggarrange(p1, p2, ncol = 2, widths = c(0.7,1))
 
 # Flathead
-p1 <- egg::ggarrange(portfolioplot(bas = "Flathead", orderr = flatorder, type = "interannual"),
-               portfolioplot(bas = "Flathead", orderr = flatorder, type = "scatter"),
+p1 <- egg::ggarrange(portfolioplot(bas = "Flathead", orderr = flatorder, type = "interannual", wtryrs = c(2018:2024)),
+               portfolioplot(bas = "Flathead", orderr = flatorder, type = "scatter", wtryrs = c(2018:2024)),
                nrow = 2)
-p2 <- portfolioplot(bas = "Flathead", orderr = flatorder, type = "annual")
+p2 <- portfolioplot(bas = "Flathead", orderr = flatorder, type = "annual", wtryrs = c(2018:2024))
 denfl <- ggarrange(p1, p2, ncol = 2, widths = c(0.7,1))
 
 # Yellowstone
-p1 <- egg::ggarrange(portfolioplot(bas = "Shields River", orderr = yellorder, type = "interannual"),
-               portfolioplot(bas = "Shields River", orderr = yellorder, type = "scatter"),
+p1 <- egg::ggarrange(portfolioplot(bas = "Shields River", orderr = yellorder, type = "interannual", wtryrs = c(2016:2020,2022:2024)),
+               portfolioplot(bas = "Shields River", orderr = yellorder, type = "scatter", wtryrs = c(2016:2020,2022:2024)),
                nrow = 2)
-p2 <- portfolioplot(bas = "Shields River", orderr = yellorder, type = "annual")
+p2 <- portfolioplot(bas = "Shields River", orderr = yellorder, type = "annual", wtryrs = c(2016:2020,2022:2024))
 denye <- ggarrange(p1, p2, ncol = 2, widths = c(0.7,1))
 
 # Snake River
-p1 <- egg::ggarrange(portfolioplot(bas = "Snake River", orderr = snakeorder, type = "interannual"),
-               portfolioplot(bas = "Snake River", orderr = snakeorder, type = "scatter"),
+p1 <- egg::ggarrange(portfolioplot(bas = "Snake River", orderr = snakeorder, type = "interannual", wtryrs = c(2016:2024)),
+               portfolioplot(bas = "Snake River", orderr = snakeorder, type = "scatter", wtryrs = c(2016:2024)),
                nrow = 2)
-p2 <- portfolioplot(bas = "Snake River", orderr = snakeorder, type = "annual")
+p2 <- portfolioplot(bas = "Snake River", orderr = snakeorder, type = "annual", wtryrs = c(2016:2024))
 densn <- ggarrange(p1, p2, ncol = 2, widths = c(0.7,1))
 
 # Donner Blitzen
-p1 <- egg::ggarrange(portfolioplot(bas = "Donner Blitzen", orderr = donnerorder, type = "interannual"),
-               portfolioplot(bas = "Donner Blitzen", orderr = donnerorder, type = "scatter"),
+p1 <- egg::ggarrange(portfolioplot(bas = "Donner Blitzen", orderr = donnerorder, type = "interannual", wtryrs = c(2016:2024)),
+               portfolioplot(bas = "Donner Blitzen", orderr = donnerorder, type = "scatter", wtryrs = c(2016:2024)),
                nrow = 2)
-p2 <- portfolioplot(bas = "Donner Blitzen", orderr = donnerorder, type = "annual")
+p2 <- portfolioplot(bas = "Donner Blitzen", orderr = donnerorder, type = "annual", wtryrs = c(2016:2024))
 dendb <- ggarrange(p1, p2, ncol = 2, widths = c(0.7,1))
 ```
 
 ::: panel-tabset
-#### West Brook
-```{r fig.width=9, fig.height=6}
+##### West Brook
+```{r fig.width=9, fig.height=5}
 denwb
 ```
-#### Paine Run
-```{r fig.width=9, fig.height=6}
+##### Paine Run
+```{r fig.width=9, fig.height=5}
 denpa
 ```
-#### Staunton River
-```{r fig.width=9, fig.height=6}
+##### Staunton River
+```{r fig.width=9, fig.height=5}
 denst
 ```
-#### Flathead
-```{r fig.width=9, fig.height=6}
+##### Flathead
+```{r fig.width=9, fig.height=5}
 denfl
 ```
-#### Yellowstone
-```{r fig.width=9, fig.height=6}
+##### Yellowstone
+```{r fig.width=9, fig.height=5}
 denye
 ```
-#### Snake River
-```{r fig.width=9, fig.height=6}
+##### Snake River
+```{r fig.width=9, fig.height=5}
 densn
 ```
-#### Donner Blitzen
-```{r fig.width=9, fig.height=6}
+##### Donner Blitzen
+```{r fig.width=9, fig.height=5}
 dendb
+```
+:::
+
+## Median summer flow
+
+::: panel-tabset
+#### West Brook
+```{r fig.width = 9, fig.height = 5}
+bas <- "West Brook"
+orderr <- wborder
+wtryrs <- c(2020:2024)
+
+# sheds and network
+mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Mass_Watersheds.shp")
+mysheds <- mysheds[mysheds$site_id == "WBR",]
+mynet <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/Mass_Streams.shp")
+crs(mynet) <- crs(mysheds)
+mynet <- crop(mynet, mysheds)
+
+# get lakes
+lakes <- get_waterbodies(AOI = siteinfo_sp %>% filter(site_name == "West Brook NWIS"), buffer = 10000)
+lakes <- lakes %>% filter(gnis_name %in% c("Northampton Reservoir Upper", "Northampton Reservoir"))
+
+# little g points
+mylittleg <- siteinfo_sp %>% filter(site_name %in% wborder) %>% mutate(site_name = factor(site_name, levels = wborder))
+
+
+# filter data
+tempdat <- dat_clean %>% 
+  filter(basin == bas, !is.na(logYield), Month %in% c(7:9)) %>%
+  mutate(site_name = factor(site_name, levels = orderr))
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == bas, !is.na(logYield), Month %in% c(7:9), WaterYear %in% unique(tempdat$WaterYear))
+
+  # calculate variability for reference gage
+varbig <- tempdat_big %>% 
+  group_by(WaterYear) %>% 
+  summarize(bigrange = range(logYield)[2]-range(logYield)[1],
+            bigsd = sd(logYield),
+            bigvar = var(logYield)) %>%
+  ungroup()
+
+# calculate total summer water availability from reference gage
+#summerflow <- tempdat_big %>% group_by(WaterYear) %>% summarize(summeryield = sum(Yield_mm), summeryield_log = log(sum(Yield_mm))) %>% ungroup()
+#wateravail2 <- wateravail %>% select(basin, WaterYear, totalyield, totalyield_z)
+
+# calculate relative variation
+pedat <- tempdat %>% 
+  group_by(basin, WaterYear) %>% 
+  summarize(nsites = length(unique(site_name)),
+            littlerange = range(logYield)[2]-range(logYield)[1],
+            littlesd = sd(logYield),
+            littlevar = var(logYield)) %>% 
+  ungroup() %>% 
+  left_join(varbig) %>%
+  mutate(pe_range = ((littlerange-bigrange)/bigrange),
+         pe_sd = ((littlesd-bigsd)/bigsd),
+         pe_var = ((littlevar-bigvar)/bigvar)) %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield, totalyield_z, totalyield_sum, totalyield_sum_z, tyz_perc, tyz_sum_perc)) %>% 
+  filter(WaterYear %in% wtryrs) %>%
+  mutate(wylab = substr(WaterYear, 3, 4)) %>%
+  arrange(totalyield_sum_z)
+  
+# calculate annual median summer flow
+annmed <- tempdat %>%
+  #filter(WaterYear %in% c(lowyr, highyr)) %>%
+  group_by(site_name, WaterYear) %>%
+  summarize(medlogYield = median(logYield, na.rm = TRUE)) %>%
+  ungroup()
+
+# arrange years by total annual yield
+wtryrs_arranged <- as.numeric(unlist(pedat %>% select(WaterYear)))
+
+# plot it
+plotlist <- list()
+for(i in 1:length(wtryrs_arranged)) {
+  mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i]))
+  mylittleg_sheds <- sheds %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i])) %>% arrange(desc(area_sqmi))
+  plotlist[[i]] <- local({
+    i <- i
+    ggplot() +
+      geom_sf(data = st_as_sf(mysheds), color = "black", fill = "white", linewidth = 0.4) + 
+      geom_sf(data = mylittleg_sheds, aes(fill = medlogYield), color = "black") +
+      scale_fill_viridis(option = "A", direction = 1, limits = range(annmed$medlogYield), na.value = "grey") +
+      geom_sf(data = st_as_sf(mynet), color = "white", linewidth = 1, lineend = "round") +
+      geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 0.6, lineend = "round") +
+      geom_sf(data = lakes, color = "white", fill = "lightskyblue1", linewidth = 0.7) +
+      geom_sf(data = lakes, color = "royalblue4", fill = "lightskyblue1", linewidth = 0.5) +
+      geom_sf(data = mylittleg, shape = 21, fill = "white", size = 2) +
+      labs(fill = "Median\nsummer\nlog(Yield)") + #annotation_scale() +
+      coord_sf(xlim = range(st_coordinates(mylittleg_sheds)[,1]), ylim = range(st_coordinates(mylittleg_sheds)[,2])) +
+      theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none", axis.text = element_blank()) +
+      annotate("label", x = Inf, y = Inf, label = paste(pedat$WaterYear[i], " (", pedat$tyz_sum_perc[i], "%)", sep = ""), vjust = 1.15, hjust = 1.05, size = 5)})
+}
+ggarrange(plotlist = plotlist, common.legend = TRUE, legend = "right")
+```
+
+
+#### Paine Run
+```{r fig.width = 6, fig.height = 5}
+bas <- "Paine Run"
+orderr <- paineorder
+wtryrs <- c(2019:2022)
+
+mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Shen_Watersheds.shp")
+mysheds <- mysheds[mysheds$site_id == "PA_10FL",]
+mynet <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/Shen_Streams.shp")
+crs(mynet) <- crs(mysheds)
+mynet <- crop(mynet, mysheds)
+
+# hillshade
+myrast <- rast("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Spatial data/Elevation/Shenandoah_DEM_10m_nc.tif")
+myrast <- mask(crop(myrast, mysheds), mysheds)
+slo <- terrain(myrast, "slope", unit = "radians") 
+asp <- terrain(myrast, "aspect", unit = "radians")
+hill <- shade(slope = slo, aspect = asp, angle = 40, direction = 270)
+hilldf <- as.data.frame(hill, xy = TRUE)
+
+# little g points
+mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr)
+
+
+# filter data
+tempdat <- dat_clean %>% 
+  filter(basin == bas, !is.na(logYield), Month %in% c(7:9)) %>%
+  mutate(site_name = factor(site_name, levels = orderr))
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == bas, !is.na(logYield), Month %in% c(7:9), WaterYear %in% unique(tempdat$WaterYear))
+
+  # calculate variability for reference gage
+varbig <- tempdat_big %>% 
+  group_by(WaterYear) %>% 
+  summarize(bigrange = range(logYield)[2]-range(logYield)[1],
+            bigsd = sd(logYield),
+            bigvar = var(logYield)) %>%
+  ungroup()
+
+# calculate total summer water availability from reference gage
+#summerflow <- tempdat_big %>% group_by(WaterYear) %>% summarize(summeryield = sum(Yield_mm), summeryield_log = log(sum(Yield_mm))) %>% ungroup()
+#wateravail2 <- wateravail %>% select(basin, WaterYear, totalyield, totalyield_z)
+
+# calculate relative variation
+pedat <- tempdat %>% 
+  group_by(basin, WaterYear) %>% 
+  summarize(nsites = length(unique(site_name)),
+            littlerange = range(logYield)[2]-range(logYield)[1],
+            littlesd = sd(logYield),
+            littlevar = var(logYield)) %>% 
+  ungroup() %>% 
+  left_join(varbig) %>%
+  mutate(pe_range = ((littlerange-bigrange)/bigrange),
+         pe_sd = ((littlesd-bigsd)/bigsd),
+         pe_var = ((littlevar-bigvar)/bigvar)) %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield, totalyield_z, totalyield_sum, totalyield_sum_z, tyz_perc, tyz_sum_perc)) %>% 
+  filter(WaterYear %in% wtryrs) %>%
+  mutate(wylab = substr(WaterYear, 3, 4)) %>%
+  arrange(totalyield_sum_z)
+  
+# calculate annual median summer flow
+annmed <- tempdat %>%
+  #filter(WaterYear %in% c(lowyr, highyr)) %>%
+  group_by(site_name, WaterYear) %>%
+  summarize(medlogYield = median(logYield, na.rm = TRUE)) %>%
+  ungroup()
+
+# arrange years by total annual yield
+wtryrs_arranged <- as.numeric(unlist(pedat %>% select(WaterYear)))
+
+# plot it
+plotlist <- list()
+for(i in 1:length(wtryrs_arranged)) {
+  mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i]))
+  mylittleg_sheds <- sheds %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i])) %>% arrange(desc(area_sqmi))
+  plotlist[[i]] <- local({
+    i <- i
+    ggplot() +
+      geom_sf(data = st_as_sf(mysheds), color = "black", fill = "white", linewidth = 0.4) + 
+      geom_sf(data = mylittleg_sheds, aes(fill = medlogYield), color = "black") +
+      scale_fill_viridis(option = "A", direction = 1, limits = range(annmed$medlogYield), na.value = "grey") +
+      geom_sf(data = st_as_sf(mynet), color = "white", linewidth = 1, lineend = "round") +
+      geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 0.6, lineend = "round") +
+      geom_sf(data = mylittleg, shape = 21, fill = "white", size = 2) +
+      labs(fill = "Median\nsummer\nlog(Yield)") + #annotation_scale() +
+      coord_sf(xlim = range(st_coordinates(mylittleg_sheds)[,1]), ylim = range(st_coordinates(mylittleg_sheds)[,2])) +
+      theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none", axis.text = element_blank()) +
+      annotate("label", x = -Inf, y = Inf, label = paste(pedat$WaterYear[i], " (", pedat$tyz_sum_perc[i], "%)", sep = ""), vjust = 1.15, hjust = -0.05, size = 5)})
+}
+ggarrange(plotlist = plotlist, common.legend = TRUE, legend = "right")
+```
+
+#### Staunton River
+```{r fig.width = 6, fig.height = 5}
+bas <- "Staunton River"
+orderr <- stauntorder
+wtryrs <- c(2019:2022)
+
+mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Shen_Watersheds.shp")
+mysheds <- mysheds[mysheds$site_id == "SR_10FL",]
+mynet <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/Shen_Streams.shp")
+crs(mynet) <- crs(mysheds)
+mynet <- crop(mynet, mysheds)
+
+# little g points
+mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr)
+
+# filter data
+tempdat <- dat_clean %>% 
+  filter(basin == bas, !is.na(logYield), Month %in% c(7:9)) %>%
+  mutate(site_name = factor(site_name, levels = orderr))
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == bas, !is.na(logYield), Month %in% c(7:9), WaterYear %in% unique(tempdat$WaterYear))
+
+  # calculate variability for reference gage
+varbig <- tempdat_big %>% 
+  group_by(WaterYear) %>% 
+  summarize(bigrange = range(logYield)[2]-range(logYield)[1],
+            bigsd = sd(logYield),
+            bigvar = var(logYield)) %>%
+  ungroup()
+
+# calculate total summer water availability from reference gage
+#summerflow <- tempdat_big %>% group_by(WaterYear) %>% summarize(summeryield = sum(Yield_mm), summeryield_log = log(sum(Yield_mm))) %>% ungroup()
+#wateravail2 <- wateravail %>% select(basin, WaterYear, totalyield, totalyield_z)
+
+# calculate relative variation
+pedat <- tempdat %>% 
+  group_by(basin, WaterYear) %>% 
+  summarize(nsites = length(unique(site_name)),
+            littlerange = range(logYield)[2]-range(logYield)[1],
+            littlesd = sd(logYield),
+            littlevar = var(logYield)) %>% 
+  ungroup() %>% 
+  left_join(varbig) %>%
+  mutate(pe_range = ((littlerange-bigrange)/bigrange),
+         pe_sd = ((littlesd-bigsd)/bigsd),
+         pe_var = ((littlevar-bigvar)/bigvar)) %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield, totalyield_z, totalyield_sum, totalyield_sum_z, tyz_perc, tyz_sum_perc)) %>% 
+  filter(WaterYear %in% wtryrs) %>%
+  mutate(wylab = substr(WaterYear, 3, 4)) %>%
+  arrange(totalyield_sum_z)
+  
+# calculate annual median summer flow
+annmed <- tempdat %>%
+  #filter(WaterYear %in% c(lowyr, highyr)) %>%
+  group_by(site_name, WaterYear) %>%
+  summarize(medlogYield = median(logYield, na.rm = TRUE)) %>%
+  ungroup()
+
+# arrange years by total annual yield
+wtryrs_arranged <- as.numeric(unlist(pedat %>% select(WaterYear)))
+
+# plot it
+plotlist <- list()
+for(i in 1:length(wtryrs_arranged)) {
+  mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i]))
+  mylittleg_sheds <- sheds %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i])) %>% arrange(desc(area_sqmi))
+  plotlist[[i]] <- local({
+    i <- i
+    ggplot() +
+      geom_sf(data = st_as_sf(mysheds), color = "black", fill = "white", linewidth = 0.4) + 
+      geom_sf(data = mylittleg_sheds, aes(fill = medlogYield), color = "black") +
+      scale_fill_viridis(option = "A", direction = 1, limits = range(annmed$medlogYield), na.value = "grey") +
+      geom_sf(data = st_as_sf(mynet), color = "white", linewidth = 1, lineend = "round") +
+      geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 0.6, lineend = "round") +
+      geom_sf(data = mylittleg, shape = 21, fill = "white", size = 2) +
+      labs(fill = "Median\nsummer\nlog(Yield)") + #annotation_scale() +
+      coord_sf(xlim = range(st_coordinates(mylittleg_sheds)[,1]), ylim = range(st_coordinates(mylittleg_sheds)[,2])) +
+      theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none", axis.text = element_blank()) +
+      annotate("label", x = Inf, y = Inf, label = paste(pedat$WaterYear[i], " (", pedat$tyz_sum_perc[i], "%)", sep = ""), vjust = 1.15, hjust = 1.05, size = 5)})
+}
+ggarrange(plotlist = plotlist, common.legend = TRUE, legend = "right")
+```
+
+
+#### Flathead
+```{r fig.height = 5, fig.width = 11}
+bas <- "Flathead"
+orderr <- flatorder
+wtryrs <- c(2018:2024)
+
+mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Flat_Watersheds.shp")
+mysheds <- mysheds[mysheds$site_id == "NFF",]
+mynet <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/Flat_Streams.shp")
+crs(mynet) <- crs(mysheds)
+mynet <- crop(mynet, mysheds)
+
+# get lakes
+lakes <- get_waterbodies(AOI = siteinfo_sp %>% filter(site_name == "North Fork Flathead River NWIS"), buffer = 100000)
+lakes <- st_transform(lakes, crs(mysheds))
+lakes <- st_intersection(lakes, st_as_sf(mysheds))
+lakes <- lakes %>% filter(gnis_name %in% c("Moose Lake", "Mud Lake"))
+
+# points
+mylittleg <- siteinfo_sp %>% filter(site_name %in% flatorder) %>% mutate(site_name = factor(site_name, levels = flatorder))
+st_geometry(mylittleg)[mylittleg$site_name == "BigCreekUpper"] <- st_point(c(-114.31506, 48.57672))
+st_geometry(mylittleg)[mylittleg$site_name == "HallowattCreekLower"] <- st_point(c(-114.31914, 48.57256))
+
+
+# filter data
+tempdat <- dat_clean %>% 
+  filter(basin == bas, !is.na(logYield), Month %in% c(7:9)) %>%
+  mutate(site_name = factor(site_name, levels = orderr))
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == bas, !is.na(logYield), Month %in% c(7:9), WaterYear %in% unique(tempdat$WaterYear))
+
+  # calculate variability for reference gage
+varbig <- tempdat_big %>% 
+  group_by(WaterYear) %>% 
+  summarize(bigrange = range(logYield)[2]-range(logYield)[1],
+            bigsd = sd(logYield),
+            bigvar = var(logYield)) %>%
+  ungroup()
+
+# calculate total summer water availability from reference gage
+#summerflow <- tempdat_big %>% group_by(WaterYear) %>% summarize(summeryield = sum(Yield_mm), summeryield_log = log(sum(Yield_mm))) %>% ungroup()
+#wateravail2 <- wateravail %>% select(basin, WaterYear, totalyield, totalyield_z)
+
+# calculate relative variation
+pedat <- tempdat %>% 
+  group_by(basin, WaterYear) %>% 
+  summarize(nsites = length(unique(site_name)),
+            littlerange = range(logYield)[2]-range(logYield)[1],
+            littlesd = sd(logYield),
+            littlevar = var(logYield)) %>% 
+  ungroup() %>% 
+  left_join(varbig) %>%
+  mutate(pe_range = ((littlerange-bigrange)/bigrange),
+         pe_sd = ((littlesd-bigsd)/bigsd),
+         pe_var = ((littlevar-bigvar)/bigvar)) %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield, totalyield_z, totalyield_sum, totalyield_sum_z, tyz_perc, tyz_sum_perc)) %>% 
+  filter(WaterYear %in% wtryrs) %>%
+  mutate(wylab = substr(WaterYear, 3, 4)) %>%
+  arrange(totalyield_sum_z)
+  
+# calculate annual median summer flow
+annmed <- tempdat %>%
+  #filter(WaterYear %in% c(lowyr, highyr)) %>%
+  group_by(site_name, WaterYear) %>%
+  summarize(medlogYield = median(logYield, na.rm = TRUE)) %>%
+  ungroup()
+
+# arrange years by total annual yield
+wtryrs_arranged <- as.numeric(unlist(pedat %>% select(WaterYear)))
+
+# plot it
+plotlist <- list()
+for(i in 1:length(wtryrs_arranged)) {
+  mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i]))
+  mylittleg_sheds <- sheds %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i])) %>% arrange(desc(area_sqmi))
+  plotlist[[i]] <- local({
+    i <- i
+    ggplot() +
+      geom_sf(data = st_as_sf(mysheds), color = "black", fill = "white", linewidth = 0.4) + 
+      geom_sf(data = mylittleg_sheds, aes(fill = medlogYield), color = "black") +
+      scale_fill_viridis(option = "A", direction = 1, limits = range(annmed$medlogYield), na.value = "grey") +
+      geom_sf(data = st_as_sf(mynet), color = "white", linewidth = 1, lineend = "round") +
+      geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 0.6, lineend = "round") +
+      geom_sf(data = mylittleg, shape = 21, fill = "white", size = 2) +
+      labs(fill = "Median\nsummer\nlog(Yield)") + #annotation_scale() +
+      coord_sf(xlim = range(st_coordinates(mylittleg_sheds)[,1]), ylim = range(st_coordinates(mylittleg_sheds)[,2])) +
+      theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none", axis.text = element_blank()) +
+      annotate("label", x = Inf, y = Inf, label = paste(pedat$WaterYear[i], " (", pedat$tyz_sum_perc[i], "%)", sep = ""), vjust = 1.15, hjust = 1.05, size = 5)})
+}
+ggarrange(plotlist = plotlist, common.legend = TRUE, legend = "right")
+```
+
+
+#### Yellowstone
+```{r fig.height = 7, fig.width = 10}
+bas <- "Shields River"
+orderr <- yellorder
+wtryrs <- c(2016:2020,2022:2024)
+
+mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Shields_Watersheds.shp")
+mysheds <- mysheds[mysheds$site_id %in% c("SRS", "DU01"),]
+mynet <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/Shields_Streams.shp")
+crs(mynet) <- crs(mysheds)
+mynet <- crop(mynet, mysheds)
+
+# points
+mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% mutate(site_name = factor(site_name, levels = orderr)) #%>% filter(subbasin != "Duck Creek")
+
+
+# filter data
+tempdat <- dat_clean %>% 
+  filter(basin == bas, !is.na(logYield), Month %in% c(7:9)) %>%
+  mutate(site_name = factor(site_name, levels = orderr))
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == bas, !is.na(logYield), Month %in% c(7:9), WaterYear %in% unique(tempdat$WaterYear))
+
+  # calculate variability for reference gage
+varbig <- tempdat_big %>% 
+  group_by(WaterYear) %>% 
+  summarize(bigrange = range(logYield)[2]-range(logYield)[1],
+            bigsd = sd(logYield),
+            bigvar = var(logYield)) %>%
+  ungroup()
+
+# calculate total summer water availability from reference gage
+#summerflow <- tempdat_big %>% group_by(WaterYear) %>% summarize(summeryield = sum(Yield_mm), summeryield_log = log(sum(Yield_mm))) %>% ungroup()
+#wateravail2 <- wateravail %>% select(basin, WaterYear, totalyield, totalyield_z)
+
+# calculate relative variation
+pedat <- tempdat %>% 
+  group_by(basin, WaterYear) %>% 
+  summarize(nsites = length(unique(site_name)),
+            littlerange = range(logYield)[2]-range(logYield)[1],
+            littlesd = sd(logYield),
+            littlevar = var(logYield)) %>% 
+  ungroup() %>% 
+  left_join(varbig) %>%
+  mutate(pe_range = ((littlerange-bigrange)/bigrange),
+         pe_sd = ((littlesd-bigsd)/bigsd),
+         pe_var = ((littlevar-bigvar)/bigvar)) %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield, totalyield_z, totalyield_sum, totalyield_sum_z, tyz_perc, tyz_sum_perc)) %>% 
+  filter(WaterYear %in% wtryrs) %>%
+  mutate(wylab = substr(WaterYear, 3, 4)) %>%
+  arrange(totalyield_sum_z)
+  
+# calculate annual median summer flow
+annmed <- tempdat %>%
+  #filter(WaterYear %in% c(lowyr, highyr)) %>%
+  group_by(site_name, WaterYear) %>%
+  summarize(medlogYield = median(logYield, na.rm = TRUE)) %>%
+  ungroup()
+
+# arrange years by total annual yield
+wtryrs_arranged <- as.numeric(unlist(pedat %>% select(WaterYear)))
+
+# plot it
+plotlist <- list()
+for(i in 1:length(wtryrs_arranged)) {
+  mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i]))
+  mylittleg_sheds <- sheds %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i])) %>% arrange(desc(area_sqmi))
+  plotlist[[i]] <- local({
+    i <- i
+    ggplot() +
+      geom_sf(data = st_as_sf(mysheds), color = "black", fill = "white", linewidth = 0.4) + 
+      geom_sf(data = mylittleg_sheds, aes(fill = medlogYield), color = "black") +
+      scale_fill_viridis(option = "A", direction = 1, limits = range(annmed$medlogYield), na.value = "grey") +
+      geom_sf(data = st_as_sf(mynet), color = "white", linewidth = 1, lineend = "round") +
+      geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 0.6, lineend = "round") +
+      geom_sf(data = mylittleg, shape = 21, fill = "white", size = 2) +
+      labs(fill = "Median\nsummer\nlog(Yield)") + #annotation_scale() +
+      coord_sf(xlim = range(st_coordinates(mylittleg_sheds)[,1]), ylim = range(st_coordinates(mylittleg_sheds)[,2])) +
+      theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none", axis.text = element_blank()) +
+      annotate("label", x = -Inf, y = -Inf, label = paste(pedat$WaterYear[i], " (", pedat$tyz_sum_perc[i], "%)", sep = ""), vjust = -0.15, hjust = -0.05, size = 5)})
+}
+ggarrange(plotlist = plotlist, common.legend = TRUE, legend = "right", nrow = 2, ncol = 4)
+```
+
+
+#### Snake
+```{r fig.height = 7, fig.width = 10}
+bas <- "Snake River"
+orderr <- snakeorder
+wtryrs <- c(2016:2024)
+
+mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Snake_Watersheds.shp")
+mysheds <- mysheds[mysheds$site_id == "SP11",]
+mynet <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/Snake_Streams.shp")
+crs(mynet) <- crs(mysheds)
+mynet <- crop(mynet, mysheds)
+
+# get lakes
+lakes <- get_waterbodies(AOI = siteinfo_sp %>% filter(site_name == "Spread Creek Dam"), buffer = 100000)
+lakes <- st_transform(lakes, crs(mysheds))
+lakes <- st_intersection(lakes, st_as_sf(mysheds))
+lakes <- lakes %>% filter(gnis_name %in% c("Leidy Lake"))
+
+# points
+mylittleg <- siteinfo_sp %>% filter(site_name %in% snakeorder) %>% mutate(site_name = factor(site_name, levels = snakeorder))
+# edit geometry to reduce overlap
+st_geometry(mylittleg)[mylittleg$site_name == "SF Spread Creek Lower NWIS"] <- st_point(c(-110.32226, 43.76118))
+st_geometry(mylittleg)[mylittleg$site_name == "NF Spread Creek Lower"] <- st_point(c(-110.3199, 43.766533))
+st_geometry(mylittleg)[mylittleg$site_name == "Grizzly Creek"] <- st_point(c(-110.23289, 43.77433))
+st_geometry(mylittleg)[mylittleg$site_name == "NF Spread Creek Upper"] <- st_point(c(-110.23405, 43.77227))
+st_geometry(mylittleg)[mylittleg$site_name == "SF Spread Creek Upper"] <- st_point(c(-110.31475, 43.73661))
+
+
+# filter data
+tempdat <- dat_clean %>% 
+  filter(basin == bas, !is.na(logYield), Month %in% c(7:9)) %>%
+  mutate(site_name = factor(site_name, levels = orderr))
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == bas, !is.na(logYield), Month %in% c(7:9), WaterYear %in% unique(tempdat$WaterYear))
+
+  # calculate variability for reference gage
+varbig <- tempdat_big %>% 
+  group_by(WaterYear) %>% 
+  summarize(bigrange = range(logYield)[2]-range(logYield)[1],
+            bigsd = sd(logYield),
+            bigvar = var(logYield)) %>%
+  ungroup()
+
+# calculate total summer water availability from reference gage
+#summerflow <- tempdat_big %>% group_by(WaterYear) %>% summarize(summeryield = sum(Yield_mm), summeryield_log = log(sum(Yield_mm))) %>% ungroup()
+#wateravail2 <- wateravail %>% select(basin, WaterYear, totalyield, totalyield_z)
+
+# calculate relative variation
+pedat <- tempdat %>% 
+  group_by(basin, WaterYear) %>% 
+  summarize(nsites = length(unique(site_name)),
+            littlerange = range(logYield)[2]-range(logYield)[1],
+            littlesd = sd(logYield),
+            littlevar = var(logYield)) %>% 
+  ungroup() %>% 
+  left_join(varbig) %>%
+  mutate(pe_range = ((littlerange-bigrange)/bigrange),
+         pe_sd = ((littlesd-bigsd)/bigsd),
+         pe_var = ((littlevar-bigvar)/bigvar)) %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield, totalyield_z, totalyield_sum, totalyield_sum_z, tyz_perc, tyz_sum_perc)) %>% 
+  filter(WaterYear %in% wtryrs) %>%
+  mutate(wylab = substr(WaterYear, 3, 4)) %>%
+  arrange(totalyield_sum_z)
+  
+# calculate annual median summer flow
+annmed <- tempdat %>%
+  #filter(WaterYear %in% c(lowyr, highyr)) %>%
+  group_by(site_name, WaterYear) %>%
+  summarize(medlogYield = median(logYield, na.rm = TRUE)) %>%
+  ungroup()
+
+# arrange years by total annual yield
+wtryrs_arranged <- as.numeric(unlist(pedat %>% select(WaterYear)))
+
+# plot it
+plotlist <- list()
+for(i in 1:length(wtryrs_arranged)) {
+  mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i]))
+  mylittleg_sheds <- sheds %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i])) %>% arrange(desc(area_sqmi))
+  plotlist[[i]] <- local({
+    i <- i
+    ggplot() +
+      geom_sf(data = st_as_sf(mysheds), color = "black", fill = "white", linewidth = 0.4) + 
+      geom_sf(data = mylittleg_sheds, aes(fill = medlogYield), color = "black") +
+      scale_fill_viridis(option = "A", direction = 1, limits = range(annmed$medlogYield), na.value = "grey") +
+      geom_sf(data = st_as_sf(mynet), color = "white", linewidth = 1, lineend = "round") +
+      geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 0.6, lineend = "round") +
+      geom_sf(data = mylittleg, shape = 21, fill = "white", size = 2) +
+      labs(fill = "Median\nsummer\nlog(Yield)") + #annotation_scale() +
+      coord_sf(xlim = range(st_coordinates(mylittleg_sheds)[,1]), ylim = range(st_coordinates(mylittleg_sheds)[,2])) +
+      theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none", axis.text = element_blank()) +
+      annotate("label", x = -Inf, y = -Inf, label = paste(pedat$WaterYear[i], " (", pedat$tyz_sum_perc[i], "%)", sep = ""), vjust = -0.15, hjust = -0.05, size = 5)})
+}
+ggarrange(plotlist = plotlist, common.legend = TRUE, legend = "right")
+
+
+
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/TESTMAP.jpg", width = 10, height = 7, units = "in", res = 1000)
+ggarrange(plotlist = plotlist, common.legend = TRUE, legend = "right")
+dev.off()
+```
+
+
+#### Donner Blitzen
+```{r fig.height = 5.5, fig.width = 5.5}
+bas <- "Donner Blitzen"
+orderr <- c(donnerorder, "Donner Blitzen River nr Frenchglen NWIS")
+wtryrs <- c(2016:2024)
+
+mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Oreg_Watersheds.shp")
+mysheds <- mysheds[mysheds$site_id == "DBF",]
+mynet <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/Oreg_Streams.shp")
+crs(mynet) <- crs(mysheds)
+mynet <- crop(mynet, mysheds)
+
+
+# points
+mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% mutate(site_name = factor(site_name, levels = donnerorder))
+# edit geometry to reduce overlap
+st_geometry(mylittleg)[mylittleg$site_name == "Donner Blitzen ab Fish NWIS"] <- st_point(c(-118.84315, 42.75476))
+st_geometry(mylittleg)[mylittleg$site_name == "Fish Creek"] <- st_point(c(-118.83173, 42.75911))
+
+
+# filter data
+tempdat <- dat_clean %>% 
+  filter(basin == bas, !is.na(logYield), Month %in% c(7:9)) %>%
+  mutate(site_name = factor(site_name, levels = orderr))
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == bas, !is.na(logYield), Month %in% c(7:9), WaterYear %in% unique(tempdat$WaterYear))
+
+  # calculate variability for reference gage
+varbig <- tempdat_big %>% 
+  group_by(WaterYear) %>% 
+  summarize(bigrange = range(logYield)[2]-range(logYield)[1],
+            bigsd = sd(logYield),
+            bigvar = var(logYield)) %>%
+  ungroup()
+
+# calculate total summer water availability from reference gage
+#summerflow <- tempdat_big %>% group_by(WaterYear) %>% summarize(summeryield = sum(Yield_mm), summeryield_log = log(sum(Yield_mm))) %>% ungroup()
+#wateravail2 <- wateravail %>% select(basin, WaterYear, totalyield, totalyield_z)
+
+
+# calculate relative variation
+pedat <- tempdat %>% 
+  group_by(basin, WaterYear) %>% 
+  summarize(nsites = length(unique(site_name)),
+            littlerange = range(logYield)[2]-range(logYield)[1],
+            littlesd = sd(logYield),
+            littlevar = var(logYield)) %>% 
+  ungroup() %>% 
+  left_join(varbig) %>%
+  mutate(pe_range = ((littlerange-bigrange)/bigrange),
+         pe_sd = ((littlesd-bigsd)/bigsd),
+         pe_var = ((littlevar-bigvar)/bigvar)) %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield, totalyield_z, totalyield_sum, totalyield_sum_z, tyz_perc, tyz_sum_perc)) %>% 
+  filter(WaterYear %in% wtryrs) %>%
+  mutate(wylab = substr(WaterYear, 3, 4)) %>%
+  arrange(totalyield_sum_z)
+  
+# calculate annual median summer flow
+annmed <- tempdat %>%
+  group_by(site_name, WaterYear) %>%
+  summarize(medlogYield = median(logYield, na.rm = TRUE)) %>%
+  ungroup() %>%
+  bind_rows(tempdat_big %>%
+  group_by(site_name, WaterYear) %>%
+  summarize(medlogYield = median(logYield, na.rm = TRUE)) %>%
+  ungroup())
+
+# arrange years by total annual yield
+wtryrs_arranged <- as.numeric(unlist(pedat %>% select(WaterYear)))
+
+# plot it
+plotlist <- list()
+for(i in 1:length(wtryrs_arranged)) {
+  mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i]))
+  mylittleg_sheds <- sheds %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i])) %>% arrange(desc(area_sqmi))
+  plotlist[[i]] <- local({
+    i <- i
+    ggplot() +
+      geom_sf(data = st_as_sf(mysheds), color = "black", fill = "white", linewidth = 0.4) + 
+      geom_sf(data = mylittleg_sheds, aes(fill = medlogYield), color = "black") +
+      scale_fill_viridis(option = "A", direction = 1, limits = range(annmed$medlogYield), na.value = "grey") +
+      geom_sf(data = st_as_sf(mynet), color = "white", linewidth = 1, lineend = "round") +
+      geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 0.6, lineend = "round") +
+      geom_sf(data = mylittleg, shape = 21, fill = "white", size = 2) +
+      labs(fill = "Median\nsummer\nlog(Yield)") + #annotation_scale() +
+      coord_sf(xlim = range(st_coordinates(mylittleg_sheds)[,1]), ylim = range(st_coordinates(mylittleg_sheds)[,2])) +
+      theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none", axis.text = element_blank()) +
+      annotate("label", x = -Inf, y = -Inf, label = paste(pedat$WaterYear[i], " (", pedat$tyz_sum_perc[i], "%)", sep = ""), vjust = -0.15, hjust = -0.05, size = 5)})
+}
+ggarrange(plotlist = plotlist, common.legend = TRUE, legend = "right")
 ```
 :::
 

@@ -132,6 +132,13 @@ streamstats <- bind_rows(montana, massach, oregon, virginia, wyoming) %>% filter
 head(streamstats)
 ```
 
+
+```{r}
+char_massach <- st_read("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/CompareModeledQ/StreamStats/points_ma7625/points_ma7625.gdb", layer = "CHARACTERISTICS")
+char_massach
+```
+
+
 View provided flow statistics for each state. What is relevant to this paper?
 
 * Montana: annual & monthly duration (80, 50, 20), monthly mean flow, 7 day 10 year low flow

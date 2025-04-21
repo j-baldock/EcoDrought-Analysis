@@ -332,6 +332,16 @@ write_csv(climdf_summ, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDroug
 
 Calculate annual water availability at big g as sum of daily yield values...retain only years with >95% data coverage (at least 350 days)
 ```{r}
+wateravail_sum <- dat_clean_big %>% 
+  filter(!is.na(Yield_mm), Month %in% c(7:9)) %>%
+  group_by(basin, site_name, WaterYear) %>% 
+  summarize(sampsize = n(), totalyield_sum = sum(Yield_mm, na.rm = TRUE)) %>% 
+  mutate(totalyield_sum_z = scale(totalyield_sum)[,1]) %>%
+  ungroup() %>%
+  filter(sampsize >= 85) %>% 
+  complete(basin, WaterYear = 1971:2024, fill = list(sampsize = NA, totalyield = NA)) %>%
+  select(-sampsize)
+
 wateravail <- dat_clean_big %>% 
   filter(!is.na(Yield_mm)) %>%
   group_by(basin, site_name, WaterYear) %>% 
@@ -339,7 +349,8 @@ wateravail <- dat_clean_big %>%
   mutate(totalyield_z = scale(totalyield)[,1]) %>%
   ungroup() %>%
   filter(sampsize >= 350) %>% 
-  complete(basin, WaterYear = 1971:2024, fill = list(sampsize = NA, totalyield = NA))
+  complete(basin, WaterYear = 1971:2024, fill = list(sampsize = NA, totalyield = NA)) %>%
+  left_join(wateravail_sum)
 
 # get range of years for little g data
 daterange <- dat_clean %>% group_by(basin) %>% summarize(minyear = year(min(date)), maxyear = year(max(date)))
