@@ -36,3 +36,8 @@ nhdplusTools
 glue
 zoo
 hydroGOF
+fmsb
+coda
+rjags
+R2jags
+MCMCvis

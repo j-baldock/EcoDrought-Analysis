@@ -29,6 +29,9 @@ library(dtw)
 library(nhdplusTools)
 library(glue)
 library(hydroGOF)
+library(fmsb)
+library(R2jags)
+library(MCMCvis)
 ```
 
 
@@ -67,8 +70,17 @@ climdf_summ <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrou
 
 Water availability
 ```{r}
-wateravail <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/BigG_wateravailability_annual.csv")
+# wateravail <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/BigG_wateravailability_annual.csv")
+wateravail <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/BigG_wateravailability_annual.csv") %>%
+  filter(!is.na(totalyield), !is.na(totalyield_sum)) %>%
+  group_by(site_name) %>%
+  mutate(tyz_perc = percentile(totalyield_z),
+         tyz_sum_perc = percentile(totalyield_sum_z)) %>%
+  mutate(tyz_perc = ifelse(is.na(tyz_perc), 0, tyz_perc),
+         tyz_sum_perc = ifelse(is.na(tyz_sum_perc), 0, tyz_sum_perc)) %>%
+  ungroup()
 ```
+
 
 ```{r}
 # get range of years for little g data
@@ -82,6 +94,19 @@ for (i in 1:dim(daterange)[1]) {
 yrdf <- do.call(rbind, mylist) %>% mutate(ecodyr = "yes")
 ```
 
+
+## Order sites
+
+For colors, order sites from downstream to upstream (roughly) and by subbasin (if appropriate)
+```{r}
+wborder <- c("West Brook NWIS", "West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook")
+paineorder <- c("Paine Run 10", "Paine Run 08", "Paine Run 07", "Paine Run 06", "Paine Run 02", "Paine Run 01")
+stauntorder <- c("Staunton River 10", "Staunton River 09", "Staunton River 07", "Staunton River 06", "Staunton River 03", "Staunton River 02")
+flatorder <- c("BigCreekLower", "LangfordCreekLower", "LangfordCreekUpper", "Big Creek NWIS", "BigCreekUpper", "HallowattCreekLower", "NicolaCreek", "WernerCreek", "Hallowat Creek NWIS", "CoalCreekLower", "CycloneCreekLower", "CycloneCreekMiddle", "CycloneCreekUpper", "CoalCreekMiddle", "CoalCreekNorth", "CoalCreekHeadwaters", "McGeeCreekLower", "McGeeCreekTrib", "McGeeCreekUpper")
+yellorder <- c("Shields River Valley Ranch", "Deep Creek", "Crandall Creek", "Buck Creek", "Dugout Creek", "Shields River ab Dugout", "Lodgepole Creek", "EF Duck Creek be HF", "EF Duck Creek ab HF", "Henrys Fork")
+snakeorder <- c("Spread Creek Dam", "Rock Creek", "NF Spread Creek Lower", "NF Spread Creek Upper", "Grizzly Creek", "SF Spread Creek Lower", "Grouse Creek", "SF Spread Creek Upper", "Leidy Creek Mouth")
+donnerorder <- c("Fish Creek NWIS", "Donner Blitzen ab Fish NWIS", "Donner Blitzen nr Burnt Car NWIS", "Donner Blitzen ab Indian NWIS")
+```
 
 
 ## Low flow thresholds
@@ -216,29 +241,35 @@ monthss <- c(7:9)
 
 # grab data and bind, z-score Yield
 dat_clean_sub <- bind_rows(
-  dat_clean %>% filter(subbasin == "West Brook", WaterYear %in% c(2020:2022), Month %in% monthss, !site_name %in% c("Mitchell Brook")) %>%
-    bind_rows(dat_clean_big %>% filter(subbasin == "West Brook", WaterYear %in% c(2020:2022), Month %in% monthss)),
+  dat_clean %>% filter(basin == "West Brook", WaterYear %in% c(2020:2023), Month %in% monthss, !site_name %in% c("Mitchell Brook", "West Brook Lower")) %>%
+    bind_rows(dat_clean_big %>% filter(basin == "West Brook", WaterYear %in% c(2020:2023), Month %in% monthss)),
   
-  dat_clean %>% filter(subbasin == "Staunton River", WaterYear %in% c(2019:2022), Month %in% monthss) %>%
-    bind_rows(dat_clean_big %>% filter(subbasin == "Staunton River", WaterYear %in% c(2019:2022), Month %in% monthss)),
+  dat_clean %>% filter(basin == "Staunton River", WaterYear %in% c(2019:2022), Month %in% monthss) %>%
+    bind_rows(dat_clean_big %>% filter(basin == "Staunton River", WaterYear %in% c(2019:2022), Month %in% monthss)),
   
-  dat_clean %>% filter(subbasin == "Big Creek", WaterYear %in% c(2019:2021), Month %in% monthss, !site_name %in% c("BigCreekLower", "LangfordCreekUpper", "NicolaCreek", "WernerCreek")) %>%
-    bind_rows(dat_clean_big %>% filter(basin == "Flathead", WaterYear %in% c(2019:2021), Month %in% monthss) %>% mutate(subbasin = "Big Creek")),
+  dat_clean %>% filter(basin == "Flathead", WaterYear %in% c(2019:2021), Month %in% monthss, !site_name %in% c("BigCreekLower", "LangfordCreekUpper", "WernerCreek", "CycloneCreekMiddle", "CoalCreekMiddle", "McGeeCreekUpper")) %>%
+    bind_rows(dat_clean_big %>% filter(basin == "Flathead", WaterYear %in% c(2019:2021), Month %in% monthss)),
   
-  dat_clean %>% filter(subbasin == "Coal Creek", WaterYear %in% c(2019:2021), Month %in% monthss, !site_name %in% c("CycloneCreekMiddle", "CoalCreekMiddle", "CoalCreekHeadwaters")) %>%
-    bind_rows(dat_clean_big %>% filter(basin == "Flathead", WaterYear %in% c(2019:2021), Month %in% monthss) %>% mutate(subbasin = "Coal Creek")),
+  # dat_clean %>% filter(subbasin == "Big Creek", WaterYear %in% c(2019:2021), Month %in% monthss, !site_name %in% c("BigCreekLower", "LangfordCreekUpper", "NicolaCreek", "WernerCreek")) %>%
+  #   bind_rows(dat_clean_big %>% filter(basin == "Flathead", WaterYear %in% c(2019:2021), Month %in% monthss) %>% mutate(subbasin = "Big Creek")),
+  # 
+  # dat_clean %>% filter(subbasin == "Coal Creek", WaterYear %in% c(2019:2021), Month %in% monthss, !site_name %in% c("CycloneCreekMiddle", "CoalCreekMiddle", "CoalCreekHeadwaters")) %>%
+  #   bind_rows(dat_clean_big %>% filter(basin == "Flathead", WaterYear %in% c(2019:2021), Month %in% monthss) %>% mutate(subbasin = "Coal Creek")),
   
-  dat_clean %>% filter(subbasin == "Snake River", WaterYear %in% c(2020:2022), Month %in% monthss, !site_name %in% c("Spread Creek Dam")) %>%
-    bind_rows(dat_clean_big %>% filter(subbasin == "Snake River", WaterYear %in% c(2020:2022), Month %in% monthss)),
+  dat_clean %>% filter(basin == "Snake River", WaterYear %in% c(2020:2022), Month %in% monthss, !site_name %in% c("Spread Creek Dam")) %>%
+    bind_rows(dat_clean_big %>% filter(basin == "Snake River", WaterYear %in% c(2020:2022), Month %in% monthss)),
   
-  dat_clean %>% filter(subbasin == "Shields River", WaterYear %in% c(2019, 2020, 2023), Month %in% monthss, !site_name %in% c("Shields River Valley Ranch")) %>% group_by(site_name) %>%
-    bind_rows(dat_clean_big %>% filter(basin == "Shields River", WaterYear %in% c(2019, 2020, 2023), Month %in% monthss)),
+  dat_clean %>% filter(basin == "Shields River", WaterYear %in% c(2017, 2019, 2020, 2022), Month %in% monthss, !site_name %in% c("Shields River Valley Ranch", "Buck Creek", "Lodgepole Creek")) %>% group_by(site_name) %>%
+    bind_rows(dat_clean_big %>% filter(basin == "Shields River", WaterYear %in% c(2017, 2019, 2020, 2022), Month %in% monthss)),
   
-  dat_clean %>% filter(subbasin == "Duck Creek", WaterYear %in% c(2017:2022), Month %in% monthss) %>%
-    bind_rows(dat_clean_big %>% filter(basin == "Shields River", WaterYear %in% c(2017:2022), Month %in% monthss) %>% mutate(subbasin = "Duck Creek")),
+  # dat_clean %>% filter(subbasin == "Shields River", WaterYear %in% c(2019, 2020, 2023), Month %in% monthss, !site_name %in% c("Shields River Valley Ranch")) %>% group_by(site_name) %>%
+  #   bind_rows(dat_clean_big %>% filter(basin == "Shields River", WaterYear %in% c(2019, 2020, 2023), Month %in% monthss)),
+  # 
+  # dat_clean %>% filter(subbasin == "Duck Creek", WaterYear %in% c(2017:2022), Month %in% monthss) %>%
+  #   bind_rows(dat_clean_big %>% filter(basin == "Shields River", WaterYear %in% c(2017:2022), Month %in% monthss) %>% mutate(subbasin = "Duck Creek")),
   
-  dat_clean %>% filter(subbasin == "Donner Blitzen", WaterYear %in% c(2020:2022), Month %in% monthss) %>%
-    bind_rows(dat_clean_big %>% filter(basin == "Donner Blitzen", WaterYear %in% c(2020:2022), Month %in% monthss))
+  dat_clean %>% filter(basin == "Donner Blitzen", WaterYear %in% c(2019:2022), Month %in% monthss) %>%
+    bind_rows(dat_clean_big %>% filter(basin == "Donner Blitzen", WaterYear %in% c(2019:2022), Month %in% monthss))
 ) %>%
   group_by(site_name) %>%
   mutate(z_Yield_mm = scale(Yield_mm, center = TRUE, scale = TRUE)[,1]) %>%
@@ -287,8 +318,8 @@ dat_clean_sub
 Create heatmap functions
 ```{r}
 # fixed drought threshold
-heatmapfun_fix <- function(subbas, months, bigG) {
-  dd <- dat_clean_join %>% filter(subbasin == subbas | site_name == bigG, month %in% months)
+heatmapfun_fix <- function(bas, months, bigG) {
+  dd <- dat_clean_join %>% filter(basin == bas | site_name == bigG, month %in% months)
   mysites <- c(unique(unlist(dd %>% filter(designation == "big") %>% select(site_name))),
                unique(unlist(dd %>% filter(designation == "little") %>% select(site_name))))
   myrect <- dd %>% group_by(WaterYear) %>% summarize(mindate = min(date), maxdate = max(date)) %>% ungroup()
@@ -305,8 +336,8 @@ heatmapfun_fix <- function(subbas, months, bigG) {
 return(p)
 }
 # variable drought threshold
-heatmapfun_var <- function(subbas, months, bigG) {
-  dd <- dat_clean_join %>% filter(subbasin == subbas | site_name == bigG, month %in% months)
+heatmapfun_var <- function(bas, months, bigG) {
+  dd <- dat_clean_join %>% filter(basin == bas | site_name == bigG, month %in% months)
   mysites <- c(unique(unlist(dd %>% filter(designation == "big") %>% select(site_name))),
                unique(unlist(dd %>% filter(designation == "little") %>% select(site_name))))
   myrect <- dd %>% group_by(WaterYear) %>% summarize(mindate = min(date), maxdate = max(date)) %>% ungroup()
@@ -323,8 +354,8 @@ heatmapfun_var <- function(subbas, months, bigG) {
 return(p)
 }
 # site-level drought threshold
-heatmapfun_site <- function(subbas, months, bigG) {
-  dd <- dat_clean_sub %>% filter(subbasin == subbas)
+heatmapfun_site <- function(bas, months, bigG) {
+  dd <- dat_clean_sub %>% filter(basin == bas)
   mysites <- c(unique(unlist(dd %>% filter(site_name != bigG) %>% select(site_name))), bigG)
   myrect <- dd %>% group_by(WaterYear) %>% summarize(mindate = min(date), maxdate = max(date)) %>% ungroup()
   p <- dd %>%
@@ -345,43 +376,32 @@ return(p)
 ::: panel-tabset
 #### West Brook
 ```{r fig.height=7, fig.width=9}
-heatmapfun_fix(subbas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9))
+heatmapfun_fix(bas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9))
 ```
 #### Paine Run
 ```{r fig.height=7, fig.width=9}
-heatmapfun_fix(subbas = "Paine Run", bigG = "South River Harriston NWIS", months = c(7:9))
+heatmapfun_fix(bas = "Paine Run", bigG = "South River Harriston NWIS", months = c(7:9))
 ```
 #### Staunton River
 ```{r fig.height=7, fig.width=9}
-heatmapfun_fix(subbas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9))
+heatmapfun_fix(bas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9))
 ```
-#### Big Creek
+#### Flathead
 ```{r fig.height=7, fig.width=9}
-heatmapfun_fix(subbas = "Big Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
-```
-#### Coal Creek
-```{r fig.height=7, fig.width=9}
-heatmapfun_fix(subbas = "Coal Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
-```
-#### McGee Creek
-```{r fig.height=7, fig.width=9}
-heatmapfun_fix(subbas = "McGee Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
+heatmapfun_fix(bas = "Flathead", bigG = "North Fork Flathead River NWIS", months = c(7:9))
 ```
 #### Snake River
 ```{r fig.height=7, fig.width=9}
-heatmapfun_fix(subbas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9))
+heatmapfun_fix(bas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9))
 ```
-#### Shields River
+#### Yellowstone River
 ```{r fig.height=7, fig.width=9}
-heatmapfun_fix(subbas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
+heatmapfun_fix(bas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
 ```
-#### Duck Creek
-```{r fig.height=7, fig.width=9}
-heatmapfun_fix(subbas = "Duck Creek", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
-```
+
 #### Donner Blitzen
 ```{r fig.height=7, fig.width=9}
-heatmapfun_fix(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9))
+heatmapfun_fix(bas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9))
 ```
 :::
 
@@ -389,43 +409,31 @@ heatmapfun_fix(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr French
 ::: panel-tabset
 #### West Brook
 ```{r fig.height=7, fig.width=9}
-heatmapfun_var(subbas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9))
+heatmapfun_var(bas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9))
 ```
 #### Paine Run
 ```{r fig.height=7, fig.width=9}
-heatmapfun_var(subbas = "Paine Run", bigG = "South River Harriston NWIS", months = c(7:9))
+heatmapfun_var(bas = "Paine Run", bigG = "South River Harriston NWIS", months = c(7:9))
 ```
 #### Staunton River
 ```{r fig.height=7, fig.width=9}
-heatmapfun_var(subbas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9))
+heatmapfun_var(bas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9))
 ```
-#### Big Creek
+#### Flathead
 ```{r fig.height=7, fig.width=9}
-heatmapfun_var(subbas = "Big Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
-```
-#### Coal Creek
-```{r fig.height=7, fig.width=9}
-heatmapfun_var(subbas = "Coal Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
-```
-#### McGee Creek
-```{r fig.height=7, fig.width=9}
-heatmapfun_var(subbas = "McGee Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
+heatmapfun_var(bas = "Flathead", bigG = "North Fork Flathead River NWIS", months = c(7:9))
 ```
 #### Snake River
 ```{r fig.height=7, fig.width=9}
-heatmapfun_var(subbas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9))
+heatmapfun_var(bas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9))
 ```
-#### Shields River
+#### Yellowstone River
 ```{r fig.height=7, fig.width=9}
-heatmapfun_var(subbas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
-```
-#### Duck Creek
-```{r fig.height=7, fig.width=9}
-heatmapfun_var(subbas = "Duck Creek", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
+heatmapfun_var(bas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
 ```
 #### Donner Blitzen
 ```{r fig.height=7, fig.width=9}
-heatmapfun_var(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9))
+heatmapfun_var(bas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9))
 ```
 :::
 
@@ -434,35 +442,27 @@ heatmapfun_var(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr French
 ::: panel-tabset
 #### West Brook
 ```{r fig.height=5, fig.width=9}
-heatmapfun_site(subbas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9))
+heatmapfun_site(bas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9))
 ```
 #### Staunton River
 ```{r fig.height=5, fig.width=9}
-heatmapfun_site(subbas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9))
+heatmapfun_site(bas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9))
 ```
-#### Big Creek
+#### Flathead
 ```{r fig.height=5, fig.width=9}
-heatmapfun_site(subbas = "Big Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
-```
-#### Coal Creek
-```{r fig.height=5, fig.width=9}
-heatmapfun_site(subbas = "Coal Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9))
+heatmapfun_site(bas = "Flathead", bigG = "North Fork Flathead River NWIS", months = c(7:9))
 ```
 #### Snake River
 ```{r fig.height=5, fig.width=9}
-heatmapfun_site(subbas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9))
+heatmapfun_site(bas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9))
 ```
-#### Shields River
+#### Yellowstone River
 ```{r fig.height=5, fig.width=9}
-heatmapfun_site(subbas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
-```
-#### Duck Creek
-```{r fig.height=5, fig.width=9}
-heatmapfun_site(subbas = "Duck Creek", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
+heatmapfun_site(bas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
 ```
 #### Donner Blitzen
 ```{r fig.height=5, fig.width=9}
-heatmapfun_site(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9))
+heatmapfun_site(bas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9))
 ```
 :::
 
@@ -619,13 +619,13 @@ defdur_ssn <- dat_clean_join_deficit %>%
             deficit_05_var = sum(deficit_05_var),
             deficit_02_var = sum(deficit_02_var)) %>%
   ungroup() %>%
-  filter(propdays >= 0.90) %>%
+  filter(propdays >= 0.70) %>%
   left_join(wateravail %>% select(basin, WaterYear, totalyield, totalyield_z))
 ```
 
 Create plotting functions
 ```{r}
-durationplotfun <- function(subbas, bigG, months, wateryears, dropsites = NA) {
+durationplotfun <- function(bas, bigG, months, wateryears, dropsites = NA) {
   # filter and summarize data
   # dd <- defdur_month %>% 
   #   filter(subbasin == subbas | site_name == bigG, Month %in% months, WaterYear %in% wateryears, !site_name %in% dropsites) %>%
@@ -644,7 +644,7 @@ durationplotfun <- function(subbas, bigG, months, wateryears, dropsites = NA) {
   #             duration_02_fix_prop = sum(duration_02_fix) / sum(ndays)) %>%
   #   ungroup()
   dd <- defdur_ssn %>% 
-    filter(subbasin == subbas | site_name == bigG, WaterYear %in% wateryears, !site_name %in% dropsites) %>%
+    filter(basin == bas | site_name == bigG, WaterYear %in% wateryears, !site_name %in% dropsites) %>%
     mutate(WaterYear = factor(WaterYear, levels = wateryears))
 
   # order sites, Big G first
@@ -659,10 +659,11 @@ durationplotfun <- function(subbas, bigG, months, wateryears, dropsites = NA) {
     group_by(WaterYear, totalyield_z, metric, quant) %>%
     summarize(sddur = sd(duration, na.rm = TRUE)) %>%
     ungroup() %>%
-    left_join(dd %>% filter(site_name == bigG) %>% select(WaterYear, duration_50_fix_prop) %>% rename(dur50 = duration_50_fix_prop)) %>%
-    ggplot(aes(x = quant, y = sddur, color = dur50, group = WaterYear, shape = WaterYear)) +
+    #left_join(dd %>% filter(site_name == bigG) %>% select(WaterYear, duration_50_fix_prop) %>% rename(dur50 = duration_50_fix_prop)) %>%
+    left_join(wateravail %>% filter(site_name == bigG) %>% select(WaterYear, tyz_sum_perc) %>% mutate(WaterYear = as.factor(WaterYear))) %>%
+    ggplot(aes(x = quant, y = sddur, color = tyz_sum_perc, group = WaterYear, shape = WaterYear)) +
     geom_point() +
-    scale_color_gradient(low = "blue", high = "red", limits = c(0,1)) +
+    scale_color_gradient(low = "red", high = "blue", limits = c(0,100)) +
     stat_smooth() +
     xlab("Low flow threshold (percentile)") + ylab("Among-site SD(duration)") +
     theme_bw() + 
@@ -741,7 +742,7 @@ durationplotfun <- function(subbas, bigG, months, wateryears, dropsites = NA) {
 }
 
 
-deficitplotfun <- function(subbas, bigG, months, wateryears, dropsites = NA) {
+deficitplotfun <- function(bas, bigG, months, wateryears, dropsites = NA) {
   # filter and summarize data
   # dd <- defdur_month %>% 
   #   filter(subbasin == subbas | site_name == bigG, Month %in% months, WaterYear %in% wateryears, !site_name %in% dropsites) %>%
@@ -759,9 +760,9 @@ deficitplotfun <- function(subbas, bigG, months, wateryears, dropsites = NA) {
   #             deficit_05_fix = sum(deficit_05_fix),
   #             deficit_02_fix = sum(deficit_02_fix)) %>%
   #   ungroup()
-  dd_all <- defdur_ssn %>% filter(subbasin == subbas | site_name == bigG, WaterYear %in% wateryears, !site_name %in% dropsites) 
+  dd_all <- defdur_ssn %>% filter(basin == bas | site_name == bigG, WaterYear %in% wateryears, !site_name %in% dropsites) 
   dd <- defdur_ssn %>% 
-    filter(subbasin == subbas | site_name == bigG, WaterYear %in% wateryears, !site_name %in% dropsites) %>%
+    filter(basin == bas | site_name == bigG, WaterYear %in% wateryears, !site_name %in% dropsites) %>%
     mutate(WaterYear = factor(WaterYear, levels = wateryears))
   
   # get y-axis limit
@@ -779,10 +780,11 @@ deficitplotfun <- function(subbas, bigG, months, wateryears, dropsites = NA) {
     group_by(WaterYear, totalyield_z, metric, quant) %>%
     summarize(sddur = sd(deficit, na.rm = TRUE)) %>%
     ungroup() %>%
-    left_join(dd %>% filter(site_name == bigG) %>% select(WaterYear, deficit_50_fix) %>% rename(def50 = deficit_50_fix)) %>%
-    ggplot(aes(x = quant, y = sddur, color = def50, group = WaterYear, shape = WaterYear)) +
+    #left_join(dd %>% filter(site_name == bigG) %>% select(WaterYear, deficit_50_fix) %>% rename(def50 = deficit_50_fix)) %>%
+    left_join(wateravail %>% filter(site_name == bigG) %>% select(WaterYear, tyz_sum_perc) %>% mutate(WaterYear = as.factor(WaterYear))) %>%
+    ggplot(aes(x = quant, y = sddur, color = tyz_sum_perc, group = WaterYear, shape = WaterYear)) +
     geom_point() +
-    scale_color_gradient(low = "blue", high = "red", limits = c(0,max(dd_all$deficit_50_fix))) +
+    scale_color_gradient(low = "red", high = "blue", limits = c(0,100)) +
     stat_smooth() +
     xlab("Low flow threshold (percentile)") + ylab("Among-site SD(deficit)") +
     theme_bw() + 
@@ -868,31 +870,27 @@ Show proportion of days (July - September) below different low flow thresholds (
 ::: panel-tabset
 ##### West Brook
 ```{r fig.width=10, fig.height=5}
-durationplotfun(subbas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9), wateryears = c(2020, 2021))
+durationplotfun(bas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9), wateryears = c(2020, 2021))
 ```
 ##### Staunton River
 ```{r fig.width=10, fig.height=5}
-durationplotfun(subbas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9), wateryears = c(2019, 2020))
+durationplotfun(bas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9), wateryears = c(2019, 2020))
 ```
-##### Big Creek
+##### Flathead
 ```{r fig.width=10, fig.height=5}
-durationplotfun(subbas = "Big Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9), wateryears = c(2020, 2021), dropsites = c("LangfordCreekUpper", "NicolaCreek", "WernerCreek", "LangfordCreekLower"))
+durationplotfun(bas = "Flathead", bigG = "North Fork Flathead River NWIS", months = c(7:9), wateryears = c(2020, 2021), dropsites = c("BigCreekLower", "LangfordCreekUpper", "WernerCreek", "CycloneCreekMiddle", "CoalCreekMiddle", "McGeeCreekUpper"))
 ```
 ##### Snake River
 ```{r fig.width=10, fig.height=5}
-durationplotfun(subbas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9), wateryears = c(2021, 2022))
+durationplotfun(bas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9), wateryears = c(2021, 2022))
 ```
-##### Shields River
+##### Yellowstone River
 ```{r fig.width=10, fig.height=5}
-durationplotfun(subbas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2020, 2019), dropsites = c("Shields River Valley Ranch"))
-```
-##### Duck Creek
-```{r fig.width=10, fig.height=5}
-durationplotfun(subbas = "Duck Creek", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2021, 2019))
+durationplotfun(bas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2020, 2019), dropsites = c("Shields River Valley Ranch", "Buck Creek", "Lodgepole Creek"))
 ```
 ##### Donner Blitzen
 ```{r fig.width=10, fig.height=5}
-durationplotfun(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9), wateryears = c(2022, 2020))
+durationplotfun(bas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9), wateryears = c(2022, 2020))
 ```
 :::
 
@@ -904,31 +902,27 @@ Show total drought deficit (mm) relative to different low flow thresholds (deriv
 ::: panel-tabset
 ##### West Brook
 ```{r fig.width=10, fig.height=5}
-deficitplotfun(subbas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9), wateryears = c(2020, 2021))
+deficitplotfun(bas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9), wateryears = c(2020, 2021))
 ```
 ##### Staunton River
 ```{r fig.width=10, fig.height=5}
-deficitplotfun(subbas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9), wateryears = c(2019, 2020))
+deficitplotfun(bas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9), wateryears = c(2019, 2020))
 ```
-##### Big Creek
+##### Flathead
 ```{r fig.width=10, fig.height=5}
-deficitplotfun(subbas = "Big Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9), wateryears = c(2020, 2021), dropsites = c("LangfordCreekUpper", "NicolaCreek", "WernerCreek", "LangfordCreekLower"))
+deficitplotfun(bas = "Flathead", bigG = "North Fork Flathead River NWIS", months = c(7:9), wateryears = c(2020, 2021), dropsites = c("BigCreekLower", "LangfordCreekUpper", "WernerCreek", "CycloneCreekMiddle", "CoalCreekMiddle", "McGeeCreekUpper"))
 ```
 ##### Snake River
 ```{r fig.width=10, fig.height=5}
-deficitplotfun(subbas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9), wateryears = c(2021, 2022))
+deficitplotfun(bas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9), wateryears = c(2021, 2022))
 ```
-##### Shields River
+##### Yellowstone River
 ```{r fig.width=10, fig.height=5}
-deficitplotfun(subbas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2020, 2019), dropsites = c("Shields River Valley Ranch"))
-```
-##### Duck Creek
-```{r fig.width=10, fig.height=5}
-deficitplotfun(subbas = "Duck Creek", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2021, 2019))
+deficitplotfun(bas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2020, 2019), dropsites = c("Shields River Valley Ranch", "Buck Creek", "Lodgepole Creek"))
 ```
 ##### Donner Blitzen
 ```{r fig.width=10, fig.height=5}
-deficitplotfun(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9), wateryears = c(2022, 2020))
+deficitplotfun(bas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9), wateryears = c(2022, 2020))
 ```
 :::
 
@@ -981,17 +975,51 @@ defdur_ssn_sub <- dat_clean_sub_deficit %>%
             deficit_02_fix = sum(deficit_02_fix)) %>%
   ungroup() %>%
   mutate(designation = ifelse(is.na(designation), "big", designation)) %>%
-  filter(propdays >= 0.90) %>%
+  filter(propdays >= 0.70) %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield, totalyield_z))
+
+# keep raw days for binomial model
+defdur_ssn_sub2 <- dat_clean_sub_deficit %>% 
+  filter(!is.na(Yield_mm), Month %in% c(7:9)) %>% 
+  group_by(site_name, basin, subbasin, region, designation, CalendarYear, WaterYear) %>% 
+  summarize(ndays = n(),
+            propdays = ndays/(31+31+30), 
+            duration_50_fix = sum(deficit_50_fix > 0),
+            duration_45_fix = sum(deficit_45_fix > 0),
+            duration_40_fix = sum(deficit_40_fix > 0),
+            duration_35_fix = sum(deficit_35_fix > 0),
+            duration_30_fix = sum(deficit_30_fix > 0),
+            duration_25_fix = sum(deficit_25_fix > 0),
+            duration_20_fix = sum(deficit_20_fix > 0),
+            duration_15_fix = sum(deficit_15_fix > 0),
+            duration_10_fix = sum(deficit_10_fix > 0),
+            duration_05_fix = sum(deficit_05_fix > 0),
+            duration_02_fix = sum(deficit_02_fix > 0),
+            
+            deficit_50_fix = sum(deficit_50_fix),
+            deficit_45_fix = sum(deficit_45_fix),
+            deficit_40_fix = sum(deficit_40_fix),
+            deficit_35_fix = sum(deficit_35_fix),
+            deficit_30_fix = sum(deficit_30_fix),
+            deficit_25_fix = sum(deficit_25_fix),
+            deficit_20_fix = sum(deficit_20_fix),
+            deficit_15_fix = sum(deficit_15_fix),
+            deficit_10_fix = sum(deficit_10_fix),
+            deficit_05_fix = sum(deficit_05_fix),
+            deficit_02_fix = sum(deficit_02_fix)) %>%
+  ungroup() %>%
+  mutate(designation = ifelse(is.na(designation), "big", designation)) %>%
+  filter(propdays >= 0.70) %>%
   left_join(wateravail %>% select(basin, WaterYear, totalyield, totalyield_z))
 
 ```
 
 Create plotting functions. These are the same as defined above, but instead grab the "defdur_ssn_sub" object for site-level low flow thresholds.
 ```{r}
-durationplotfun_sub <- function(subbas, bigG, months, wateryears, dropsites = NA) {
+durationplotfun_sub <- function(bas, bigG, months, wateryears, dropsites = NA) {
   # filter and summarize data
   dd <- defdur_ssn_sub %>% 
-    filter(subbasin == subbas | site_name == bigG, WaterYear %in% wateryears, !site_name %in% dropsites) %>%
+    filter(basin == bas | site_name == bigG, WaterYear %in% wateryears, !site_name %in% dropsites) %>%
     mutate(WaterYear = factor(WaterYear, levels = wateryears))
 
   # order sites, Big G first
@@ -1006,11 +1034,12 @@ durationplotfun_sub <- function(subbas, bigG, months, wateryears, dropsites = NA
     group_by(WaterYear, totalyield_z, metric, quant) %>%
     summarize(sddur = sd(duration, na.rm = TRUE)) %>%
     ungroup() %>%
-    left_join(dd %>% filter(site_name == bigG) %>% select(WaterYear, duration_25_fix_prop) %>% rename(dur25 = duration_25_fix_prop)) %>%
-    ggplot(aes(x = quant, y = sddur, color = dur25, group = WaterYear, shape = WaterYear)) +
+    #left_join(dd %>% filter(site_name == bigG) %>% select(WaterYear, duration_25_fix_prop) %>% rename(dur25 = duration_25_fix_prop)) %>%
+    left_join(wateravail %>% filter(site_name == bigG) %>% select(WaterYear, tyz_sum_perc) %>% mutate(WaterYear = as.factor(WaterYear))) %>%
+    ggplot(aes(x = quant, y = sddur, color = tyz_sum_perc, group = WaterYear, shape = WaterYear)) +
     stat_smooth() +
     geom_point() +
-    scale_color_gradient(low = "blue", high = "red", limits = c(0,1)) +
+    scale_color_gradient(low = "red", high = "blue", limits = c(0,100)) +
     xlab("Low flow threshold (percentile)") + ylab("Among-site SD(duration)") +
     theme_bw() + 
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -1088,11 +1117,11 @@ durationplotfun_sub <- function(subbas, bigG, months, wateryears, dropsites = NA
 }
 
 
-deficitplotfun_sub <- function(subbas, bigG, months, wateryears, dropsites = NA) {
+deficitplotfun_sub <- function(bas, bigG, months, wateryears, dropsites = NA) {
   # filter and summarize data
-  dd_all <- defdur_ssn_sub %>% filter(subbasin == subbas | site_name == bigG, WaterYear %in% wateryears, !site_name %in% dropsites) 
+  dd_all <- defdur_ssn_sub %>% filter(basin == bas | site_name == bigG, WaterYear %in% wateryears, !site_name %in% dropsites) 
   dd <- defdur_ssn_sub %>% 
-    filter(subbasin == subbas | site_name == bigG, WaterYear %in% wateryears, !site_name %in% dropsites) %>%
+    filter(basin == bas | site_name == bigG, WaterYear %in% wateryears, !site_name %in% dropsites) %>%
     mutate(WaterYear = factor(WaterYear, levels = wateryears))
   
   # get y-axis limit
@@ -1110,11 +1139,12 @@ deficitplotfun_sub <- function(subbas, bigG, months, wateryears, dropsites = NA)
     group_by(WaterYear, totalyield_z, metric, quant) %>%
     summarize(sddur = sd(deficit, na.rm = TRUE)) %>%
     ungroup() %>%
-    left_join(dd %>% filter(site_name == bigG) %>% select(WaterYear, deficit_25_fix) %>% rename(def25 = deficit_25_fix)) %>%
-    ggplot(aes(x = quant, y = sddur, color = def25, group = WaterYear, shape = WaterYear)) +
+    #left_join(dd %>% filter(site_name == bigG) %>% select(WaterYear, deficit_25_fix) %>% rename(def25 = deficit_25_fix)) %>%
+    left_join(wateravail %>% filter(site_name == bigG) %>% select(WaterYear, tyz_sum_perc) %>% mutate(WaterYear = as.factor(WaterYear))) %>%
+    ggplot(aes(x = quant, y = sddur, color = tyz_sum_perc, group = WaterYear, shape = WaterYear)) +
     stat_smooth() +
     geom_point() +
-    scale_color_gradient(low = "blue", high = "red", limits = c(0,max(dd_all$deficit_25_fix))) +
+    scale_color_gradient(low = "red", high = "blue", limits = c(0,100)) +
     xlab("Low flow threshold (percentile)") + ylab("Among-site SD(deficit)") +
     theme_bw() + 
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -1199,35 +1229,27 @@ Show proportion of days (July - September) below different low flow thresholds (
 ::: panel-tabset
 ##### West Brook
 ```{r fig.width=10, fig.height=5}
-durationplotfun_sub(subbas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9), wateryears = c(2022, 2020, 2021))
+durationplotfun_sub(bas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9), wateryears = c(2022, 2020, 2021, 2023))
 ```
 ##### Staunton River
 ```{r fig.width=10, fig.height=5}
-durationplotfun_sub(subbas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9), wateryears = c(2019, 2021, 2020))
+durationplotfun_sub(bas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9), wateryears = c(2019, 2022, 2021, 2020))
 ```
-##### Big Creek
+##### Flathead
 ```{r fig.width=10, fig.height=5}
-durationplotfun_sub(subbas = "Big Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9), wateryears = c(2020, 2019))
-```
-##### Coal Creek
-```{r fig.width=10, fig.height=5}
-durationplotfun_sub(subbas = "Coal Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9), wateryears = c(2019, 2021))
+durationplotfun_sub(bas = "Flathead", bigG = "North Fork Flathead River NWIS", months = c(7:9), wateryears = c(2019, 2021, 2020))
 ```
 ##### Snake River
 ```{r fig.width=10, fig.height=5}
-durationplotfun_sub(subbas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9), wateryears = c(2021, 2020, 2022))
+durationplotfun_sub(bas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9), wateryears = c(2021, 2020, 2022))
 ```
-##### Shields River
+##### Yellowstone River
 ```{r fig.width=10, fig.height=5}
-durationplotfun_sub(subbas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2020, 2019, 2023), dropsites = c("Shields River Valley Ranch"))
-```
-##### Duck Creek
-```{r fig.width=10, fig.height=5}
-durationplotfun_sub(subbas = "Duck Creek", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2021, 2022, 2017))
+durationplotfun_sub(bas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2020, 2019, 2023, 2017), dropsites = c("Shields River Valley Ranch", "Buck Creek", "Lodgepole Creek"))
 ```
 ##### Donner Blitzen
 ```{r fig.width=10, fig.height=5}
-durationplotfun_sub(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9), wateryears = c(2022, 2020))
+durationplotfun_sub(bas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9), wateryears = c(2021,2020,2022, 2019))
 ```
 :::
 
@@ -1238,38 +1260,707 @@ Show total drought deficit (mm) relative to different low flow thresholds (deriv
 ::: panel-tabset
 ##### West Brook
 ```{r fig.width=10, fig.height=5}
-deficitplotfun_sub(subbas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9), wateryears = c(2022, 2020, 2021))
+deficitplotfun_sub(bas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9), wateryears = c(2022, 2020, 2021, 2023))
 ```
 ##### Staunton River
 ```{r fig.width=10, fig.height=5}
-deficitplotfun_sub(subbas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9), wateryears = c(2019, 2021, 2020))
+deficitplotfun_sub(bas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9), wateryears = c(2019, 2022, 2021, 2020))
 ```
-##### Big Creek
+##### Flathead
 ```{r fig.width=10, fig.height=5}
-deficitplotfun_sub(subbas = "Big Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9), wateryears = c(2020, 2019))
-```
-##### Coal Creek
-```{r fig.width=10, fig.height=5}
-deficitplotfun_sub(subbas = "Coal Creek", bigG = "North Fork Flathead River NWIS", months = c(7:9), wateryears = c(2019, 2021))
+deficitplotfun_sub(bas = "Flathead", bigG = "North Fork Flathead River NWIS", months = c(7:9), wateryears = c(2019, 2021, 2020))
 ```
 ##### Snake River
 ```{r fig.width=10, fig.height=5}
-deficitplotfun_sub(subbas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9), wateryears = c(2021, 2020, 2022))
+deficitplotfun_sub(bas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9), wateryears = c(2021, 2020, 2022))
 ```
-##### Shields River
+##### Yellowstone River
 ```{r fig.width=10, fig.height=5}
-deficitplotfun_sub(subbas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2020, 2019, 2023), dropsites = c("Shields River Valley Ranch"))
-```
-##### Duck Creek
-```{r fig.width=10, fig.height=5}
-deficitplotfun_sub(subbas = "Duck Creek", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2021, 2022, 2017))
+deficitplotfun_sub(bas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), wateryears = c(2020, 2019, 2023, 2017), dropsites = c("Shields River Valley Ranch", "Buck Creek", "Lodgepole Creek"))
 ```
 ##### Donner Blitzen
 ```{r fig.width=10, fig.height=5}
-deficitplotfun_sub(subbas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9), wateryears = c(2022, 2020))
+deficitplotfun_sub(bas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9), wateryears = c(2021,2020,2022, 2019))
+```
+:::
+
+
+### Summary pots
+
+#### Fixed threshold
+
+```{r}
+defdur_ssn2 <- defdur_ssn %>% 
+  filter(designation == "little") %>%
+  left_join(defdur_ssn_sub %>% 
+              filter(designation == "little") %>%
+              select(site_name, basin, WaterYear) %>%
+              group_by(basin, WaterYear) %>%
+              ungroup() %>%
+              mutate(nsites = length(unique(site_name)))) %>%
+  filter(nsites >= 0) %>%
+  mutate(basin = ifelse(basin == "Shields River", "Yellowstone River",
+                        ifelse(basin == "Flathead", "Flathead River", basin))) %>%
+  mutate(basin = factor(basin, levels = c("West Brook", "Staunton River", "Flathead River", "Yellowstone River", "Snake River", "Donner Blitzen")))
+
+wateravail2 <- wateravail %>% 
+  mutate(basin = ifelse(basin == "Shields River", "Yellowstone River",
+                        ifelse(basin == "Flathead", "Flathead River", basin))) %>%
+  mutate(basin = factor(basin, levels = c("West Brook", "Piney River", "Staunton River", "Paine Run", "Flathead River", "Yellowstone River", "Snake River", "Donner Blitzen")))
+```
+
+
+::: panel-tabset
+##### Duration: basins combined
+```{r echo=FALSE}
+p1 <- defdur_ssn2 %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_02_fix_prop),
+            nsites = n()) %>%
+  ungroup() %>%
+  left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
+  geom_smooth(method = "lm", color = "black") +
+  geom_point(aes(fill = basin, size = nsites), shape = 21) +
+  scale_fill_brewer(palette = "Set2") +
+  #facet_wrap(~basin) +
+  annotate("text", label = "2nd perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.x = element_blank(), legend.position = "none") + ylim(-0.1,0.55)
+
+p2 <- defdur_ssn2 %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_05_fix_prop),
+            nsites = n()) %>%
+  ungroup() %>%
+  left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
+  geom_smooth(method = "lm", color = "black") +
+  geom_point(aes(fill = basin, size = nsites), shape = 21) +
+  scale_fill_brewer(palette = "Set2") +
+  guides(size = "none", fill = guide_legend(title = "Basin", override.aes = list(size = 5))) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "5th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text = element_blank()) + ylim(-0.1,0.55)
+
+p3 <- defdur_ssn2 %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_10_fix_prop),
+            nsites = n()) %>%
+  ungroup() %>%
+  left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
+  geom_smooth(method = "lm", color = "black") +
+  geom_point(aes(fill = basin, size = nsites), shape = 21) +
+  scale_fill_brewer(palette = "Set2") +
+  #facet_wrap(~basin) +
+  annotate("text", label = "10th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), legend.position = "none") + ylim(-0.1,0.55)
+
+p4 <- defdur_ssn2 %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_20_fix_prop),
+            nsites = n()) %>%
+  ungroup() %>%
+  left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
+  geom_smooth(method = "lm", color = "black") +
+  geom_point(aes(fill = basin, size = nsites), shape = 21) +
+  scale_fill_brewer(palette = "Set2") +
+  guides(fill = "none", size = guide_legend(title = "Number of sites")) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "20th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.y = element_blank()) + ylim(-0.1,0.55)
+
+annotate_figure(egg::ggarrange(p1, p2, p3, p4), 
+                left = text_grob("Among-site variation in drought duration (SD)", hjust = 0.45, rot = 90), 
+                bottom = text_grob("Regional water availability (percentile)", hjust = 0.75))
+```
+##### Duration: by basin
+```{r echo=FALSE}
+p1 <- defdur_ssn2 %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_02_fix_prop)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur, color = basin)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "2nd perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.x = element_blank(), legend.position = "none") + ylim(0,0.5)
+
+p2 <- defdur_ssn2 %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_05_fix_prop)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur, color = basin)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "5th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text = element_blank())  + ylim(0,0.5)
+
+p3 <- defdur_ssn2 %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_10_fix_prop)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur, color = basin)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "10th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), legend.position = "none")  + ylim(0,0.5)
+
+p4 <- defdur_ssn2 %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_20_fix_prop)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur, color = basin)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "20th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.y = element_blank(), legend.position = "none")  + ylim(0,0.5)
+
+annotate_figure(egg::ggarrange(p1, p2, p3, p4), 
+                left = "Among-site variation in drought duration (SD)", bottom = "Regional water availability (percentile)")
+```
+##### Deficit: basins combined
+```{r echo=FALSE}
+p1 <- defdur_ssn2 %>%
+  filter(designation == "little")  %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(deficit_02_fix)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
+  geom_smooth(method = "lm", color = "black") +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "2nd perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.x = element_blank(), legend.position = "none") #+ ylim(-2.5,8)
+
+p2 <- defdur_ssn2 %>%
+  filter(designation == "little")  %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(deficit_05_fix)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
+  geom_smooth(method = "lm", color = "black") +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "5th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text = element_blank()) #+ ylim(-2.5,8)
+
+p3 <- defdur_ssn2 %>%
+  filter(designation == "little")  %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(deficit_10_fix)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
+  geom_smooth(method = "lm", color = "black") +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "10th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), legend.position = "none") #+ ylim(-2.5,8)
+
+p4 <- defdur_ssn2 %>%
+  filter(designation == "little")  %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(deficit_20_fix)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
+  geom_smooth(method = "lm", color = "black") +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "20th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.y = element_blank(), legend.position = "none") #+ ylim(-2.5,8)
+
+annotate_figure(egg::ggarrange(p1, p2, p3, p4), 
+                left = "Among-site variation in drought deficit (SD)", bottom = "Regional water availability (percentile)")
+```
+##### Deficift: by basin
+```{r echo=FALSE}
+p1 <- defdur_ssn2 %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(deficit_02_fix)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur, color = basin)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "2nd perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.x = element_blank(), legend.position = "none") + ylim(0,8)
+
+p2 <- defdur_ssn2 %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(deficit_05_fix)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur, color = basin)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "5th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text = element_blank()) + ylim(0,8)
+
+p3 <- defdur_ssn2 %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(deficit_10_fix)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur, color = basin)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "10th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), legend.position = "none") + ylim(0,8)
+
+p4 <- defdur_ssn2 %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(deficit_20_fix)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur, color = basin)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "20th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.y = element_blank(), legend.position = "none") + ylim(0,8)
+
+annotate_figure(egg::ggarrange(p1, p2, p3, p4), 
+                left = "Among-site variation in drought deficit (SD)", bottom = "Regional water availability (percentile)")
 ```
 :::
 
 
 
+#### Site-level threshold
 
+```{r}
+defdur_ssn_sub2 <- defdur_ssn_sub %>%
+  mutate(basin = ifelse(basin == "Shields River", "Yellowstone River",
+                        ifelse(basin == "Flathead", "Flathead River", basin))) %>%
+  mutate(basin = factor(basin, levels = c("West Brook", "Staunton River", "Flathead River", "Yellowstone River", "Snake River", "Donner Blitzen")))
+```
+
+
+::: panel-tabset
+##### Duration: basins combined
+```{r echo=FALSE}
+p1 <- defdur_ssn_sub2 %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_02_fix_prop),
+            nsites = n()) %>%
+  ungroup() %>%
+  left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
+  geom_smooth(method = "lm", color = "black") +
+  geom_point(aes(fill = basin, size = nsites), shape = 21) +
+  scale_fill_brewer(palette = "Set2") +
+  #facet_wrap(~basin) +
+  annotate("text", label = "2nd perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.x = element_blank(), legend.position = "none") + ylim(-0.03,0.2)
+
+p2 <- defdur_ssn_sub2 %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_05_fix_prop),
+            nsites = n()) %>%
+  ungroup() %>%
+  left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
+  geom_smooth(method = "lm", color = "black") +
+  geom_point(aes(fill = basin, size = nsites), shape = 21) +
+  scale_fill_brewer(palette = "Set2") +
+  guides(size = "none", fill = guide_legend(title = "Basin", override.aes = list(size = 5))) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "5th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text = element_blank()) + ylim(-0.03,0.2)
+
+p3 <- defdur_ssn_sub2 %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_10_fix_prop),
+            nsites = n()) %>%
+  ungroup() %>%
+  left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
+  geom_smooth(method = "lm", color = "black") +
+  geom_point(aes(fill = basin, size = nsites), shape = 21) +
+  scale_fill_brewer(palette = "Set2") +
+  #facet_wrap(~basin) +
+  annotate("text", label = "10th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), legend.position = "none") + ylim(-0.03,0.2)
+
+p4 <- defdur_ssn_sub2 %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_20_fix_prop),
+            nsites = n()) %>%
+  ungroup() %>%
+  left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
+  geom_smooth(method = "lm", color = "black") +
+  geom_point(aes(fill = basin, size = nsites), shape = 21) +
+  scale_fill_brewer(palette = "Set2") +
+  guides(fill = "none", size = guide_legend(title = "Number of sites")) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "20th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.y = element_blank()) + ylim(-0.03,0.2)
+
+annotate_figure(egg::ggarrange(p1, p2, p3, p4), 
+                left = text_grob("Among-site variation in drought duration (SD)", hjust = 0.45, rot = 90), 
+                bottom = text_grob("Regional water availability (percentile)", hjust = 0.75))
+```
+##### Duration: by basin
+```{r echo=FALSE}
+p1 <- defdur_ssn_sub %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_02_fix_prop)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur, color = basin)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "2nd perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.x = element_blank(), legend.position = "none") + 
+  ylim(-0.02,0.2)
+
+p2 <- defdur_ssn_sub %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_05_fix_prop)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur, color = basin)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "5th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text = element_blank()) + ylim(-0.02,0.2)
+
+p3 <- defdur_ssn_sub %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_10_fix_prop)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur, color = basin)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "10th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), legend.position = "none") + ylim(-0.02,0.2)
+
+p4 <- defdur_ssn_sub %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_20_fix_prop)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur, color = basin)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "20th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.y = element_blank(), legend.position = "none") + ylim(-0.02,0.2)
+
+annotate_figure(egg::ggarrange(p1, p2, p3, p4), 
+                left = "Among-site variation in drought duration (SD)", bottom = "Regional water availability (percentile)")
+```
+##### Deficit: basins combined
+```{r echo=FALSE}
+p1 <- defdur_ssn_sub %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(deficit_02_fix)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
+  geom_smooth(method = "lm", color = "black") +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "2nd perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.x = element_blank(), legend.position = "none") + 
+  ylim(-1.5,6)
+
+p2 <- defdur_ssn_sub %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(deficit_05_fix)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
+  geom_smooth(method = "lm", color = "black") +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "5th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text = element_blank()) + ylim(-1.5,6)
+
+p3 <- defdur_ssn_sub %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(deficit_10_fix)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
+  geom_smooth(method = "lm", color = "black") +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "10th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), legend.position = "none") + ylim(-1.5,6)
+
+p4 <- defdur_ssn_sub %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(deficit_20_fix)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
+  geom_smooth(method = "lm", color = "black") +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "20th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.y = element_blank(), legend.position = "none") + ylim(-1.5,6)
+
+annotate_figure(egg::ggarrange(p1, p2, p3, p4), 
+                left = "Among-site variation in drought deficit (SD)", bottom = "Regional water availability (percentile)")
+```
+##### Deficit: by basin
+```{r}
+p1 <- defdur_ssn_sub %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(deficit_02_fix)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur, color = basin)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "2nd perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.x = element_blank(), legend.position = "none") + 
+  ylim(0,6)
+
+p2 <- defdur_ssn_sub %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(deficit_05_fix)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur, color = basin)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "5th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text = element_blank()) + ylim(0,6)
+
+p3 <- defdur_ssn_sub %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(deficit_10_fix)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur, color = basin)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "10th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), legend.position = "none") + ylim(0,6)
+
+p4 <- defdur_ssn_sub %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(deficit_20_fix)) %>%
+  ungroup() %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur, color = basin)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = basin)) +
+  #facet_wrap(~basin) +
+  annotate("text", label = "20th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.y = element_blank(), legend.position = "none") + ylim(0,6)
+
+annotate_figure(egg::ggarrange(p1, p2, p3, p4), 
+                left = "Among-site variation in drought deficit (SD)", bottom = "Regional water availability (percentile)")
+```
+
+
+
+## Big plot
+
+```{r}
+# site-level drought threshold
+heatmapfun_site <- function(bas, months, bigG) {
+  dd <- dat_clean_sub %>% filter(basin == bas)
+  mysites <- c(unique(unlist(dd %>% filter(site_name != bigG) %>% select(site_name))), bigG)
+  myrect <- dd %>% group_by(WaterYear) %>% summarize(mindate = min(date), maxdate = max(date)) %>% ungroup()
+  p <- dd %>%
+    ggplot() +
+    geom_tile(aes(x = date, y = factor(site_name, levels = (mysites)), fill = drought_fix)) +
+    scale_fill_viridis(option = "A", direction = -1, discrete = TRUE, limits = mydroughtlevels) +
+    geom_rect(data = myrect, aes(xmin = mindate, xmax = maxdate, ymin = length(mysites)-0.5, ymax = length(mysites)+0.5), 
+              color = "grey70", fill = NA, size = 1.25) +
+    xlab("Date") + ylab("Site") +
+    #facet_wrap(~WaterYear, scales = "free_x") + 
+    facet_wrap2(~WaterYear, scales = "free_x", nrow = 2, ncol = 3, trim_blank = FALSE) +
+    theme_bw() + theme(axis.title = element_blank())
+return(p)
+}
+```
+
+
+```{r}
+
+```
+
+
+
+
+## Model
+
+Here I tried to model drought duration using a hierarchical binomial model, then estimate the effect of regional water availability on spatial variation drought duration within headwater basins. But most of the parameters do not converge (most notable, the spatial variation parameter), which is probably a result of so few data points (years) per basin.
+
+```{r eval=FALSE}
+cat("model {
+
+##--- LIKELIHOOD ---------------------------------------------------##
+
+# for (k in 1:nyrs) {
+#   for (j in 1:nsites) {
+#     y[j,k] ~ dbin(p[j,k], N[j,k])
+#     logit(p[j,k]) <- alpha[site_basin[j],k] + u[j,k]
+#     u[j,k] ~ dnorm(basin_effect[site_basin[j],k], pow(sigma_spatial[site_basin[j]], -2))
+#   }
+#   for (b in 1:nbasin) {
+#     log(sigma_spatial[b]) <- beta0 + beta1*water_avail[b,k]
+#   }
+# }
+
+
+for (i in 1:nobs) {
+  drought_days[i] ~ dbin(p[i], n_days[i])
+  logit(p[i]) <- alpha[basin[i], year[i]] + u[i]
+  u[i] ~ dnorm(0, pow(sigma_spatial[basin[i], year[i]], -2))
+}
+
+for (b in 1:nbasins) {
+  for (y in 1:nyears) {
+    sigma_spatial[b,y] <- exp(beta0[b] + beta1[b] * regional_water[b,y])
+  }
+}
+
+
+for (b in 1:nbasins) {
+  beta0[b] ~ dnorm(mu_beta0, pow(100, -2))
+  beta1[b] ~ dnorm(mu_beta1, pow(100, -2))
+  for (y in 1:nyears) {
+    alpha[b,y] ~ dnorm(mu_alpha, pow(100, -2))
+  }
+}
+
+mu_alpha ~ dnorm(0, pow(100, -2))
+mu_beta0 ~ dnorm(0, pow(100, -2))
+mu_beta1 ~ dnorm(0, pow(100, -2))
+
+
+
+##--- PRIORS --------------------------------------------------------##
+
+# for (b in 1:nbasin) {
+#   alpha[b] ~ dnorm(0, pow(10, -2))
+#   
+#   for (k in 1:nyrs) {
+#     basin_effect[b,k] ~ dnorm(0, pow(100, -2))
+#   }
+# }
+
+
+##--- DERIVED VALUES ------------------------------------------------##
+
+
+
+
+}", file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/LowFlowModel.txt")
+```
+
+```{r eval=FALSE}
+defdur_ssn_sub2_sub <- defdur_ssn_sub2 %>%
+  filter(designation == "little",
+         basin %in% c("West Brook", "Staunton River", "Snake River", "Donner Blitzen")) %>% 
+  select(basin, subbasin, site_name, WaterYear, ndays, duration_10_fix) %>%
+  arrange(basin, WaterYear, site_name) %>%
+  mutate(basin_code = as.numeric(as.factor(basin)),
+         WaterYear_code = as.numeric(as.factor(WaterYear)))
+
+regional_water <- wateravail %>% 
+  filter(basin %in% unique(defdur_ssn_sub2_sub$basin),
+         WaterYear %in% unique(defdur_ssn_sub2_sub$WaterYear)) %>%
+  select(basin, WaterYear, totalyield_sum_z) %>%
+  spread(key = WaterYear, value = totalyield_sum_z)
+regional_water_mat <- regional_water[,-1]
+```
+
+```{r eval=FALSE}
+# --- Prepare Data for JAGS ---
+
+jags.data <- list(
+  "nobs" = dim(defdur_ssn_sub2_sub)[1],
+  "nbasins" = length(unique(defdur_ssn_sub2_sub$basin)),
+  "nyears" = length(unique(defdur_ssn_sub2_sub$WaterYear)),
+  "drought_days" = defdur_ssn_sub2_sub$duration_10_fix,
+  "n_days" = defdur_ssn_sub2_sub$ndays,
+  "basin" = defdur_ssn_sub2_sub$basin_code,
+  "year" = defdur_ssn_sub2_sub$WaterYear_code,
+  "regional_water" = regional_water_mat
+)
+
+# parameters to monitor
+jags.params <- c("mu_alpha", "mu_beta0", "mu_beta1", "alpha", "beta0", "beta1", "sigma_spatial", "u", "p")
+
+# run in jags
+mod_0 <- jags(data = jags.data, parameters.to.save = jags.params,
+              model.file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/LowFlowModel.txt",
+              n.chains = 3, n.thin = 50, n.burnin = 2000, n.iter = 10000, DIC = FALSE)
+```
+
+Get MCMC samples and summary
+```{r eval=FALSE}
+top_mod <- mod_0
+# generate MCMC samples and store as an array
+modelout <- top_mod$BUGSoutput
+McmcList <- vector("list", length = dim(modelout$sims.array)[2])
+for(i in 1:length(McmcList)) { McmcList[[i]] = as.mcmc(modelout$sims.array[,i,]) }
+# rbind MCMC samples from 10 chains 
+Mcmcdat <- rbind(McmcList[[1]], McmcList[[2]], McmcList[[3]])
+param.summary <- modelout$summary
+head(param.summary)
+```
+
+For global parameters and hyperparameters only...
+```{r eval=FALSE}
+MCMCtrace(mod_0, ind = TRUE, params = c("u"), pdf = FALSE)
+```
