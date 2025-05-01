@@ -1,5 +1,7 @@
 ---
 title: "Objective 1"
+execute:
+  cache: false
 ---
 
 ```{r, include = FALSE}
@@ -99,7 +101,7 @@ wateravail %>%
 
 
 Watersheds
-```{r}
+```{r results='hide'}
 sheds_list <- list()
 myfiles <- list.files(path = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/", pattern = ".shp")
 for (i in 1:length(myfiles)) {
@@ -1385,12 +1387,6 @@ portfolioplot <- function(bas, orderr, type = c("interann", "annual", "scatter")
 }
 ```
 
-Test pit
-```{r}
-portfolioplot(bas = "West Brook", orderr = wborder, type = "scatter", wtryrs = c(2018:2024))
-portfolioplot(bas = "West Brook", orderr = wborder, type = "annual", wtryrs = c(2018:2024))
-```
-
 Generate plots
 ```{r, include=FALSE}
 # West Brook
@@ -1545,11 +1541,11 @@ annmed <- tempdat %>%
 wtryrs_arranged <- as.numeric(unlist(pedat %>% select(WaterYear)))
 
 # plot it
-plotlist <- list()
+plotlist_wb <- list()
 for(i in 1:length(wtryrs_arranged)) {
   mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i]))
   mylittleg_sheds <- sheds %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i])) %>% arrange(desc(area_sqmi))
-  plotlist[[i]] <- local({
+  plotlist_wb[[i]] <- local({
     i <- i
     ggplot() +
       geom_sf(data = st_as_sf(mysheds), color = "black", fill = "white", linewidth = 0.4) + 
@@ -1565,7 +1561,7 @@ for(i in 1:length(wtryrs_arranged)) {
       theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none", axis.text = element_blank()) +
       annotate("label", x = Inf, y = Inf, label = paste(pedat$WaterYear[i], " (", pedat$tyz_sum_perc[i], "%)", sep = ""), vjust = 1.15, hjust = 1.05, size = 5)})
 }
-ggarrange(plotlist = plotlist, common.legend = TRUE, legend = "right")
+ggarrange(plotlist = plotlist_wb, common.legend = TRUE, legend = "right")
 ```
 
 
@@ -1640,11 +1636,11 @@ annmed <- tempdat %>%
 wtryrs_arranged <- as.numeric(unlist(pedat %>% select(WaterYear)))
 
 # plot it
-plotlist <- list()
+plotlist_pa <- list()
 for(i in 1:length(wtryrs_arranged)) {
   mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i]))
   mylittleg_sheds <- sheds %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i])) %>% arrange(desc(area_sqmi))
-  plotlist[[i]] <- local({
+  plotlist_pa[[i]] <- local({
     i <- i
     ggplot() +
       geom_sf(data = st_as_sf(mysheds), color = "black", fill = "white", linewidth = 0.4) + 
@@ -1658,7 +1654,7 @@ for(i in 1:length(wtryrs_arranged)) {
       theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none", axis.text = element_blank()) +
       annotate("label", x = -Inf, y = Inf, label = paste(pedat$WaterYear[i], " (", pedat$tyz_sum_perc[i], "%)", sep = ""), vjust = 1.15, hjust = -0.05, size = 5)})
 }
-ggarrange(plotlist = plotlist, common.legend = TRUE, legend = "right")
+ggarrange(plotlist = plotlist_pa, common.legend = TRUE, legend = "right")
 ```
 
 #### Staunton River
@@ -1723,11 +1719,11 @@ annmed <- tempdat %>%
 wtryrs_arranged <- as.numeric(unlist(pedat %>% select(WaterYear)))
 
 # plot it
-plotlist <- list()
+plotlist_st <- list()
 for(i in 1:length(wtryrs_arranged)) {
   mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i]))
   mylittleg_sheds <- sheds %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i])) %>% arrange(desc(area_sqmi))
-  plotlist[[i]] <- local({
+  plotlist_st[[i]] <- local({
     i <- i
     ggplot() +
       geom_sf(data = st_as_sf(mysheds), color = "black", fill = "white", linewidth = 0.4) + 
@@ -1741,7 +1737,7 @@ for(i in 1:length(wtryrs_arranged)) {
       theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none", axis.text = element_blank()) +
       annotate("label", x = Inf, y = Inf, label = paste(pedat$WaterYear[i], " (", pedat$tyz_sum_perc[i], "%)", sep = ""), vjust = 1.15, hjust = 1.05, size = 5)})
 }
-ggarrange(plotlist = plotlist, common.legend = TRUE, legend = "right")
+ggarrange(plotlist = plotlist_st, common.legend = TRUE, legend = "right")
 ```
 
 
@@ -1816,11 +1812,11 @@ annmed <- tempdat %>%
 wtryrs_arranged <- as.numeric(unlist(pedat %>% select(WaterYear)))
 
 # plot it
-plotlist <- list()
+plotlist_fl <- list()
 for(i in 1:length(wtryrs_arranged)) {
   mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i]))
   mylittleg_sheds <- sheds %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i])) %>% arrange(desc(area_sqmi))
-  plotlist[[i]] <- local({
+  plotlist_fl[[i]] <- local({
     i <- i
     ggplot() +
       geom_sf(data = st_as_sf(mysheds), color = "black", fill = "white", linewidth = 0.4) + 
@@ -1834,7 +1830,7 @@ for(i in 1:length(wtryrs_arranged)) {
       theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none", axis.text = element_blank()) +
       annotate("label", x = Inf, y = Inf, label = paste(pedat$WaterYear[i], " (", pedat$tyz_sum_perc[i], "%)", sep = ""), vjust = 1.15, hjust = 1.05, size = 5)})
 }
-ggarrange(plotlist = plotlist, common.legend = TRUE, legend = "right")
+ggarrange(plotlist = plotlist_fl, common.legend = TRUE, legend = "right")
 ```
 
 
@@ -1901,11 +1897,11 @@ annmed <- tempdat %>%
 wtryrs_arranged <- as.numeric(unlist(pedat %>% select(WaterYear)))
 
 # plot it
-plotlist <- list()
+plotlist_ye <- list()
 for(i in 1:length(wtryrs_arranged)) {
   mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i]))
   mylittleg_sheds <- sheds %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i])) %>% arrange(desc(area_sqmi))
-  plotlist[[i]] <- local({
+  plotlist_ye[[i]] <- local({
     i <- i
     ggplot() +
       geom_sf(data = st_as_sf(mysheds), color = "black", fill = "white", linewidth = 0.4) + 
@@ -1919,7 +1915,7 @@ for(i in 1:length(wtryrs_arranged)) {
       theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none", axis.text = element_blank()) +
       annotate("label", x = -Inf, y = -Inf, label = paste(pedat$WaterYear[i], " (", pedat$tyz_sum_perc[i], "%)", sep = ""), vjust = -0.15, hjust = -0.05, size = 5)})
 }
-ggarrange(plotlist = plotlist, common.legend = TRUE, legend = "right", nrow = 2, ncol = 4)
+ggarrange(plotlist = plotlist_ye, common.legend = TRUE, legend = "right", nrow = 2, ncol = 4)
 ```
 
 
@@ -1998,11 +1994,11 @@ annmed <- tempdat %>%
 wtryrs_arranged <- as.numeric(unlist(pedat %>% select(WaterYear)))
 
 # plot it
-plotlist <- list()
+plotlist_sn <- list()
 for(i in 1:length(wtryrs_arranged)) {
   mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i]))
   mylittleg_sheds <- sheds %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i])) %>% arrange(desc(area_sqmi))
-  plotlist[[i]] <- local({
+  plotlist_sn[[i]] <- local({
     i <- i
     ggplot() +
       geom_sf(data = st_as_sf(mysheds), color = "black", fill = "white", linewidth = 0.4) + 
@@ -2016,13 +2012,7 @@ for(i in 1:length(wtryrs_arranged)) {
       theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none", axis.text = element_blank()) +
       annotate("label", x = -Inf, y = -Inf, label = paste(pedat$WaterYear[i], " (", pedat$tyz_sum_perc[i], "%)", sep = ""), vjust = -0.15, hjust = -0.05, size = 5)})
 }
-ggarrange(plotlist = plotlist, common.legend = TRUE, legend = "right")
-
-
-
-jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/TESTMAP.jpg", width = 10, height = 7, units = "in", res = 1000)
-ggarrange(plotlist = plotlist, common.legend = TRUE, legend = "right")
-dev.off()
+ggarrange(plotlist = plotlist_sn, common.legend = TRUE, legend = "right")
 ```
 
 
@@ -2097,11 +2087,11 @@ annmed <- tempdat %>%
 wtryrs_arranged <- as.numeric(unlist(pedat %>% select(WaterYear)))
 
 # plot it
-plotlist <- list()
+plotlist_db <- list()
 for(i in 1:length(wtryrs_arranged)) {
   mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i]))
   mylittleg_sheds <- sheds %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i])) %>% arrange(desc(area_sqmi))
-  plotlist[[i]] <- local({
+  plotlist_db[[i]] <- local({
     i <- i
     ggplot() +
       geom_sf(data = st_as_sf(mysheds), color = "black", fill = "white", linewidth = 0.4) + 
@@ -2115,9 +2105,217 @@ for(i in 1:length(wtryrs_arranged)) {
       theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none", axis.text = element_blank()) +
       annotate("label", x = -Inf, y = -Inf, label = paste(pedat$WaterYear[i], " (", pedat$tyz_sum_perc[i], "%)", sep = ""), vjust = -0.15, hjust = -0.05, size = 5)})
 }
-ggarrange(plotlist = plotlist, common.legend = TRUE, legend = "right")
+ggarrange(plotlist = plotlist_db, common.legend = TRUE, legend = "right")
 ```
 :::
+
+
+## Big plot
+
+Combine interannual distributions of summer flow, scatterplots showing relationship between water availability and relative range among little g's, and maps of median summer flow in a low and high water year
+
+Redraw Yellowstone to move upper Shields and Duck Creek closer together
+```{r }
+bas <- "Shields River"
+orderr <- yellorder
+wtryrs <- c(2016:2020,2022:2024)
+
+mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Shields_Watersheds.shp")
+mysheds <- mysheds[mysheds$site_id %in% c("SRS", "DU01"),]
+mynet <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/Shields_Streams.shp")
+crs(mynet) <- crs(mysheds)
+mynet <- crop(mynet, mysheds)
+
+# points
+mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% mutate(site_name = factor(site_name, levels = orderr)) #%>% filter(subbasin != "Duck Creek")
+
+
+# filter data
+tempdat <- dat_clean %>% 
+  filter(basin == bas, !is.na(logYield), Month %in% c(7:9)) %>%
+  mutate(site_name = factor(site_name, levels = orderr))
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == bas, !is.na(logYield), Month %in% c(7:9), WaterYear %in% unique(tempdat$WaterYear))
+
+  # calculate variability for reference gage
+varbig <- tempdat_big %>% 
+  group_by(WaterYear) %>% 
+  summarize(bigrange = range(logYield)[2]-range(logYield)[1],
+            bigsd = sd(logYield),
+            bigvar = var(logYield)) %>%
+  ungroup()
+
+# calculate total summer water availability from reference gage
+#summerflow <- tempdat_big %>% group_by(WaterYear) %>% summarize(summeryield = sum(Yield_mm), summeryield_log = log(sum(Yield_mm))) %>% ungroup()
+#wateravail2 <- wateravail %>% select(basin, WaterYear, totalyield, totalyield_z)
+
+# calculate relative variation
+pedat <- tempdat %>% 
+  group_by(basin, WaterYear) %>% 
+  summarize(nsites = length(unique(site_name)),
+            littlerange = range(logYield)[2]-range(logYield)[1],
+            littlesd = sd(logYield),
+            littlevar = var(logYield)) %>% 
+  ungroup() %>% 
+  left_join(varbig) %>%
+  mutate(pe_range = ((littlerange-bigrange)/bigrange),
+         pe_sd = ((littlesd-bigsd)/bigsd),
+         pe_var = ((littlevar-bigvar)/bigvar)) %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield, totalyield_z, totalyield_sum, totalyield_sum_z, tyz_perc, tyz_sum_perc)) %>% 
+  filter(WaterYear %in% wtryrs) %>%
+  mutate(wylab = substr(WaterYear, 3, 4)) %>%
+  arrange(totalyield_sum_z)
+  
+# calculate annual median summer flow
+annmed <- tempdat %>%
+  #filter(WaterYear %in% c(lowyr, highyr)) %>%
+  group_by(site_name, WaterYear) %>%
+  summarize(medlogYield = median(logYield, na.rm = TRUE)) %>%
+  ungroup()
+
+# arrange years by total annual yield
+wtryrs_arranged <- as.numeric(unlist(pedat %>% select(WaterYear)))
+
+
+
+# 2020
+mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == 2020))
+  mylittleg_sheds <- sheds %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == 2020)) %>% arrange(desc(area_sqmi))
+  mainmap <- ggplot() +
+      geom_sf(data = st_as_sf(mysheds), color = "black", fill = "white", linewidth = 0.4) + 
+      geom_sf(data = mylittleg_sheds, aes(fill = medlogYield), color = "black") +
+      scale_fill_viridis(option = "A", direction = 1, limits = range(annmed$medlogYield), na.value = "grey") +
+      geom_sf(data = st_as_sf(mynet), color = "white", linewidth = 1, lineend = "round") +
+      geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 0.6, lineend = "round") +
+      geom_sf(data = mylittleg, shape = 21, fill = "white", size = 2) +
+      labs(fill = "Median\nsummer\nlog(Yield)") + #annotation_scale() +
+      coord_sf(xlim = c(-110.555,-110.30), ylim = c(46.07,46.23)) +
+      theme_bw() + theme_void() + 
+    theme(axis.title.x = element_blank(), axis.title.y = element_blank(), axis.text = element_blank()) +
+      scale_x_continuous(expand = c(0.002, 0.002)) + scale_y_continuous(expand = c(0.002, 0.002)) +
+      annotate("label", x = -Inf, y = Inf, label = "2020 (47%)", vjust = 1.15, hjust = -0.05, size = 5)
+dbp1 <- local({
+    i <- i
+    ggdraw(mainmap + theme(legend.position = "none")) + 
+      draw_plot(
+        {
+          ggplot() +
+            geom_sf(data = st_as_sf(mysheds), color = "black", fill = "white", linewidth = 0.4) + 
+            geom_sf(data = mylittleg_sheds, aes(fill = medlogYield), color = "black") +
+            scale_fill_viridis(option = "A", direction = 1, limits = range(annmed$medlogYield), na.value = "grey") +
+            geom_sf(data = st_as_sf(mynet), color = "white", linewidth = 1, lineend = "round") +
+            geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 0.6, lineend = "round") +
+            geom_sf(data = mylittleg, shape = 21, fill = "white", size = 2) +
+            labs(fill = "Median\nsummer\nlog(Yield)") + #annotation_scale() +
+            coord_sf(xlim = c(-110.31,-110.23), ylim = c(45.865,45.96)) +
+            theme_bw() + theme_void() + theme(legend.position = "none") +
+            scale_x_continuous(expand = c(0.002, 0.002)) + scale_y_continuous(expand = c(0.002, 0.002))
+          },
+        x = 0.05, y = 0, width = 0.3, height = 0.5)
+      })
+
+# 2017
+mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == 2017))
+  mylittleg_sheds <- sheds %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == 2017)) %>% arrange(desc(area_sqmi))
+  mainmap <- ggplot() +
+      geom_sf(data = st_as_sf(mysheds), color = "black", fill = "white", linewidth = 0.4) + 
+      geom_sf(data = mylittleg_sheds, aes(fill = medlogYield), color = "black") +
+      scale_fill_viridis(option = "A", direction = 1, limits = range(annmed$medlogYield), na.value = "grey") +
+      geom_sf(data = st_as_sf(mynet), color = "white", linewidth = 1, lineend = "round") +
+      geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 0.6, lineend = "round") +
+      geom_sf(data = mylittleg, shape = 21, fill = "white", size = 2) +
+      labs(fill = "Median\nsummer\nlog(Yield)") + #annotation_scale() +
+      coord_sf(xlim = c(-110.555,-110.30), ylim = c(46.07,46.23)) +
+      theme_bw() + theme_void() + 
+    theme(axis.title.x = element_blank(), axis.title.y = element_blank(), axis.text = element_blank()) +
+      scale_x_continuous(expand = c(0.002, 0.002)) + scale_y_continuous(expand = c(0.002, 0.002)) +
+      annotate("label", x = -Inf, y = Inf, label = "2017 (67%)", vjust = 1.15, hjust = -0.05, size = 5)
+dbp2 <- local({
+    i <- i
+    ggdraw(mainmap + theme(legend.position = "none")) + 
+      draw_plot(
+        {
+          ggplot() +
+            geom_sf(data = st_as_sf(mysheds), color = "black", fill = "white", linewidth = 0.4) + 
+            geom_sf(data = mylittleg_sheds, aes(fill = medlogYield), color = "black") +
+            scale_fill_viridis(option = "A", direction = 1, limits = range(annmed$medlogYield), na.value = "grey") +
+            geom_sf(data = st_as_sf(mynet), color = "white", linewidth = 1, lineend = "round") +
+            geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 0.6, lineend = "round") +
+            geom_sf(data = mylittleg, shape = 21, fill = "white", size = 2) +
+            labs(fill = "Median\nsummer\nlog(Yield)") + #annotation_scale() +
+            coord_sf(xlim = c(-110.31,-110.23), ylim = c(45.865,45.96)) +
+            theme_bw() + theme_void() + theme(legend.position = "none") +
+            scale_x_continuous(expand = c(0.002, 0.002)) + scale_y_continuous(expand = c(0.002, 0.002))
+          },
+        x = 0.05, y = 0, width = 0.3, height = 0.5)
+      })
+#ggarrange(dbp1, dbp2, as_ggplot(ggpubr::get_legend(mainmap)), nrow = 1, widths = c(1,1,0.2))
+```
+
+Get pieces
+```{r fig.width=12, fig.height=20}
+# West Brook
+p1 <- ggarrange(portfolioplot(bas = "West Brook", orderr = wborder, type = "interannual", wtryrs = c(2020:2024)) + theme(axis.title.x = element_blank()),
+          portfolioplot(bas = "West Brook", orderr = wborder, type = "scatter", wtryrs = c(2020:2024)) + theme(axis.title.x = element_blank()),
+          ggarrange(plotlist_wb[[2]] + theme_void() + scale_x_continuous(expand = c(0.002, 0.002)) + scale_y_continuous(expand = c(0.002, 0.002)) + theme(legend.position = "none"),
+                    plotlist_wb[[4]] + theme_void() + scale_x_continuous(expand = c(0.002, 0.002)) + scale_y_continuous(expand = c(0.002, 0.002)) + theme(legend.position = "none")),
+          widths = c(1,1,2), align = "h", nrow = 1)
+
+
+# Paine
+p2 <- ggarrange(portfolioplot(bas = "Paine Run", orderr = paineorder, type = "interannual", wtryrs = c(2019:2022)) + theme(axis.title.x = element_blank()),
+          portfolioplot(bas = "Paine Run", orderr = paineorder, type = "scatter", wtryrs = c(2019:2022)) + theme(axis.title.x = element_blank()),
+          ggarrange(plotlist_pa[[1]] + theme_void() + scale_x_continuous(expand = c(0.002, 0.002)) + scale_y_continuous(expand = c(0.002, 0.002)) + theme(legend.position = "none"), 
+                    plotlist_pa[[4]] + theme_void() + scale_x_continuous(expand = c(0.002, 0.002)) + scale_y_continuous(expand = c(0.002, 0.002)) + theme(legend.position = "none")),
+          widths = c(1,1,2), align = "h", nrow = 1)
+
+
+# Staunton
+p3 <- ggarrange(portfolioplot(bas = "Staunton River", orderr = stauntorder, type = "interannual", wtryrs = c(2019:2022)) + theme(axis.title.x = element_blank()),
+          portfolioplot(bas = "Staunton River", orderr = stauntorder, type = "scatter", wtryrs = c(2019:2022)) + theme(axis.title.x = element_blank()),
+          ggarrange(plotlist_st[[1]] + theme_void() + scale_x_continuous(expand = c(0.002, 0.002)) + scale_y_continuous(expand = c(0.002, 0.002)) + theme(legend.position = "none"), 
+                    plotlist_st[[4]] + theme_void() + scale_x_continuous(expand = c(0.002, 0.002)) + scale_y_continuous(expand = c(0.002, 0.002)) + theme(legend.position = "none")),
+          widths = c(1,1,2), align = "h", nrow = 1)
+
+
+# Flathead
+p4 <- ggarrange(portfolioplot(bas = "Flathead", orderr = flatorder, type = "interannual", wtryrs = c(2018:2024)) + theme(axis.title.x = element_blank()),
+          portfolioplot(bas = "Flathead", orderr = flatorder, type = "scatter", wtryrs = c(2018:2024)) + theme(axis.title.x = element_blank()),
+          ggarrange(plotlist_fl[[2]] + theme_void() + scale_x_continuous(expand = c(0.003, 0.003)) + scale_y_continuous(expand = c(0.002, 0.002)) + theme(legend.position = "none"), 
+                    plotlist_fl[[6]] + theme_void() + scale_x_continuous(expand = c(0.003, 0.003)) + scale_y_continuous(expand = c(0.002, 0.002)) + theme(legend.position = "none")),
+          widths = c(1,1,2), align = "h", nrow = 1)
+
+
+# Yellowstone
+p5 <- ggarrange(portfolioplot(bas = "Shields River", orderr = yellorder, type = "interannual", wtryrs = c(2016:2020,2022:2024)) + theme(axis.title.x = element_blank()),
+          portfolioplot(bas = "Shields River", orderr = yellorder, type = "scatter", wtryrs = c(2016:2020,2022:2024)) + theme(axis.title.x = element_blank()),
+          ggarrange(dbp1, dbp2, nrow = 1),
+          widths = c(1,1,2), align = "h", nrow = 1)
+
+
+# Snake River
+p6 <- ggarrange(portfolioplot(bas = "Snake River", orderr = snakeorder, type = "interannual", wtryrs = c(2016:2024)) + theme(axis.title.x = element_blank()),
+          portfolioplot(bas = "Snake River", orderr = snakeorder, type = "scatter", wtryrs = c(2016:2024)) + theme(axis.title.x = element_blank()),
+          ggarrange(plotlist_sn[[2]] + theme_void() + scale_x_continuous(expand = c(0.003, 0.003)) + scale_y_continuous(expand = c(0.002, 0.002)) + theme(legend.position = "none"), 
+                    plotlist_sn[[5]] + theme_void() + scale_x_continuous(expand = c(0.003, 0.003)) + scale_y_continuous(expand = c(0.002, 0.002)) + theme(legend.position = "none")),
+          widths = c(1,1,2), align = "h", nrow = 1)
+
+
+# Donner Blitzen
+p7 <- ggarrange(portfolioplot(bas = "Donner Blitzen", orderr = donnerorder, type = "interannual", wtryrs = c(2016:2024)),
+          portfolioplot(bas = "Donner Blitzen", orderr = donnerorder, type = "scatter", wtryrs = c(2016:2024)),
+          ggarrange(plotlist_db[[1]] + theme_void() + scale_x_continuous(expand = c(0.002, 0.002)) + scale_y_continuous(expand = c(0.003, 0.003)) + theme(legend.position = "none"), 
+                    plotlist_db[[4]] + theme_void() + scale_x_continuous(expand = c(0.002, 0.002)) + scale_y_continuous(expand = c(0.003, 0.003)) + theme(legend.position = "none")),
+          widths = c(1,1,2), align = "h", nrow = 1)
+egg::ggarrange(p1, p2, p3, p4, p5, p6, p7, nrow = 7)
+```
+
+```{r}
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/EcoD_Obj1_bigplot.jpg", width = 12, height = 20, units = "in", res = 1000)
+egg::ggarrange(p1, p2, p3, p4, p5, p6, p7, nrow = 7)
+dev.off()
+```
+
 
 
 
