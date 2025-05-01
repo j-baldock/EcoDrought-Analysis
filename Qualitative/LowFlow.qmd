@@ -486,7 +486,7 @@ dat_clean_join_deficit <- dat_clean_join %>%
          deficit_15_fix = ifelse(Yield_mm < thresh_15_fix, thresh_15_fix - Yield_mm, 0),
          deficit_10_fix = ifelse(Yield_mm < thresh_10_fix, thresh_10_fix - Yield_mm, 0),
          deficit_05_fix = ifelse(Yield_mm < thresh_05_fix, thresh_05_fix - Yield_mm, 0),
-         deficit_02_fix = ifelse(Yield_mm < thresh_05_fix, thresh_05_fix - Yield_mm, 0),
+         deficit_02_fix = ifelse(Yield_mm < thresh_02_fix, thresh_02_fix - Yield_mm, 0),
          
          deficit_50_var = ifelse(Yield_mm < thresh_50_var, thresh_50_var - Yield_mm, 0),
          deficit_45_var = ifelse(Yield_mm < thresh_45_var, thresh_45_var - Yield_mm, 0),
@@ -498,7 +498,7 @@ dat_clean_join_deficit <- dat_clean_join %>%
          deficit_15_var = ifelse(Yield_mm < thresh_15_var, thresh_15_var - Yield_mm, 0),
          deficit_10_var = ifelse(Yield_mm < thresh_10_var, thresh_10_var - Yield_mm, 0),
          deficit_05_var = ifelse(Yield_mm < thresh_05_var, thresh_05_var - Yield_mm, 0),
-         deficit_02_var = ifelse(Yield_mm < thresh_05_var, thresh_05_var - Yield_mm, 0))
+         deficit_02_var = ifelse(Yield_mm < thresh_02_var, thresh_02_var - Yield_mm, 0))
 
 # # fill missing dates
 # dat_clean_join_deficit <- fill_missing_dates(dat_clean_join_deficit, dates = date, groups = site_name, pad_ends = TRUE)
@@ -942,7 +942,7 @@ dat_clean_sub_deficit <- dat_clean_sub %>%
          deficit_15_fix = ifelse(z_Yield_mm < thresh_15_fix, abs(thresh_15_fix - z_Yield_mm), 0),
          deficit_10_fix = ifelse(z_Yield_mm < thresh_10_fix, abs(thresh_10_fix - z_Yield_mm), 0),
          deficit_05_fix = ifelse(z_Yield_mm < thresh_05_fix, abs(thresh_05_fix - z_Yield_mm), 0),
-         deficit_02_fix = ifelse(z_Yield_mm < thresh_05_fix, abs(thresh_05_fix - z_Yield_mm), 0))
+         deficit_02_fix = ifelse(z_Yield_mm < thresh_02_fix, abs(thresh_02_fix - z_Yield_mm), 0))
 
 # summarize by summer
 defdur_ssn_sub <- dat_clean_sub_deficit %>% 
@@ -1285,9 +1285,15 @@ deficitplotfun_sub(bas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenc
 :::
 
 
-### Summary pots
+### Summary plots
+
+What is the relationship between regional water availability (total summer flow percentile from long-term big G flow data) and spatial variation in little g drought duration and deficit?
+
+Hypothesis: spatial variation in drought duration and deficit increases in dry years as controls on little G streamflow shift from regional to local (catchment) scales. (This follows directly from objective 1, but specifically considers low flow conditions).
 
 #### Fixed threshold
+
+First, using drought as defined from fixed thresholds (low flow thresholds derived from long-term big G records are applied to each little G)
 
 ```{r}
 defdur_ssn2 <- defdur_ssn %>% 
@@ -1308,7 +1314,6 @@ wateravail2 <- wateravail %>%
                         ifelse(basin == "Flathead", "Flathead River", basin))) %>%
   mutate(basin = factor(basin, levels = c("West Brook", "Piney River", "Staunton River", "Paine Run", "Flathead River", "Yellowstone River", "Snake River", "Donner Blitzen")))
 ```
-
 
 ::: panel-tabset
 ##### Duration: basins combined
@@ -1552,9 +1557,56 @@ annotate_figure(egg::ggarrange(p1, p2, p3, p4),
 ```
 :::
 
+Summarize relationships across thresholds: how does the definition of "low flow"/"drought" change the way we understand the effect of regional water availability on spatial variation in low flow conditions?
+```{r fig.width=4, fig.height=7}
+colnums <- c(8:18)
+effecttib <- tibble(threshold = rep(NA, times = length(colnums)),
+                    int_est = rep(NA, times = length(colnums)),
+                    int_se = rep(NA, times = length(colnums)),
+                    slo_est = rep(NA, times = length(colnums)),
+                    slo_se = rep(NA, times = length(colnums)))
+
+for (i in 1:length(colnums)) {
+  effecttib$threshold[i] <- parse_number(names(defdur_ssn2)[colnums[i]+2])
+  dd <- defdur_ssn2 %>%
+    filter(designation == "little") %>%
+    group_by(basin, WaterYear) %>%
+    summarize_at(colnums[i], sd) %>%
+    ungroup() %>%
+    left_join(wateravail2 %>% select(basin, WaterYear, tyz_sum_perc)) %>%
+    rename(sddur = 3)
+  mymod <- summary(lm(sddur ~ tyz_sum_perc, data = dd))
+  effecttib$int_est[i] <- mymod$coefficients[1,1]
+  effecttib$int_se[i] <- mymod$coefficients[1,2]
+  effecttib$slo_est[i] <- mymod$coefficients[2,1]
+  effecttib$slo_se[i] <- mymod$coefficients[2,2]
+}
+
+p1 <- effecttib %>%
+  ggplot(aes(x = threshold, y = int_est)) +
+  geom_line(color = "grey") +
+  geom_point() + 
+  geom_errorbar(aes(ymin = int_est-int_se, ymax = int_est+int_se), width = 1) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  xlab("Low flow threshold (percentile)") + ylab("Intercept (spatial variation at\n0% regional water availability)") +
+  theme_classic()
+
+p2 <- effecttib %>%
+  ggplot(aes(x = threshold, y = slo_est)) +
+  geom_line(color = "grey") +
+  geom_point() + 
+  geom_errorbar(aes(ymin = slo_est-slo_se, ymax = slo_est+slo_se), width = 1) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  xlab("Low flow threshold (percentile)") + ylab("Slope (effect of regional water\navailability on spatial variation)") +
+  theme_classic()
+
+egg::ggarrange(p1, p2, nrow = 2)
+```
 
 
 #### Site-level threshold
+
+Second, using drought as defined from site-specific thresholds (low flow thresholds derived for each site individually)
 
 ```{r}
 defdur_ssn_sub2 <- defdur_ssn_sub %>%
@@ -1562,7 +1614,6 @@ defdur_ssn_sub2 <- defdur_ssn_sub %>%
                         ifelse(basin == "Flathead", "Flathead River", basin))) %>%
   mutate(basin = factor(basin, levels = c("West Brook", "Staunton River", "Flathead River", "Yellowstone River", "Snake River", "Donner Blitzen")))
 ```
-
 
 ::: panel-tabset
 ##### Duration: basins combined
@@ -1806,6 +1857,54 @@ p4 <- defdur_ssn_sub %>%
 
 annotate_figure(egg::ggarrange(p1, p2, p3, p4), 
                 left = "Among-site variation in drought deficit (SD)", bottom = "Regional water availability (percentile)")
+```
+:::
+
+
+Summarize relationships across thresholds: how does the definition of "low flow"/"drought" change the way we understand the effect of regional water availability on spatial variation in low flow conditions?
+```{r fig.width=4, fig.height=7}
+colnums <- c(8:18)
+effecttib <- tibble(threshold = rep(NA, times = length(colnums)),
+                    int_est = rep(NA, times = length(colnums)),
+                    int_se = rep(NA, times = length(colnums)),
+                    slo_est = rep(NA, times = length(colnums)),
+                    slo_se = rep(NA, times = length(colnums)))
+
+for (i in 1:length(colnums)) {
+  effecttib$threshold[i] <- parse_number(names(defdur_ssn_sub2)[colnums[i]+2])
+  dd <- defdur_ssn_sub2 %>%
+    filter(designation == "little") %>%
+    group_by(basin, WaterYear) %>%
+    summarize_at(colnums[i], sd) %>%
+    ungroup() %>%
+    left_join(wateravail2 %>% select(basin, WaterYear, tyz_sum_perc)) %>%
+    rename(sddur = 3)
+  mymod <- summary(lm(sddur ~ tyz_sum_perc, data = dd))
+  effecttib$int_est[i] <- mymod$coefficients[1,1]
+  effecttib$int_se[i] <- mymod$coefficients[1,2]
+  effecttib$slo_est[i] <- mymod$coefficients[2,1]
+  effecttib$slo_se[i] <- mymod$coefficients[2,2]
+}
+
+p1 <- effecttib %>%
+  ggplot(aes(x = threshold, y = int_est)) +
+  geom_line(color = "grey") +
+  geom_point() + 
+  geom_errorbar(aes(ymin = int_est-int_se, ymax = int_est+int_se), width = 1) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  xlab("Low flow threshold (percentile)") + ylab("Intercept (spatial variation at\n0% regional water availability)") +
+  theme_classic()
+
+p2 <- effecttib %>%
+  ggplot(aes(x = threshold, y = slo_est)) +
+  geom_line(color = "grey") +
+  geom_point() + 
+  geom_errorbar(aes(ymin = slo_est-slo_se, ymax = slo_est+slo_se), width = 1) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  xlab("Low flow threshold (percentile)") + ylab("Slope (effect of regional water\navailability on spatial variation)") +
+  theme_classic()
+
+egg::ggarrange(p1, p2, nrow = 2)
 ```
 
 
