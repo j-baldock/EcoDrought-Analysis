@@ -51,6 +51,10 @@ quarto::quarto_render("Covariates/PASTA.qmd",
                       cache_refresh = TRUE, # default is FALSE
                       output_format = "html")
 
+quarto::quarto_render("Qualitative/Overview.qmd", 
+                      #cache_refresh = TRUE, # default is FALSE
+                      output_format = "html")
+
 quarto::quarto_render("Qualitative/SpaceTimeVar.qmd", 
                       #cache_refresh = TRUE, # default is FALSE
                       output_format = "html")
@@ -60,6 +64,10 @@ quarto::quarto_render("Qualitative/Hysteresis.qmd",
                       output_format = "html")
 
 quarto::quarto_render("Qualitative/ModeledQ.qmd", 
+                      #cache_refresh = TRUE, # default is FALSE
+                      output_format = "html")
+
+quarto::quarto_render("Qualitative/LowFlow.qmd", 
                       #cache_refresh = TRUE, # default is FALSE
                       output_format = "html")
 
