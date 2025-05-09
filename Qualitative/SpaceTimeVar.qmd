@@ -690,6 +690,7 @@ annotate_figure(egg::ggarrange(pwb1, ppa1, pst1, pfl1, pye1, psn1, pdb1, ncol = 
 dev.off()
 ```
 
+
 ## Exceedance curves
 
 Summer exceedance curves and spatial variability in flow relative to (bootstrapped) temporal variability
@@ -1469,6 +1470,8 @@ densn
 dendb
 ```
 :::
+
+
 
 ## Median summer flow
 
@@ -2316,7 +2319,319 @@ egg::ggarrange(p1, p2, p3, p4, p5, p6, p7, nrow = 7)
 dev.off()
 ```
 
+### Presentation figs
 
+Time series plots, West Brook and Flathead
+```{r fig.width=8, fig.height=5}
+### FLATHEAD
+tempdat <- dat_clean %>% 
+  filter(basin == "Flathead", date >= date("2018-07-29"), date <= date("2023-08-11")) %>%
+  mutate(site_name = factor(site_name, levels = flatorder))
+tempdat <- fill_missing_dates(tempdat, dates = date, groups = site_name, pad_ends = FALSE)  
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == "Flathead", date >= date("2018-07-29"), date <= date("2023-08-11"))
+# color
+pfl1 <- ggplot() +
+  geom_line(data = tempdat, aes(x = date, y = logYield, color = factor(site_name, levels = flatorder))) +
+  geom_line(data = tempdat_big, aes(x = date, y = logYield), color = "grey40") +
+  scale_color_manual(values = cet_pal(nsites, name = "i1")) +
+  ylim(-3,2) +
+  annotate("text", x = min(c(tempdat_big$date, tempdat$date), na.rm = TRUE), y = max(c(tempdat_big$logYield, tempdat$logYield), na.rm = TRUE), label = "Flathead River", hjust = 0, vjust = 1) +
+  scale_x_date(expand = c(0.02,0.02)) + #scale_y_continuous(expand = c(0,0)) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
+                     axis.title = element_blank(), plot.margin = margin(t = 1, r = 5, b = 2, l = 2), axis.text = element_text(color = "black"))
+
+p <- annotate_figure(egg::ggarrange(pwb1, pfl1 + ylim(-2.4,1.72), ncol = 1), left = "log(Yield, mm/day)")
+print(p)
+
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/EcoD_timeseries_WBFlat.jpg", width = 8, height = 5, units = "in", res = 1000)
+p
+dev.off()
+
+
+#### NO LITTLE Gs
+### WEST BROOK
+tempdat <- dat_clean %>% 
+  filter(basin == "West Brook") %>%
+  mutate(site_name = factor(site_name, levels = wborder))
+tempdat <- fill_missing_dates(tempdat, dates = date, groups = site_name, pad_ends = FALSE)  
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == "West Brook", date >= date("2020-01-01"), date <= date("2025-01-03"))
+# color
+pwb1_nlg <- ggplot() +
+  #geom_line(data = tempdat, aes(x = date, y = logYield, color = factor(site_name, levels = wborder))) +
+  geom_line(data = tempdat_big, aes(x = date, y = logYield), color = "grey40") +
+  scale_color_manual(values = cet_pal(nsites, name = "i1")) +
+  ylim(-3,2) +
+  annotate("text", x = min(c(tempdat_big$date, tempdat$date), na.rm = TRUE), y = max(c(tempdat_big$logYield, tempdat$logYield), na.rm = TRUE), label = "The West Brook", hjust = 0, vjust = 1) +
+  scale_x_date(expand = c(0.02,0.02)) + #scale_y_continuous(expand = c(0,0)) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
+                     axis.title = element_blank(), plot.margin = margin(t = 1, r = 5, b = 2, l = 2), axis.text = element_text(color = "black"))
+
+### FLATHEAD
+tempdat <- dat_clean %>% 
+  filter(basin == "Flathead", date >= date("2018-07-29"), date <= date("2023-08-11")) %>%
+  mutate(site_name = factor(site_name, levels = flatorder))
+tempdat <- fill_missing_dates(tempdat, dates = date, groups = site_name, pad_ends = FALSE)  
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == "Flathead", date >= date("2018-07-29"), date <= date("2023-08-11"))
+# color
+pfl1_nlg <- ggplot() +
+  #geom_line(data = tempdat, aes(x = date, y = logYield, color = factor(site_name, levels = flatorder))) +
+  geom_line(data = tempdat_big, aes(x = date, y = logYield), color = "grey40") +
+  scale_color_manual(values = cet_pal(nsites, name = "i1")) +
+  ylim(-2.4,1.72) +
+  annotate("text", x = min(c(tempdat_big$date, tempdat$date), na.rm = TRUE), y = max(c(tempdat_big$logYield, tempdat$logYield), na.rm = TRUE), label = "Flathead River", hjust = 0, vjust = 1) +
+  scale_x_date(expand = c(0.02,0.02)) + #scale_y_continuous(expand = c(0,0)) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
+                     axis.title = element_blank(), plot.margin = margin(t = 1, r = 5, b = 2, l = 2), axis.text = element_text(color = "black"))
+
+p <- annotate_figure(egg::ggarrange(pwb1_nlg, pfl1_nlg, ncol = 1), left = "log(Yield, mm/day)")
+print(p)
+
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/EcoD_timeseries_WBFlat_nolittle.jpg", width = 8, height = 5, units = "in", res = 1000)
+p
+dev.off()
+```
+
+
+Summer log(yield) distributions for West Brook and Flathead
+```{r fig.width = 2.75, fig.height = 5}
+p <- egg::ggarrange(portfolioplot(bas = "West Brook", orderr = wborder, type = "interannual", wtryrs = c(2020:2024)) + theme(axis.title = element_blank(), axis.ticks.y = element_blank(), axis.text.y = element_blank(), plot.margin = margin(t = 1, r = 1, b = 2, l = 1)),
+               portfolioplot(bas = "Flathead", orderr = flatorder, type = "interannual", wtryrs = c(2018:2024)) + theme(axis.title = element_blank(), axis.ticks.y = element_blank(), axis.text.y = element_blank(), plot.margin = margin(t = 1, r = 1, b = 2, l = 1)),
+               nrow = 2)
+print(p)
+
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/EcoD_summerdensity_WBFlat.jpg", width = 2.75, height = 5, units = "in", res = 1000)
+p
+dev.off()
+```
+
+
+Scatterplot: relative difference range vs. regional water availability
+```{r fig.width = 5, fig.height = 4}
+# define basin-years to keep
+keepyears <- bind_rows(
+  tibble(basin = "West Brook", WaterYear = c(2020:2024)),
+  tibble(basin = "Paine Run", WaterYear = c(2019:2022)),
+  tibble(basin = "Staunton River", WaterYear = c(2019:2022)),
+  tibble(basin = "Flathead", WaterYear = c(2018:2024)),
+  tibble(basin = "Shields River", WaterYear = c(2016:2020,2022:2024)),
+  tibble(basin = "Snake River", WaterYear = c(2016:2024)),
+  tibble(basin = "Donner Blitzen", WaterYear = c(2016:2024)),
+) %>% mutate(keep = "yes")
+
+# standard deviation of median summer flow
+# dat_clean %>%
+#   filter(Month %in% c(7:9)) %>%
+#   group_by(basin, site_name, WaterYear) %>%
+#   summarize(medyield = median(logYield, na.rm = TRUE)) %>%
+#   ungroup() %>%
+#   group_by(basin, WaterYear) %>%
+#   summarize(sdyield = sd(medyield), nsites = n()) %>%
+#   ungroup() %>%
+#   left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+#   left_join(keepyears) %>% filter(keep == "yes") %>%
+#   mutate(basin = ifelse(basin == "Shields River", "Yellowstone River",
+#                         ifelse(basin == "Flathead", "Flathead River", basin))) %>%
+#   mutate(basin = factor(basin, levels = c("West Brook", "Piney River", "Staunton River", "Paine Run", "Flathead River", "Yellowstone River", "Snake River", "Donner Blitzen"))) %>%
+#   ggplot(aes(x = tyz_sum_perc, y = sdyield)) +
+#   geom_smooth(method = "lm", color = "black", aes(weight = nsites)) +
+#   geom_point(aes(fill = basin, size = nsites), shape = 21) +
+#   scale_fill_brewer(palette = "Set2") +
+#   #facet_wrap(~basin) +
+#   theme_bw() + theme(panel.grid = element_blank())
+
+
+# calculate relative difference in range as above
+mydat <- dat_clean %>% 
+  filter(Month %in% c(7:9)) %>%
+  group_by(basin, WaterYear) %>% 
+  summarize(nsites = length(unique(site_name)),
+            littlerange = range(logYield)[2]-range(logYield)[1]) %>% 
+  ungroup() %>% 
+  left_join(dat_clean_big %>% 
+              filter(Month %in% c(7:9)) %>% 
+              group_by(basin, WaterYear) %>% 
+              summarize(bigrange = range(logYield)[2]-range(logYield)[1]) %>%
+              ungroup()) %>%
+  mutate(pe_range = ((littlerange-bigrange)/bigrange)) %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  left_join(keepyears) %>% filter(keep == "yes") %>%
+  mutate(basin = ifelse(basin == "Shields River", "Yellowstone River",
+                        ifelse(basin == "Flathead", "Flathead River", basin))) %>%
+  mutate(basin = factor(basin, levels = c("West Brook", "Piney River", "Staunton River", "Paine Run", 
+                                          "Flathead River", "Yellowstone River", "Snake River", "Donner Blitzen"))) 
+
+# show linear model summary, weighted by number of sites
+summary(lm(pe_range ~ tyz_sum_perc, data = mydat, weights = nsites))
+
+# plot
+randiffplot <- mydat %>%
+  ggplot(aes(x = tyz_sum_perc, y = pe_range)) +
+  geom_smooth(method = "lm", mapping = aes(weight = nsites), color = "black") +
+  geom_point(aes(fill = basin, size = nsites), shape = 21) +
+  scale_fill_brewer(palette = "Set2") +
+  #facet_wrap(~basin) +
+  theme_bw() + theme(panel.grid = element_blank()) +
+  ylab("Relative difference in range") + xlab("Regional water availability (percentile)") +
+  guides(fill = guide_legend(title = "Basin", override.aes = list(size = 5)), size = guide_legend(title = "Number of sites")) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed")
+print(randiffplot)
+
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/EcoD_RangeDiff_allsites.jpg", width = 5, height = 4, units = "in", res = 1000)
+randiffplot
+dev.off()
+```
+
+2020/2021 summer flow distributions
+```{r fig.width=2.75, fig.height=5}
+bas <- "West Brook"
+wtryrs <- c(2020,2021)
+# filter data
+tempdat <- dat_clean %>% 
+  filter(basin == bas, !is.na(logYield), Month %in% c(7:9), WaterYear %in% wtryrs) %>%
+  mutate(site_name = factor(site_name, levels = orderr))
+
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == bas, !is.na(logYield), Month %in% c(7:9), WaterYear %in% unique(tempdat$WaterYear))
+
+# annual
+pann <- ggplot() +
+  geom_density(data = tempdat, aes(x = logYield, y = ..scaled.., color = site_name, fill = site_name), size = 0.8) +
+  scale_color_manual(values = cet_pal(nsites, name = "i1")) +
+  scale_fill_manual(values = alpha(cet_pal(nsites, name = "i1"), 0.1)) +
+  geom_density(data = tempdat_big, aes(x = logYield, y = ..scaled..), color = "grey40", fill = alpha("grey40", 0.2), size = 0.8) +
+  xlab("Summer log(Yield)") + ylab("Density") +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                     axis.text.y = element_blank(), axis.ticks.y = element_blank(),
+                     axis.text = element_text(color = "black"), legend.position = "none",
+                     strip.background = element_blank(), strip.text = element_blank()) +
+  facet_wrap(~factor(WaterYear, levels = as.numeric(unlist(pedat %>% arrange(totalyield_sum_z) %>% select(WaterYear)))), ncol = 1)
+
+print(pann)
+
+
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/EcoD_summerdensity_WB_annual.jpg", width = 2.75, height = 5, units = "in", res = 1000)
+pann
+dev.off()
+```
+
+2020/2021 summer flow distributions
+```{r fig.width=4, fig.height=6}
+bas <- "West Brook"
+orderr <- wborder
+wtryrs <- c(2020,2021)
+
+# sheds and network
+mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Mass_Watersheds.shp")
+mysheds <- mysheds[mysheds$site_id == "WBR",]
+mynet <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/Mass_Streams.shp")
+crs(mynet) <- crs(mysheds)
+mynet <- crop(mynet, mysheds)
+
+# get lakes
+lakes <- get_waterbodies(AOI = siteinfo_sp %>% filter(site_name == "West Brook NWIS"), buffer = 10000)
+lakes <- lakes %>% filter(gnis_name %in% c("Northampton Reservoir Upper", "Northampton Reservoir"))
+
+# little g points
+mylittleg <- siteinfo_sp %>% filter(site_name %in% wborder) %>% mutate(site_name = factor(site_name, levels = wborder))
+
+
+# filter data
+tempdat <- dat_clean %>% 
+  filter(basin == bas, !is.na(logYield), Month %in% c(7:9)) %>%
+  mutate(site_name = factor(site_name, levels = orderr))
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == bas, !is.na(logYield), Month %in% c(7:9), WaterYear %in% unique(tempdat$WaterYear))
+
+  # calculate variability for reference gage
+varbig <- tempdat_big %>% 
+  group_by(WaterYear) %>% 
+  summarize(bigrange = range(logYield)[2]-range(logYield)[1],
+            bigsd = sd(logYield),
+            bigvar = var(logYield)) %>%
+  ungroup()
+
+# calculate total summer water availability from reference gage
+#summerflow <- tempdat_big %>% group_by(WaterYear) %>% summarize(summeryield = sum(Yield_mm), summeryield_log = log(sum(Yield_mm))) %>% ungroup()
+#wateravail2 <- wateravail %>% select(basin, WaterYear, totalyield, totalyield_z)
+
+# calculate relative variation
+pedat <- tempdat %>% 
+  group_by(basin, WaterYear) %>% 
+  summarize(nsites = length(unique(site_name)),
+            littlerange = range(logYield)[2]-range(logYield)[1],
+            littlesd = sd(logYield),
+            littlevar = var(logYield)) %>% 
+  ungroup() %>% 
+  left_join(varbig) %>%
+  mutate(pe_range = ((littlerange-bigrange)/bigrange),
+         pe_sd = ((littlesd-bigsd)/bigsd),
+         pe_var = ((littlevar-bigvar)/bigvar)) %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield, totalyield_z, totalyield_sum, totalyield_sum_z, tyz_perc, tyz_sum_perc)) %>% 
+  filter(WaterYear %in% wtryrs) %>%
+  mutate(wylab = substr(WaterYear, 3, 4)) %>%
+  arrange(totalyield_sum_z)
+  
+# calculate annual median summer flow
+annmed <- tempdat %>%
+  #filter(WaterYear %in% c(lowyr, highyr)) %>%
+  group_by(site_name, WaterYear) %>%
+  summarize(medlogYield = median(logYield, na.rm = TRUE)) %>%
+  ungroup()
+
+# arrange years by total annual yield
+wtryrs_arranged <- as.numeric(unlist(pedat %>% select(WaterYear)))
+
+# plot it
+plotlist_wb <- list()
+for(i in 1:length(wtryrs_arranged)) {
+  mylittleg <- siteinfo_sp %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i]))
+  mylittleg_sheds <- sheds %>% filter(site_name %in% orderr) %>% left_join(annmed %>% filter(WaterYear == wtryrs_arranged[i])) %>% arrange(desc(area_sqmi))
+  plotlist_wb[[i]] <- local({
+    i <- i
+    ggplot() +
+      geom_sf(data = st_as_sf(mysheds), color = "black", fill = "white", linewidth = 0.4) + 
+      geom_sf(data = mylittleg_sheds, aes(fill = medlogYield), color = "black") +
+      scale_fill_viridis(option = "A", direction = 1, limits = range(annmed$medlogYield), na.value = "grey") +
+      geom_sf(data = st_as_sf(mynet), color = "white", linewidth = 1, lineend = "round") +
+      geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 0.6, lineend = "round") +
+      geom_sf(data = lakes, color = "white", fill = "lightskyblue1", linewidth = 0.7) +
+      geom_sf(data = lakes, color = "royalblue4", fill = "lightskyblue1", linewidth = 0.5) +
+      geom_sf(data = mylittleg, shape = 21, fill = "white", size = 2) +
+      labs(fill = "Median\nsummer\nlog(Yield)") + #annotation_scale() +
+      coord_sf(xlim = range(st_coordinates(mylittleg_sheds)[,1]), ylim = range(st_coordinates(mylittleg_sheds)[,2])) +
+      theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none", axis.text = element_blank()) +
+      theme_void() + scale_x_continuous(expand = c(0.003, 0.003)) + scale_y_continuous(expand = c(0.002, 0.002))
+      #annotate("label", x = Inf, y = Inf, label = paste(pedat$WaterYear[i], " (", pedat$tyz_sum_perc[i], "%)", sep = ""), vjust = 1.15, hjust = 1.05, size = 5)
+      })
+}
+p <- ggarrange(plotlist = plotlist_wb, common.legend = TRUE, legend = "right", nrow = 2)
+print(p)
+
+
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/EcoD_summermedianmap_WB_annual.jpg", width = 4, height = 6, units = "in", res = 1000)
+p
+dev.off()
+```
+
+```{r include=FALSE, eval=FALSE}
+### FLATHEAD
+tempdat <- dat_clean %>% 
+  filter(basin == "Flathead", date >= date("2021-07-01"), date <= date("2021-10-01")) %>%
+  mutate(site_name = factor(site_name, levels = flatorder))
+tempdat <- fill_missing_dates(tempdat, dates = date, groups = site_name, pad_ends = FALSE)  
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == "Flathead", date >= date("2021-07-01"), date <= date("2021-10-01"))
+# color
+ggplot() +
+  geom_line(data = tempdat, aes(x = date, y = logYield, color = factor(site_name, levels = flatorder))) +
+  geom_line(data = tempdat_big, aes(x = date, y = logYield), color = "black") +
+  scale_color_manual(values = cet_pal(nsites, name = "i1")) +
+  scale_x_date(expand = c(0.02,0.02)) + #scale_y_continuous(expand = c(0,0)) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none")
+```
 
 
 ## Monthly means
