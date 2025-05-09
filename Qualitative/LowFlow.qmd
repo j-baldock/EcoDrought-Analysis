@@ -1612,7 +1612,8 @@ Second, using drought as defined from site-specific thresholds (low flow thresho
 defdur_ssn_sub2 <- defdur_ssn_sub %>%
   mutate(basin = ifelse(basin == "Shields River", "Yellowstone River",
                         ifelse(basin == "Flathead", "Flathead River", basin))) %>%
-  mutate(basin = factor(basin, levels = c("West Brook", "Staunton River", "Flathead River", "Yellowstone River", "Snake River", "Donner Blitzen")))
+  mutate(basin = factor(basin, levels = c("West Brook", "Piney River", "Staunton River", "Paine Run", 
+                                          "Flathead River", "Yellowstone River", "Snake River", "Donner Blitzen")))
 ```
 
 ::: panel-tabset
@@ -1907,6 +1908,101 @@ p2 <- effecttib %>%
 egg::ggarrange(p1, p2, nrow = 2)
 ```
 
+## Presentation figs
+
+```{r fig.width = 5, fig.height = 4}
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/EcoD_DroughtDiff_allsites.jpg", width = 5, height = 4, units = "in", res = 1000)
+mycols <- brewer.pal(7, "Set2")[-2]
+defdur_ssn_sub2 %>%
+  filter(designation == "little") %>%
+  mutate(logit_duration = log((duration_15_fix_prop+0.001)/(1-(duration_15_fix_prop+0.001)))) %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_15_fix_prop),
+            sddur_logit = sd(logit_duration),
+            nsites = n()) %>%
+  ungroup() %>%
+  left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  geom_smooth(method = "lm", color = "black", aes(weight = nsites)) +
+  #geom_smooth(method = "glm", formula = y+0.000000001~x, method.args = list(family = gaussian(link = 'log'))) +
+  geom_point(aes(fill = basin, size = nsites), shape = 21) +
+  #scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values = mycols) +
+  ylab("Spatial variation in drought duration (SD)") + xlab("Regional water availability (percentile)") +
+  #facet_wrap(~basin) +
+  #annotate("text", label = "10th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank()) +
+  guides(fill = guide_legend(title = "Basin", override.aes = list(size = 5)), size = guide_legend(title = "Number of sites"))
+dev.off()
+```
+
+```{r}
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/EcoD_DroughtDiff_fixed_allsites.jpg", width = 5.5, height = 4, units = "in", res = 1000)
+mycols <- brewer.pal(7, "Set2")[-2]
+defdur_ssn2 %>%
+  filter(designation == "little") %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_05_fix_prop),
+            nsites = n()) %>%
+  ungroup() %>%
+  left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  geom_smooth(method = "lm", color = "black", aes(weight = nsites)) +
+  geom_point(aes(fill = basin, size = nsites), shape = 21) +
+  # scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values = mycols) +
+  ylab("Spatial variation in drought duration (SD)") + xlab("Regional water availability (percentile)") +
+  guides(fill = guide_legend(title = "Basin", override.aes = list(size = 5)), size = guide_legend(title = "Number of sites")) +
+  #facet_wrap(~basin) +
+  #annotate("text", label = "5th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
+  theme_bw() + theme(panel.grid = element_blank())
+dev.off()
+```
+
+
+```{r}
+# site-level drought threshold
+bas <- "Flathead"
+months <- c(7:9)
+bigG <- "North Fork Flathead River NWIS"
+
+dd <- dat_clean_sub %>% filter(basin == bas, WaterYear %in% c(2021, 2022))
+mysites <- c(unique(unlist(dd %>% filter(site_name != bigG) %>% select(site_name))), bigG)
+myrect <- dd %>% group_by(WaterYear) %>% summarize(mindate = min(date), maxdate = max(date)) %>% ungroup()
+dd %>%
+    ggplot() +
+    geom_tile(aes(x = date, y = factor(site_name, levels = (mysites)), fill = drought_fix)) +
+    scale_fill_viridis(option = "A", direction = -1, discrete = TRUE, limits = mydroughtlevels) +
+    geom_rect(data = myrect, aes(xmin = mindate, xmax = maxdate, ymin = length(mysites)-0.5, ymax = length(mysites)+0.5), 
+              color = "grey70", fill = NA, size = 1.25) +
+    xlab("Date") + ylab("Site") +
+    #facet_wrap(~WaterYear, scales = "free_x") + 
+    facet_wrap(~WaterYear, scales = "free_x") +
+    theme_bw() + theme(axis.title = element_blank()) +
+  guides(fill = guide_legend(title = "Low flow\nthreshold"))
+
+
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/EcoD_DroughtTS_fixed_Flathead2021.jpg", width = 5.5, height = 3.5, units = "in", res = 1000)
+dd <- dat_clean_join %>% filter(basin == bas | site_name == bigG, month %in% months, WaterYear %in% c(2021), site_name != "CycloneCreekMiddle") %>%
+  mutate(site_name = ifelse(site_name == "North Fork Flathead River NWIS", "NF Flathead NWIS", site_name))
+mysites <- c(unique(unlist(dd %>% filter(designation == "big") %>% select(site_name))),
+             unique(unlist(dd %>% filter(designation == "little") %>% select(site_name))))
+myrect <- dd %>% group_by(WaterYear) %>% summarize(mindate = min(date), maxdate = max(date)) %>% ungroup()
+dd %>%
+  ggplot() +
+  geom_tile(aes(x = date, y = factor(site_name, levels = rev(mysites)), fill = drought_fix)) +
+  scale_fill_viridis(option = "A", direction = -1, discrete = TRUE, limits = mydroughtlevels) +
+  geom_rect(data = myrect, aes(xmin = mindate, xmax = maxdate, ymin = length(mysites)-0.5, ymax = length(mysites)+0.5), 
+            color = "grey70", fill = NA, size = 1.25) +
+  xlab("Date") + ylab("Site") +
+  #facet_wrap(~WaterYear, scales = "free_x") + 
+  #facet_wrap(~WaterYear, scales = "free_x") +
+  theme_bw() + theme(axis.title = element_blank()) +
+  guides(fill = guide_legend(title = "Low flow\nthreshold"))
+dev.off()
+```
 
 
 ## Big plot
