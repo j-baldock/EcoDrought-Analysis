@@ -1,0 +1,266 @@
+---
+title: "TimeSeriesSimilarity"
+---
+
+
+```{r echo=FALSE, message=FALSE}
+library(tidyverse)
+library(sf)
+library(mapview)
+library(knitr)
+library(fasstr)
+library(RColorBrewer)
+library(scales)
+library(dygraphs)
+library(hydroEvents)
+library(GGally)
+library(dataRetrieval)
+library(ggpubr)
+library(DT)
+library(hydroGOF)
+```
+
+
+## Site info and data
+
+Load site information
+```{r}
+# site information
+siteinfo <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv")
+```
+
+Define G-g clusters/sub-basins
+```{r}
+siteinfo2 <- siteinfo %>% 
+  filter(!site_name %in% c("WoundedBuckCreek", "Brackett Creek", "South River Conway NWIS", 
+                           "Shields River nr Livingston NWIS", "North Fork Flathead River NWIS", 
+                           "Pacific Creek at Moran NWIS")) %>%
+  mutate(designation = ifelse(site_name %in% c("Donner Blitzen River nr Frenchglen NWIS", 
+                                               "BigCreekLower", "CoalCreekLower", "McGeeCreekLower", 
+                                               "West Brook NWIS", "West Brook 0", 
+                                               "Paine Run 10", "Staunton River 10", "Piney River 10", 
+                                               "Shields River Valley Ranch", "Shields River ab Smith NWIS", 
+                                               "EF Duck Creek be HF",
+                                               "Spread Creek Dam"), "big", "little"))
+```
+
+Map focal sites/subbasins
+```{r}
+siteinfo_sp <- st_as_sf(siteinfo2, coords = c("long", "lat"), crs = 4326)
+mapview(siteinfo_sp, zcol = "designation")
+```
+
+
+Load daily and weekly data
+```{r}
+# daily data
+dat_day <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Event Delineation/EcoDrought_Data_Daily_Paired_gG.csv") %>% 
+  mutate(dist_man = abs(yield_little_log - yield_big_log))
+head(dat_day)
+
+# weekly data
+dat_week <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Event Delineation/EcoDrought_Data_Weekly_Paired_gG.csv") %>% 
+  mutate(date = as.Date(paste(year, week, 1, sep="-"), "%Y-%U-%u"),
+         dist_man = abs(yield_little_log - yield_big_log))
+head(dat_week)
+
+# raw daily big g 
+dat_big <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv") %>% 
+  mutate(site_name = dplyr::recode(site_name, "Leidy Creek Mouth NWIS" = "Leidy Creek Mouth", "SF Spread Creek Lower NWIS" = "SF Spread Creek Lower", "Dugout Creek NWIS" = "Dugout Creek", "Shields River ab Smith NWIS" = "Shields River Valley Ranch")) %>%
+  filter(site_name %in% c("Donner Blitzen River nr Frenchglen NWIS", "BigCreekLower", "CoalCreekLower", "McGeeCreekLower", "West Brook NWIS", "Paine Run 10", "Staunton River 10", "Spread Creek Dam", "Shields River Valley Ranch", "EF Duck Creek be HF"))
+```
+
+
+## Manhattan distance
+
+```{r}
+dat_day %>%
+  mutate(year = year(date), yday = yday(date)) %>%
+  filter(subbasin == "Big Creek") %>% 
+  ggplot(aes(x = yday, y = dist_man, color = site_name_little)) +
+  geom_point() +
+  facet_wrap(~year, nrow = 2)
+
+dat_day %>%
+  mutate(year = year(date), yday = yday(date)) %>%
+  filter(subbasin == "Big Creek") %>% 
+  ggplot(aes(x = yield_big_log, y = dist_man, color = site_name_little)) +
+  geom_point() +
+  facet_wrap(~year, nrow = 2)
+```
+
+
+```{r}
+dat_day %>%
+  mutate(year = year(date), yday = yday(date)) %>%
+  filter(subbasin == "West Brook", year %in% c(2020:2021)) %>% 
+  ggplot(aes(x = yday, y = dist_man, color = site_name_little)) +
+  geom_point() +
+  facet_wrap(~year, nrow = 2)
+
+dat_day %>%
+  mutate(year = year(date), yday = yday(date)) %>%
+  filter(subbasin == "West Brook", year %in% c(2020:2021)) %>% 
+  ggplot(aes(x = yield_big_log, y = dist_man, color = site_name_little)) +
+  geom_point() +
+  facet_wrap(~year, nrow = 2)
+```
+
+
+## Nash-Sutcliffe efficiency
+
+```{r}
+mynse <- dat_day %>% 
+  mutate(year = as.factor(year(date))) %>%
+  group_by(subbasin, site_name_little, year) %>%
+  summarize(nse = NSE(sim = yield_big, obs = yield_little)) %>%
+  ungroup() 
+unique(mynse$subbasin)
+```
+
+
+```{r}
+dat_day %>% filter(subbasin == "Big Creek") %>%
+  select(site_name_little, date, yield_little) %>%
+  spread(key = site_name_little, value = yield_little) %>% 
+  left_join(dat_big %>% filter(site_name == "BigCreekLower") %>% select(date, Yield_filled_mm) %>% rename("BigCreekLower" = "Yield_filled_mm")) %>%
+  rename("BigCreekNWIS" = "Big Creek NWIS", "HallowatCreekNWIS" = "Hallowat Creek NWIS") %>%
+  select(-c(SkookoleelCreek, LangfordCreekUpper, BigCreekNWIS)) %>%
+  drop_na() %>% dygraph() %>% dyRangeSelector()
+```
+
+
+::: panel-tabset
+#### West Brook
+```{r}
+mynse %>%
+  filter(subbasin == "West Brook") %>%
+  ggplot(aes(x = factor(site_name_little), y = nse)) +
+  geom_boxplot() +
+  geom_jitter(aes(color = year), shape = 16, position = position_jitter(0.2)) + 
+  xlab("Site") + ylab("Nash-Sutcliffe efficiency") +
+  ylim(0,1) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+#### Paine Run
+```{r}
+mynse %>%
+  filter(subbasin == "Paine Run") %>%
+  ggplot(aes(x = factor(site_name_little), y = nse)) +
+  geom_boxplot() +
+  geom_jitter(aes(color = year), shape = 16, position = position_jitter(0.2)) + 
+  xlab("Site") + ylab("Nash-Sutcliffe efficiency") +
+  #ylim(0,1) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+#### Staunton River
+```{r}
+mynse %>%
+  filter(subbasin == "Staunton River") %>%
+  ggplot(aes(x = factor(site_name_little), y = nse)) +
+  geom_boxplot() +
+  geom_jitter(aes(color = year), shape = 16, position = position_jitter(0.2)) + 
+  xlab("Site") + ylab("Nash-Sutcliffe efficiency") +
+  ylim(0,1) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+#### Big Creek
+```{r}
+mynse %>%
+  filter(subbasin == "Big Creek") %>%
+  ggplot(aes(x = factor(site_name_little), y = nse)) +
+  geom_boxplot() +
+  geom_jitter(aes(color = year), shape = 16, position = position_jitter(0.2)) + 
+  xlab("Site") + ylab("Nash-Sutcliffe efficiency") +
+  ylim(-125,1) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+#### Coal Creek
+```{r}
+mynse %>%
+  filter(subbasin == "Coal Creek") %>%
+  ggplot(aes(x = factor(site_name_little), y = nse)) +
+  geom_boxplot() +
+  geom_jitter(aes(color = year), shape = 16, position = position_jitter(0.2)) + 
+  xlab("Site") + ylab("Nash-Sutcliffe efficiency") +
+  ylim(-10,1) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+#### McGee Creek
+```{r}
+mynse %>%
+  filter(subbasin == "McGee Creek") %>%
+  ggplot(aes(x = factor(site_name_little), y = nse)) +
+  geom_boxplot() +
+  geom_jitter(aes(color = year), shape = 16, position = position_jitter(0.2)) + 
+  xlab("Site") + ylab("Nash-Sutcliffe efficiency") +
+  ylim(-12,1) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+#### Snake River
+```{r}
+mynse %>%
+  filter(subbasin == "Snake River") %>%
+  ggplot(aes(x = factor(site_name_little), y = nse)) +
+  geom_boxplot() +
+  geom_jitter(aes(color = year), shape = 16, position = position_jitter(0.2)) + 
+  xlab("Site") + ylab("Nash-Sutcliffe efficiency") +
+  ylim(-50,1) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+#### Shields River
+```{r}
+mynse %>%
+  filter(subbasin == "Shields River") %>%
+  ggplot(aes(x = factor(site_name_little), y = nse)) +
+  geom_boxplot() +
+  geom_jitter(aes(color = year), shape = 16, position = position_jitter(0.2)) + 
+  xlab("Site") + ylab("Nash-Sutcliffe efficiency") +
+  ylim(-25,1) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+#### Duck Creek
+```{r}
+mynse %>%
+  filter(subbasin == "Duck Creek") %>%
+  ggplot(aes(x = factor(site_name_little), y = nse)) +
+  geom_boxplot() +
+  geom_jitter(aes(color = year), shape = 16, position = position_jitter(0.2)) + 
+  xlab("Site") + ylab("Nash-Sutcliffe efficiency") +
+  ylim(-6,1) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+#### Donner Blitzen
+```{r}
+mynse %>%
+  filter(subbasin == "Donner Blitzen") %>%
+  ggplot(aes(x = factor(site_name_little), y = nse)) +
+  geom_boxplot() +
+  geom_jitter(aes(color = year), shape = 16, position = position_jitter(0.2)) + 
+  xlab("Site") + ylab("Nash-Sutcliffe efficiency") +
+  ylim(-35,1) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+:::
+
+
+
+
+
+```{r fig.width=8, fig.height=8}
+dat_day %>%
+  mutate(doy = yday(date), year = year(date)) %>%
+  filter(site_name_little == "LangfordCreekLower") %>%
+  ggplot(aes(x = yield_big_log, y = yield_little_log, color = doy)) +
+  geom_segment(aes(xend = c(tail(yield_big_log, n = -1), NA), 
+                   yend = c(tail(yield_little_log, n = -1), NA)), 
+               arrow = arrow(length = unit(0.3, "cm")), color = "black") +
+  geom_point() + 
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") + 
+  scale_color_gradient2(midpoint = 182, low = "purple3", mid = "orange", high = "purple3") +
+  facet_wrap(~year)
+```
+
+
+
+

@@ -1,0 +1,638 @@
+---
+title: "FluvialSynch"
+---
+
+```{r}
+library(tidyverse)
+library(sf)
+library(riverdist)
+library(mapview)
+library(fasstr)
+library(TSdist)
+library(ggh4x)
+library(ggpubr)
+```
+
+
+```{r}
+# site information
+siteinfo <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv")
+siteinfo_sp <- st_as_sf(siteinfo, coords = c("long", "lat"), crs = 4326)
+mapview(siteinfo_sp, zcol = "designation")
+```
+
+
+
+### Little g flow data
+
+Little g daily data
+```{r}
+# flow/yield (and temp) data 
+dat <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv") %>%
+  mutate(site_name = dplyr::recode(site_name, "Leidy Creek Mouth NWIS" = "Leidy Creek Mouth", "SF Spread Creek Lower NWIS" = "SF Spread Creek Lower", "Dugout Creek NWIS" = "Dugout Creek", "Shields River ab Smith NWIS" = "Shields River Valley Ranch")) %>%
+  filter(!site_name %in% c("Avery Brook NWIS", "West Brook 0", "BigCreekMiddle",                # drop co-located sites
+                           "South River Conway NWIS", "North Fork Flathead River NWIS",         # drop big Gs
+                           "Pacific Creek at Moran NWIS", "Shields River nr Livingston NWIS",   # drop big Gs
+                           "Donner Blitzen River nr Frenchglen NWIS",                           # drop big Gs
+                           "WoundedBuckCreek")) %>%                                             # drop little g outside of focal basin
+  group_by(site_name, basin, subbasin, region, date) %>%
+  summarize(flow_mean = mean(flow_mean),
+            tempc_mean = mean(tempc_mean),
+            Yield_mm = mean(Yield_mm),
+            Yield_filled_mm = mean(Yield_filled_mm)) %>%
+  ungroup()
+
+# add water/climate year variables and fill missing dates
+dat <- fill_missing_dates(dat, dates = date, groups = site_name)
+dat <- add_date_variables(dat, dates = date, water_year_start = 10)
+```
+
+Clean and bind little g data (for each basin, restrict to time period for which data quality/availability is ~consistent)
+```{r}
+dat_clean <- bind_rows(
+  dat %>% filter(site_name %in% unlist(siteinfo %>% filter(subbasin == "West Brook") %>% select(site_name)), year(date) >= 2020, date <= date("2025-01-03")) %>% 
+    mutate(Yield_filled_mm = ifelse(site_name == "West Brook Upper" & date > date("2024-06-18"), NA, Yield_filled_mm)) %>%
+    mutate(Yield_filled_mm = ifelse(site_name == "Mitchell Brook" & date > date("2021-02-28") & date < date("2021-03-26"), NA, Yield_filled_mm)) %>% 
+    mutate(Yield_filled_mm = ifelse(site_name == "Mitchell Brook" & date > date("2021-11-01") & date < date("2022-05-01"), NA, Yield_filled_mm)) %>% 
+    mutate(subbasin = "West Brook"),
+  
+  dat %>% filter(site_name %in% unlist(siteinfo %>% filter(subbasin == "Paine Run") %>% select(site_name)), date >= as_date("2018-11-07"), date <= as_date("2023-05-15")) %>% mutate(subbasin = "Paine Run"),
+  
+  dat %>% filter(site_name %in% unlist(siteinfo %>% filter(subbasin == "Staunton River") %>% select(site_name)), date >= as_date("2018-11-07"), date <= as_date("2022-10-19")) %>% mutate(subbasin = "Staunton River"),
+  
+  dat %>% filter(site_name %in% c(unlist(siteinfo %>% filter(subbasin == "Big Creek") %>% select(site_name)), "North Fork Flathead River NWIS"), date >= date("2018-08-08"), date <= date("2023-08-03"), site_name != "SkookoleelCreek", Yield_filled_mm > 0)  %>% mutate(subbasin = "Big Creek"),
+  
+  dat %>% filter(site_name %in% c(unlist(siteinfo %>% filter(subbasin == "Coal Creek") %>% select(site_name)), "North Fork Flathead River NWIS"), date >= date("2018-07-29"), date <= date("2023-08-03")) %>% mutate(subbasin = "Coal Creek"),
+  
+  dat %>% filter(site_name %in% c(unlist(siteinfo %>% filter(subbasin == "McGee Creek") %>% select(site_name)), "North Fork Flathead River NWIS"), date >= date("2017-07-30"), date <= date("2023-12-11")) %>% mutate(subbasin = "McGee Creek"),
+  
+  dat %>% filter(subbasin == "Snake River", date >= date("2016-04-01"), date <= date("2023-10-03"), site_name != "Leidy Creek Upper") %>% mutate(subbasin = "Snake River"),
+  
+  dat %>% filter(subbasin == "Shields River", date >= date("2016-04-01"), date <= date("2023-12-31"), site_name != "Brackett Creek") %>% 
+  mutate(logYield = log10(Yield_filled_mm)) %>% mutate(subbasin = "Shields River"),
+  
+  dat %>% filter(subbasin == "Duck Creek", date >= date("2015-04-01"), date <= date("2023-12-31")) %>% mutate(subbasin = "Duck Creek"),
+  
+  dat %>% filter(subbasin == "Donner Blitzen", date >= as_date("2019-04-23"), date <= as_date("2022-12-31"), !site_name %in% c("Indian Creek NWIS", "Little Blizten River NWIS")) %>% mutate(subbasin = "Donner Blitzen")
+) %>%
+  filter(Yield_filled_mm > 0) %>%
+  mutate(logYield = log10(Yield_filled_mm), 
+         designation = "little", 
+         doy_calendar = yday(date)) %>%
+  select(-Yield_mm) %>%
+  rename(Yield_mm = Yield_filled_mm)
+head(dat_clean)
+```
+
+
+
+### Spatial data
+
+Flowline
+```{r}
+# West Brook
+mysheds <- read_sf(dsn = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds", layer = "Mass_Watersheds")
+mysheds <- mysheds[mysheds$site_id == "WBR",]
+mynet <- read_sf("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams", layer = "Mass_Streams")
+st_crs(mynet) <- st_crs(mysheds)
+mynet <- st_intersection(mynet, mysheds)
+mynet <- st_transform(mynet, crs = "+proj=utm +zone=18")
+st_write(mynet, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/FluvialSynch/Spatial/Mass_Streams_crop.shp", append = FALSE)
+
+# Spread
+mysheds <- read_sf(dsn = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds", layer = "Snake_Watersheds")
+mysheds <- mysheds[mysheds$site_id == "SP11",]
+mynet <- read_sf("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams", layer = "Snake_Streams")
+st_crs(mynet) <- st_crs(mysheds)
+mynet <- st_intersection(mynet, mysheds)
+mynet <- st_transform(mynet, crs = "+proj=utm +zone=18")
+st_write(mynet, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/FluvialSynch/Spatial/Snake_Streams_crop.shp", append = FALSE)
+
+```
+
+Flowline to network
+```{r}
+# West Brook
+flowline <- line2network(path = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/FluvialSynch/Spatial", layer = "Mass_Streams_crop")
+plot(flowline)
+zoomtoseg(seg = c(4), rivers = flowline)
+showends(seg = 4, rivers = flowline)
+flowline <- setmouth(seg = 4, vert = 1, rivers = flowline)
+
+# Snake
+flowline_snake <- line2network(path = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/FluvialSynch/Spatial", layer = "Snake_Streams_crop")
+plot(flowline_snake)
+zoomtoseg(seg = c(22), rivers = flowline_snake)
+showends(seg = 22, rivers = flowline_snake)
+flowline_snake <- setmouth(seg = 22, vert = 88, rivers = flowline_snake)
+```
+
+
+Sites
+```{r}
+# West Brook
+mysites <- siteinfo %>% filter(subbasin == "West Brook", site_name %in% unique(dat_clean$site_name), !site_name %in% c("West Brook 0", "Avery Brook NWIS"))
+mysites_sp <- st_as_sf(mysites, coords = c("long", "lat"), crs = 4326)
+mysites_sp <- st_transform(mysites_sp, crs = st_crs(mynet))
+mysites_sp_xy <- xy2segvert(x = st_coordinates(mysites_sp)[,1], y = st_coordinates(mysites_sp)[,2], rivers = flowline)
+plot(flowline)
+riverpoints(seg = mysites_sp_xy$seg, vert = mysites_sp_xy$vert, rivers = flowline, pch = 16, col = "blue")
+
+# Snake
+mysites_snake <- siteinfo %>% filter(subbasin == "Snake River", site_name %in% unique(dat_clean$site_name))
+mysites_snake_sp <- st_as_sf(mysites_snake, coords = c("long", "lat"), crs = 4326)
+mysites_snake_sp <- st_transform(mysites_snake_sp, crs = st_crs(mynet))
+mysites_snake_sp_xy <- xy2segvert(x = st_coordinates(mysites_snake_sp)[,1], y = st_coordinates(mysites_snake_sp)[,2], rivers = flowline_snake)
+plot(flowline_snake)
+riverpoints(seg = mysites_snake_sp_xy$seg, vert = mysites_snake_sp_xy$vert, rivers = flowline_snake, pch = 16, col = "blue")
+```
+
+Ensure correct snapping
+```{r}
+zoomtoseg(seg = c(21,73), rivers = flowline_snake)
+riverpoints(seg = mysites_snake_sp_xy$seg, vert = mysites_snake_sp_xy$vert, rivers = flowline_snake, pch = 16, col = "blue")
+```
+
+### Derive pairwise distances
+
+Euclidean distance
+```{r}
+# West Brook
+dist_euclidean <- (st_distance(mysites_sp, mysites_sp)) / 1000
+attr(dist_euclidean, "units") <- NULL
+row.names(dist_euclidean) <- mysites$site_name
+colnames(dist_euclidean) <- mysites$site_name
+dist_euclidean[upper.tri(dist_euclidean, diag = TRUE)] <- NA
+class(dist_euclidean) <- "matrix"
+dist_euclidean
+
+# Snake
+dist_euclidean_snake <- (st_distance(mysites_snake_sp, mysites_snake_sp)) / 1000
+attr(dist_euclidean_snake, "units") <- NULL
+row.names(dist_euclidean_snake) <- mysites_snake$site_name
+colnames(dist_euclidean_snake) <- mysites_snake$site_name
+dist_euclidean_snake[upper.tri(dist_euclidean_snake, diag = TRUE)] <- NA
+class(dist_euclidean_snake) <- "matrix"
+dist_euclidean_snake
+```
+
+Watercourse distance
+```{r}
+# West Brook
+dist_watercourse <- riverdistancemat(mysites_sp_xy$seg, mysites_sp_xy$vert, flowline) / 1000
+row.names(dist_watercourse) <- mysites$site_name
+colnames(dist_watercourse) <- mysites$site_name
+dist_watercourse[upper.tri(dist_watercourse, diag = TRUE)] <- NA
+dist_watercourse
+
+# Snake
+dist_watercourse_snake <- riverdistancemat(mysites_snake_sp_xy$seg, mysites_snake_sp_xy$vert, flowline_snake) / 1000
+row.names(dist_watercourse_snake) <- mysites_snake$site_name
+colnames(dist_watercourse_snake) <- mysites_snake$site_name
+dist_watercourse_snake[upper.tri(dist_watercourse_snake, diag = TRUE)] <- NA
+dist_watercourse_snake
+```
+
+Flow-connected distance 
+```{r}
+# West Brook
+dist_flowconn <- abs(upstreammat(mysites_sp_xy$seg, mysites_sp_xy$vert, flowline, flowconnected = TRUE)) / 1000
+row.names(dist_flowconn) <- mysites$site_name
+colnames(dist_flowconn) <- mysites$site_name
+dist_flowconn[upper.tri(dist_flowconn, diag = TRUE)] <- NA
+dist_flowconn
+
+# Snake
+dist_flowconn_snake <- abs(upstreammat(mysites_snake_sp_xy$seg, mysites_snake_sp_xy$vert, flowline_snake, flowconnected = TRUE)) / 1000
+row.names(dist_flowconn_snake) <- mysites_snake$site_name
+colnames(dist_flowconn_snake) <- mysites_snake$site_name
+dist_flowconn_snake[upper.tri(dist_flowconn_snake, diag = TRUE)] <- NA
+dist_flowconn_snake
+```
+
+Flow-disconnected distance 
+```{r}
+# West Brook
+dist_flowdisconn <- dist_watercourse*is.na(dist_flowconn)
+dist_flowdisconn <- ifelse(dist_flowdisconn == 0, NA, dist_flowdisconn)
+
+# Snake
+dist_flowdisconn_snake <- dist_watercourse_snake*is.na(dist_flowconn_snake)
+dist_flowdisconn_snake <- ifelse(dist_flowdisconn_snake == 0, NA, dist_flowdisconn_snake)
+```
+
+
+Realized network/branching complexity, sensu Larsen et al (2021)
+
+Euclidean distance ~ watercourse distance
+```{r}
+disttib <- tibble(basin = c(rep("West Brook", times = length(as.numeric(dist_euclidean / dist_watercourse))),
+                 rep("Snake River", times = length(as.numeric(dist_euclidean_snake / dist_watercourse_snake)))),
+       dist_euc = c(as.numeric(dist_euclidean), as.numeric(dist_euclidean_snake)),
+       dist_wat = c(as.numeric(dist_watercourse), as.numeric(dist_watercourse_snake)))
+
+disttib %>%
+  ggplot() +
+  geom_point(aes(x = dist_wat, y = dist_euc)) +
+  geom_abline(intercept = 0, slope = 1, linetype = 2) +
+  facet_wrap(~basin) +
+  xlab("Watercourse distance (km)") + ylab("Euclidean distance (km)") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+hull <- disttib %>% filter(!is.na(dist_euc), !is.na(dist_wat)) %>% group_by(basin) %>% slice(chull(dist_wat, dist_euc))
+
+
+ggplot(data = disttib, aes(x = dist_wat, y = dist_euc, color = basin)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, linetype = 2) +
+  geom_polygon(data = hull, aes(fill = basin), alpha = 0.5) +
+  #facet_wrap(~basin) +
+  xlab("Watercourse distance (km)") + ylab("Euclidean distance (km)") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+```
+
+Boxplot of ratios
+```{r}
+dedw_ratio <- tibble(basin = c(rep("West Brook", times = length(as.numeric(dist_euclidean / dist_watercourse))),
+                         rep("Snake River", times = length(as.numeric(dist_euclidean_snake / dist_watercourse_snake)))),
+               dedw = c(as.numeric(dist_euclidean / dist_watercourse),
+                        as.numeric(dist_euclidean_snake / dist_watercourse_snake)))
+
+# plot
+dedw_ratio %>% 
+  ggplot(aes(x = basin, y = dedw)) +
+  geom_boxplot(fill = "grey") +
+  ylab("Branching complexity (De/Dw)") + xlab("Basin") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+#boxplot(dedw ~ basin, dedw, ylim = c(0,1), ylab = "Branching complexity (De/Dw)", labels = c("West Brook"))
+```
+
+
+### Fluvial synchronograms
+
+```{r}
+# West Brook
+sitesss <- mysites$site_name
+dat_clean2 <- dat_clean %>% filter(site_name %in% sitesss, Month %in% c(7:9))
+yrs <- unique(dat_clean2$WaterYear)[1:4]
+# set up empty arrays
+synch_arr_sp <- array(data = NA, dim = c(dim(dist_euclidean)[1], dim(dist_euclidean)[2], length(yrs)), 
+                      dimnames = list(mysites$site_name, mysites$site_name, yrs))
+synch_arr_ts <- array(data = NA, dim = c(dim(dist_euclidean)[1], dim(dist_euclidean)[2], length(yrs)), 
+                      dimnames = list(mysites$site_name, mysites$site_name, yrs))
+# fill arrays with Spearman's correlation coef and time series distance (euclidean)
+for(k in 1:length(yrs)) {
+  for(i in 1:length(sitesss)) {
+    for(j in 1:length(sitesss)) {
+      dd <- dat_clean2 %>%
+        filter(WaterYear == yrs[k], site_name %in% c(sitesss[i], sitesss[j])) %>%
+        select(date, site_name, logYield) %>%
+        spread(key = site_name, value = logYield) 
+      dd <- dd[complete.cases(dd),]
+      if(dim(dd)[1] <= 0.9*92 | dim(dd)[2] == 2) next
+      synch_arr_sp[i,j,k] <- cor(dd[,sitesss[i]], dd[,sitesss[j]], use = "complete.obs", method = "spearman")
+      synch_arr_ts[i,j,k] <- EuclideanDistance(unlist(dd[,sitesss[i]]), unlist(dd[,sitesss[j]]))
+    }
+  }
+}
+# set top triangles to NA
+for(k in 1:length(yrs)) {
+  synch_arr_sp[,,k] <- ifelse(synch_arr_sp[,,k] * !upper.tri(synch_arr_sp[,,k], diag = TRUE) == 0, NA, synch_arr_sp[,,k] * !upper.tri(synch_arr_sp[,,k], diag = TRUE))
+  synch_arr_ts[,,k] <- ifelse(synch_arr_ts[,,k] * !upper.tri(synch_arr_ts[,,k], diag = TRUE) == 0, NA, synch_arr_ts[,,k] * !upper.tri(synch_arr_ts[,,k], diag = TRUE))
+}
+
+# 
+# 
+# for(i in 1:length(sitesss)) {
+#   for(j in 1:length(sitesss)) {
+#     dd <- dat_clean2 %>%
+#       filter(site_name %in% c(sitesss[i], sitesss[j])) %>%
+#       select(date, site_name, logYield) %>%
+#       spread(key = site_name, value = logYield) 
+#     dd <- dd[complete.cases(dd),]
+#     if(dim(dd)[2] == 2) next
+#     synch_mat_sp[sitesss[i],sitesss[j]] <- cor(dd[,sitesss[i]], dd[,sitesss[j]], use = "complete.obs", method = "spearman")
+#     synch_mat_ts[sitesss[i],sitesss[j]] <- EuclideanDistance(unlist(dd[,sitesss[i]]), unlist(dd[,sitesss[j]]))
+#   }
+# }
+# synch_mat_sp[upper.tri(synch_mat_sp, diag = TRUE)] <- NA
+# synch_mat_ts[upper.tri(synch_mat_ts, diag = TRUE)] <- NA
+# 
+# 
+# 
+# 
+# synch_mat_ts <- matrix(data = NA, nrow = dim(dist_euclidean)[1], ncol = dim(dist_euclidean)[2])
+# row.names(synch_mat_ts) <- mysites$site_name
+# colnames(synch_mat_ts) <- mysites$site_name
+# 
+# 
+# synch_mat_sp <- matrix(data = NA, nrow = dim(dist_euclidean)[1], ncol = dim(dist_euclidean)[2])
+# row.names(synch_mat_sp) <- mysites$site_name
+# colnames(synch_mat_sp) <- mysites$site_name
+# 
+# synch_mat_ts <- matrix(data = NA, nrow = dim(dist_euclidean)[1], ncol = dim(dist_euclidean)[2])
+# row.names(synch_mat_ts) <- mysites$site_name
+# colnames(synch_mat_ts) <- mysites$site_name
+# 
+# 
+# 
+
+
+
+# Snake River
+sitesss_snake <- mysites_snake$site_name
+synch_mat_snake_sp <- matrix(data = NA, nrow = dim(dist_euclidean_snake)[1], ncol = dim(dist_euclidean_snake)[2])
+row.names(synch_mat_snake_sp) <- mysites_snake$site_name
+colnames(synch_mat_snake_sp) <- mysites_snake$site_name
+synch_mat_snake_ts <- matrix(data = NA, nrow = dim(dist_euclidean_snake)[1], ncol = dim(dist_euclidean_snake)[2])
+row.names(synch_mat_snake_ts) <- mysites_snake$site_name
+colnames(synch_mat_snake_ts) <- mysites_snake$site_name
+dat_clean2 <- dat_clean %>% filter(site_name %in% sitesss_snake, CalendarYear == 2021, Month %in% c(7:9))
+for(i in 1:length(sitesss_snake)) {
+  for(j in 1:length(sitesss_snake)) {
+    dd <- dat_clean2 %>%
+      filter(site_name %in% c(sitesss_snake[i], sitesss_snake[j])) %>%
+      select(date, site_name, logYield) %>%
+      spread(key = site_name, value = logYield) 
+    dd <- dd[complete.cases(dd),]
+    if(dim(dd)[2] == 2) next
+    synch_mat_snake_sp[sitesss_snake[i],sitesss_snake[j]] <- cor(dd[,sitesss_snake[i]], dd[,sitesss_snake[j]], use = "complete.obs", method = "spearman")
+    synch_mat_snake_ts[sitesss_snake[i],sitesss_snake[j]] <- EuclideanDistance(unlist(dd[,sitesss_snake[i]]), unlist(dd[,sitesss_snake[j]]))
+  }
+}
+synch_mat_snake_sp[upper.tri(synch_mat_snake_sp, diag = TRUE)] <- NA
+synch_mat_snake_ts[upper.tri(synch_mat_snake_ts, diag = TRUE)] <- NA
+
+```
+
+
+```{r fig.width = 10, fig.height=7}
+fluvsynchfun <- function(subbas) {
+  synchtib <- tibble(basin = rep(subbas, times = length(as.numeric(synch_arr_sp))),
+                   wateryear = sort(rep(as.numeric(dimnames(synch_arr_sp)[[3]]), times = dim(synch_arr_sp)[1]*dim(synch_arr_sp)[2])),
+                   synch_sp = as.numeric(synch_arr_sp),
+                   synch_ts = as.numeric(synch_arr_ts),
+                   dist_euc = rep(as.numeric(dist_euclidean), times = dim(synch_arr_sp)[3]),
+                   dist_wat = rep(as.numeric(dist_watercourse), times = dim(synch_arr_sp)[3]),
+                   dist_flo = rep(as.numeric(dist_flowconn), times = dim(synch_arr_sp)[3]),
+                   dist_dis = rep(as.numeric(dist_flowdisconn), times = dim(synch_arr_sp)[3])) %>% 
+  gather(dist_euc:dist_dis, key = "distance", value = "value")
+
+# Spearman correlation
+fs_sp <- synchtib %>%
+  filter(!distance %in% c("dist_dis")) %>%
+  mutate(distance = factor(distance, levels = c("dist_flo", "dist_wat", "dist_euc"))) %>%
+  ggplot(aes(x = value, y = synch_sp, color = distance, fill = distance, group = distance)) +
+  geom_smooth(alpha = 0.2) +
+  geom_point(alpha = 0.5) +
+  scale_color_manual(values = c("blue", "purple", "gold1")) +
+  scale_fill_manual(values = c("blue", "purple", "gold1")) +
+  facet_wrap(~wateryear, nrow = 1) +
+  ylab("Spearman's corr") + xlab("Distance (km)") +
+  coord_cartesian(ylim = c(0,1)) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.title.x=element_blank())
+
+# Time series distance (euclidean)
+fs_ts <- synchtib %>%
+  filter(!distance %in% c("dist_dis")) %>%
+  mutate(distance = factor(distance, levels = c("dist_flo", "dist_wat", "dist_euc"))) %>%
+  ggplot(aes(x = value, y = synch_ts, color = distance, fill = distance, group = distance)) +
+  geom_smooth(alpha = 0.2) +
+  geom_point(alpha = 0.5) +
+  scale_color_manual(values = c("blue", "purple", "gold1")) +
+  scale_fill_manual(values = c("blue", "purple", "gold1")) +
+  facet_wrap(~wateryear, nrow = 1) +
+  ylab("TS distance") + xlab("Distance (km)") +
+  coord_cartesian(ylim = c(0,20)) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.title.x=element_blank())
+
+
+# Spearman correlation
+fs_sp2 <- synchtib %>%
+  filter(distance %in% c("dist_flo", "dist_dis")) %>%
+  mutate(distance = factor(distance, levels = c("dist_flo", "dist_dis"))) %>%
+  ggplot(aes(x = value, y = synch_sp, color = distance, fill = distance, group = distance)) +
+  geom_smooth(alpha = 0.2) +
+  geom_point(alpha = 0.5) +
+  scale_color_manual(values = c("blue", "darkorange")) +
+  scale_fill_manual(values = c("blue", "darkorange")) +
+  facet_wrap(~wateryear, nrow = 1) +
+  ylab("Spearman's corr.") + xlab("Distance (km)") +
+  coord_cartesian(ylim = c(0,1)) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.title.x=element_blank())
+
+# Time series distance (euclidean)
+fs_ts2 <- synchtib %>%
+  filter(distance %in% c("dist_flo", "dist_dis")) %>%
+  mutate(distance = factor(distance, levels = c("dist_flo", "dist_dis"))) %>%
+  ggplot(aes(x = value, y = synch_ts, color = distance, fill = distance, group = distance)) +
+  geom_smooth(alpha = 0.2) +
+  geom_point(alpha = 0.5) +
+  scale_color_manual(values = c("blue", "darkorange")) +
+  scale_fill_manual(values = c("blue", "darkorange")) +
+  facet_wrap(~wateryear, nrow = 1) +
+  ylab("TS distance") + xlab("Distance (km)") +
+  coord_cartesian(ylim = c(0,20)) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.title.x=element_blank())
+
+myplot <- ggarrange(fs_sp, fs_sp2, fs_ts, fs_ts2, ncol = 1)
+annotate_figure(myplot, bottom = text_grob("Distance (km)"))
+}
+fluvsynchfun("West Brook")
+
+synchtib <- tibble(basin = rep("West Brook", times = length(as.numeric(synch_arr_sp))),
+                   wateryear = sort(rep(as.numeric(dimnames(synch_arr_sp)[[3]]), times = dim(synch_arr_sp)[1]*dim(synch_arr_sp)[2])),
+                   synch_sp = as.numeric(synch_arr_sp),
+                   synch_ts = as.numeric(synch_arr_ts),
+                   dist_euc = rep(as.numeric(dist_euclidean), times = dim(synch_arr_sp)[3]),
+                   dist_wat = rep(as.numeric(dist_watercourse), times = dim(synch_arr_sp)[3]),
+                   dist_flo = rep(as.numeric(dist_flowconn), times = dim(synch_arr_sp)[3]),
+                   dist_dis = rep(as.numeric(dist_flowdisconn), times = dim(synch_arr_sp)[3])) %>% 
+  gather(dist_euc:dist_dis, key = "distance", value = "value")
+
+# Spearman correlation
+fs_sp <- synchtib %>%
+  filter(!distance %in% c("dist_dis")) %>%
+  mutate(distance = factor(distance, levels = c("dist_flo", "dist_wat", "dist_euc"))) %>%
+  ggplot(aes(x = value, y = synch_sp, color = distance, fill = distance, group = distance)) +
+  geom_smooth(alpha = 0.2) +
+  geom_point(alpha = 0.5) +
+  scale_color_manual(values = c("blue", "purple", "gold1")) +
+  scale_fill_manual(values = c("blue", "purple", "gold1")) +
+  facet_wrap(~wateryear, nrow = 1) +
+  ylab("Spearman's corr") + xlab("Distance (km)") +
+  coord_cartesian(ylim = c(0,1)) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.title.x=element_blank())
+
+# Time series distance (euclidean)
+fs_ts <- synchtib %>%
+  filter(!distance %in% c("dist_dis")) %>%
+  mutate(distance = factor(distance, levels = c("dist_flo", "dist_wat", "dist_euc"))) %>%
+  ggplot(aes(x = value, y = synch_ts, color = distance, fill = distance, group = distance)) +
+  geom_smooth(alpha = 0.2) +
+  geom_point(alpha = 0.5) +
+  scale_color_manual(values = c("blue", "purple", "gold1")) +
+  scale_fill_manual(values = c("blue", "purple", "gold1")) +
+  facet_wrap(~wateryear, nrow = 1) +
+  ylab("TS distance") + xlab("Distance (km)") +
+  coord_cartesian(ylim = c(0,20)) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.title.x=element_blank())
+
+
+# Spearman correlation
+fs_sp2 <- synchtib %>%
+  filter(distance %in% c("dist_flo", "dist_dis")) %>%
+  mutate(distance = factor(distance, levels = c("dist_flo", "dist_dis"))) %>%
+  ggplot(aes(x = value, y = synch_sp, color = distance, fill = distance, group = distance)) +
+  geom_smooth(alpha = 0.2) +
+  geom_point(alpha = 0.5) +
+  scale_color_manual(values = c("blue", "darkorange")) +
+  scale_fill_manual(values = c("blue", "darkorange")) +
+  facet_wrap(~wateryear, nrow = 1) +
+  ylab("Spearman's corr.") + xlab("Distance (km)") +
+  coord_cartesian(ylim = c(0,1)) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.title.x=element_blank())
+
+# Time series distance (euclidean)
+fs_ts2 <- synchtib %>%
+  filter(distance %in% c("dist_flo", "dist_dis")) %>%
+  mutate(distance = factor(distance, levels = c("dist_flo", "dist_dis"))) %>%
+  ggplot(aes(x = value, y = synch_ts, color = distance, fill = distance, group = distance)) +
+  geom_smooth(alpha = 0.2) +
+  geom_point(alpha = 0.5) +
+  scale_color_manual(values = c("blue", "darkorange")) +
+  scale_fill_manual(values = c("blue", "darkorange")) +
+  facet_wrap(~wateryear, nrow = 1) +
+  ylab("TS distance") + xlab("Distance (km)") +
+  coord_cartesian(ylim = c(0,20)) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.title.x=element_blank())
+
+myplot <- ggarrange(fs_sp, fs_sp2, fs_ts, fs_ts2, ncol = 1)
+annotate_figure(myplot, bottom = text_grob("Distance (km)"))
+
+```
+
+
+```{r}
+synchtib <- tibble(basin = c(rep("West Brook", times = length(as.numeric(synch_mat))),
+                             rep("Snake River", times = length(as.numeric(synch_mat_snake)))),
+                   synch_sp = c(as.numeric(synch_mat_sp), as.numeric(synch_mat_snake_sp)),
+                   synch_ts = c(as.numeric(synch_mat_ts), as.numeric(synch_mat_snake_ts)),
+                   dist_euc = c(as.numeric(dist_euclidean), as.numeric(dist_euclidean_snake)),
+                   dist_wat = c(as.numeric(dist_watercourse), as.numeric(dist_watercourse_snake)),
+                   dist_flo = c(as.numeric(dist_flowconn), as.numeric(dist_flowconn_snake)),
+                   dist_dis = c(as.numeric(dist_flowdisconn), as.numeric(dist_flowdisconn_snake))) %>% 
+  gather(dist_euc:dist_dis, key = "distance", value = "value")
+
+# Spearman correlation
+synchtib %>%
+  filter(!distance %in% c("dist_dis")) %>%
+  mutate(distance = factor(distance, levels = c("dist_flo", "dist_wat", "dist_euc"))) %>%
+  ggplot(aes(x = value, y = synch_sp, color = distance, fill = distance, group = distance)) +
+  geom_smooth(alpha = 0.3) +
+  geom_point(aes(x = jitter(value, factor = 300), y = jitter(synch_sp, factor = 300))) +
+  scale_color_manual(values = c("blue", "purple", "gold1")) +
+  scale_fill_manual(values = c("blue", "purple", "gold1")) +
+  facet_wrap(~basin, scales = "free_x") +
+  ylab("Spearman's correlation") + xlab("Distance (km)") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+# Time series distance (euclidean)
+synchtib %>%
+  filter(!distance %in% c("dist_dis")) %>%
+  mutate(distance = factor(distance, levels = c("dist_flo", "dist_wat", "dist_euc")))%>%
+  ggplot(aes(x = value, y = synch_ts, color = distance, fill = distance, group = distance)) +
+  geom_smooth(alpha = 0.3) +
+  geom_point(aes(x = jitter(value, factor = 200), y = jitter(synch_ts, factor = 200))) +
+  scale_color_manual(values = c("blue", "purple", "gold1")) +
+  scale_fill_manual(values = c("blue", "purple", "gold1")) +
+  facet_wrap(~basin, scales = "free_x") +
+  ylab("Time series distance") + xlab("Distance (km)") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+
+# Spearman correlation
+synchtib %>%
+  filter(distance %in% c("dist_flo", "dist_dis")) %>%
+  mutate(distance = factor(distance, levels = c("dist_flo", "dist_dis"))) %>%
+  ggplot(aes(x = value, y = synch_sp, color = distance, fill = distance, group = distance)) +
+  geom_smooth(alpha = 0.3) +
+  geom_point(aes(x = jitter(value, factor = 300), y = jitter(synch_sp, factor = 300))) +
+  scale_color_manual(values = c("blue", "darkorange")) +
+  scale_fill_manual(values = c("blue", "darkorange")) +
+  facet_wrap(~basin, scales = "free_x") +
+  ylab("Spearman's correlation") + xlab("Distance (km)") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+# Time series distance (euclidean)
+synchtib %>%
+  filter(distance %in% c("dist_flo", "dist_dis")) %>%
+  mutate(distance = factor(distance, levels = c("dist_flo", "dist_dis"))) %>%
+  ggplot(aes(x = value, y = synch_ts, color = distance, fill = distance, group = distance)) +
+  geom_smooth(alpha = 0.3) +
+  geom_point(aes(x = jitter(value, factor = 200), y = jitter(synch_ts, factor = 200))) +
+  scale_color_manual(values = c("blue", "darkorange")) +
+  scale_fill_manual(values = c("blue", "darkorange")) +
+  facet_wrap(~basin, scales = "free_x") +
+  ylab("Time series distance") + xlab("Distance (km)") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+
+
+
+```
+
+
+```{r}
+
+tibble(basin = c(rep("West Brook", times = length(as.numeric(synch_mat))),
+                 rep("Snake River", times = length(as.numeric(synch_mat_snake)))),
+       synch_sp = c(as.numeric(synch_mat_sp), as.numeric(synch_mat_snake_sp)),
+       synch_ts = c(as.numeric(synch_mat_ts), as.numeric(synch_mat_snake_ts)),
+       dist_euc = c(as.numeric(dist_euclidean), as.numeric(dist_euclidean_snake)),
+       dist_wat = c(as.numeric(dist_watercourse), as.numeric(dist_watercourse_snake)),
+       dist_flo = c(as.numeric(dist_flowconn), as.numeric(dist_flowconn_snake)),
+       dist_dis = c(as.numeric(dist_flowdisconn), as.numeric(dist_flowdisconn_snake))) %>%
+  mutate(dedw = dist_euc / dist_wat) %>%
+  ggplot(aes(x = dedw, y = synch_ts)) +
+  geom_smooth(alpha = 0.3, method = "lm") +
+  geom_point(aes(x = dedw, y = synch_ts)) +
+  facet_wrap(~basin, scales = "free_x") +
+  ylab("Time series distance") + xlab("de/dw") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+tibble(basin = c(rep("West Brook", times = length(as.numeric(synch_mat))),
+                 rep("Snake River", times = length(as.numeric(synch_mat_snake)))),
+       synch_sp = c(as.numeric(synch_mat_sp), as.numeric(synch_mat_snake_sp)),
+       synch_ts = c(as.numeric(synch_mat_ts), as.numeric(synch_mat_snake_ts)),
+       dist_euc = c(as.numeric(dist_euclidean), as.numeric(dist_euclidean_snake)),
+       dist_wat = c(as.numeric(dist_watercourse), as.numeric(dist_watercourse_snake)),
+       dist_flo = c(as.numeric(dist_flowconn), as.numeric(dist_flowconn_snake)),
+       dist_dis = c(as.numeric(dist_flowdisconn), as.numeric(dist_flowdisconn_snake))) %>%
+  mutate(dedw = dist_euc / dist_wat) %>%
+  ggplot(aes(x = dedw, y = synch_sp)) +
+  geom_smooth(alpha = 0.3, method = "lm") +
+  geom_point(aes(x = dedw, y = synch_sp)) +
+  facet_wrap(~basin, scales = "free_x") +
+  ylab("Spearman correlation") + xlab("de/dw") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+
