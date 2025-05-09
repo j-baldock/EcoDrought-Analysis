@@ -6,9 +6,9 @@ editor: visual
 
 Purpose: build visual story plots for each basin and climate year
 
-Notes: 
+Notes:
 
-* For Shields and Snake, yield from NWIS gages (medium g) is way greater than yield from little g...need to check raw flow data and basin sizes used to calculate yield. Does NWIS basin size match delineated basin size? wtf... 
+-   For Shields and Snake, yield from NWIS gages (medium g) is way greater than yield from little g...need to check raw flow data and basin sizes used to calculate yield. Does NWIS basin size match delineated basin size? wtf...
 
 ```{r, include = FALSE}
 library(tidyverse)
@@ -28,7 +28,9 @@ library(ggspatial)
 ```
 
 ## Site info and daily data
+
 View map of sites
+
 ```{r}
 # site information and locations
 siteinfo <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_SiteInformation.csv")
@@ -37,6 +39,7 @@ mapview(siteinfo_sp, zcol = "designation")
 ```
 
 Load and view data structure
+
 ```{r}
 # flow/yield (and temp) data 
 dat <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/EcoDrought_FlowTempData_DailyWeekly.csv") %>% filter(!site_name %in% c("Wounded Buck Creek"))
@@ -50,8 +53,8 @@ dat <- dat %>% left_join(complete)
 str(dat)
 ```
 
-
 View little and medium g time series data (yield), by basin and site
+
 ```{r}
 mysubbasins <- unique(dat$subbasin)[-c(4,5,9)]
 myplots <- list()
@@ -59,51 +62,71 @@ for (i in 1:length(mysubbasins)) {
   myplots[[i]] <- dat %>% filter(designation %in% c("little", "medium"), subbasin == mysubbasins[i]) %>% ggplot() + geom_line(aes(x = date, y = log(Yield_filled_mm_7))) + facet_wrap(~site_name)
 }
 ```
+
 ::: panel-tabset
 #### Big Creek
+
 ```{r, echo=FALSE}
 myplots[[1]]
 ```
+
 #### Coal Creek
+
 ```{r, echo=FALSE}
 myplots[[2]]
 ```
+
 #### McGee Creek
+
 ```{r, echo=FALSE}
 myplots[[3]]
 ```
+
 #### West Brook
+
 ```{r, echo=FALSE}
 myplots[[4]]
 ```
+
 #### Donner Blitzen
+
 ```{r, echo=FALSE}
 myplots[[5]]
 ```
+
 #### Paine Run
+
 ```{r, echo=FALSE}
 myplots[[6]]
 ```
+
 #### Staunton River
+
 ```{r, echo=FALSE}
 myplots[[7]]
 ```
+
 #### Duck Creek
+
 ```{r, echo=FALSE}
 myplots[[8]]
 ```
+
 #### Shields River
+
 ```{r, echo=FALSE}
 myplots[[9]]
 ```
+
 #### Snake River
+
 ```{r, echo=FALSE}
 myplots[[10]]
 ```
 :::
 
-
 View little and medium g time series data (yield), by basin. Use the handles below the x-axis to change the time frame.
+
 ```{r}
 mysubbasins <- unique(dat$subbasin)[-c(4,5,9)]
 myplots <- list()
@@ -111,52 +134,73 @@ for (i in 1:length(mysubbasins)) {
   myplots[[i]] <- dat %>% filter(designation %in% c("little", "medium"), subbasin == mysubbasins[i]) %>% mutate(logYield = log(Yield_filled_mm_7)) %>% select(date, site_name, logYield) %>% spread(key = site_name, value = logYield) %>% dygraph() %>% dyRangeSelector() %>% dyAxis("y", label = "ln(Yield, mm)")
 }
 ```
+
 ::: panel-tabset
 #### Big Creek
+
 ```{r, echo=FALSE}
 myplots[[1]]
 ```
+
 #### Coal Creek
+
 ```{r, echo=FALSE}
 myplots[[2]]
 ```
+
 #### McGee Creek
+
 ```{r, echo=FALSE}
 myplots[[3]]
 ```
+
 #### West Brook
+
 ```{r, echo=FALSE}
 myplots[[4]]
 ```
+
 #### Donner Blitzen
+
 ```{r, echo=FALSE}
 myplots[[5]]
 ```
+
 #### Paine Run
+
 ```{r, echo=FALSE}
 myplots[[6]]
 ```
+
 #### Staunton River
+
 ```{r, echo=FALSE}
 myplots[[7]]
 ```
+
 #### Duck Creek
+
 ```{r, echo=FALSE}
 myplots[[8]]
 ```
+
 #### Shields River
+
 ```{r, echo=FALSE}
 myplots[[9]]
 ```
+
 #### Snake River
+
 ```{r, echo=FALSE}
 myplots[[10]]
 ```
 :::
 
-
 ## Create plotting functions
+
 Write functions to generate residual time series/scatter plot
+
 ```{r}
 residualplots <- function(mybasin, CY, little, big) {
   # essential elements
@@ -218,6 +262,7 @@ residualplots <- function(mybasin, CY, little, big) {
 ```
 
 Write function to generate flow story plot
+
 ```{r}
 bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears, mymap, evalyears) {
   #### essential elements
@@ -454,8 +499,8 @@ bigplotfun <- function(mybasin, mysubbasin, CY, little, big, super, supergyears,
 }
 ```
 
-
 ## Create map objects
+
 ```{r WEST BROOK, echo=FALSE}
 mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Mass_Watersheds.shp")
 mysheds <- mysheds[mysheds$site_id == "WBR",]
@@ -494,6 +539,7 @@ p1_WB <- ggplot() +
 
 rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg", "mybigg")
 ```
+
 ```{r STAUNTON RIVER, echo=FALSE}
 mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Shen_Watersheds.shp")
 mysheds <- mysheds[mysheds$site_id == "SR_10FL",]
@@ -528,6 +574,7 @@ p1_ST <- ggplot() +
 
 rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg", "mybigg")
 ```
+
 ```{r PAINE RUN, echo=FALSE}
 mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Shen_Watersheds.shp")
 mysheds <- mysheds[mysheds$site_id == "PA_10FL",]
@@ -561,6 +608,7 @@ p1_PA <- ggplot() +
 
 rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg", "mybigg")
 ```
+
 ```{r BIG CREEK FLAT, echo=FALSE}
 mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Flat_Watersheds.shp")
 mysheds <- mysheds[mysheds$site_id == "BIG_001",]
@@ -612,6 +660,7 @@ p1_FLBC <- ggplot() +
 
 rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg", "mybigg")
 ```
+
 ```{r SPREAD CREEK SNAKE, echo=FALSE}
 mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Snake_Watersheds.shp")
 mysheds <- mysheds[mysheds$site_id == "SP11",]
@@ -661,6 +710,7 @@ p1_SC <- ggplot() +
 
 rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg", "mybigg")
 ```
+
 ```{r DONNER BLITZEN, echo=FALSE}
 mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Oreg_Watersheds.shp")
 mysheds <- mysheds[mysheds$site_id == "DBF",]
@@ -699,6 +749,7 @@ p1_DB <- ggplot() +
 
 rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylittleg", "mybigg")
 ```
+
 ```{r SHIELDS RIVER, echo=FALSE}
 mysheds <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/Shields_Watersheds.shp")
 mysheds <- mysheds[mysheds$site_id == "SRS",]
@@ -737,42 +788,57 @@ rm("mysheds", "mynet", "myrast", "slo", "asp", "hill", "hilldf", "lakes", "mylit
 
 ::: panel-tabset
 #### West Brook
+
 ```{r, echo=FALSE}
 p1_WB
 ```
+
 #### Staunton River
+
 ```{r, echo=FALSE}
 p1_ST
 ```
+
 #### Paine Run
+
 ```{r, echo=FALSE}
 p1_PA
 ```
+
 #### Big Creek
+
 ```{r, echo=FALSE}
 p1_FLBC
 ```
+
 #### Spread Creek
+
 ```{r, echo=FALSE}
 p1_SC
 ```
+
 #### Shields River
+
 ```{r, echo=FALSE}
 p1_SH
 ```
+
 #### Donner-Blitzen
+
 ```{r, echo=FALSE}
 p1_DB
 ```
 :::
 
-
 ## Flow story plots
+
 Generate streamflow story plots by basin and climate year
 
-### West Brook 
+### West Brook
+
 ::: panel-tabset
 #### 2021
+
 ```{r, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "West Brook",
            CY = 2021,
@@ -783,7 +849,9 @@ bigplotfun(mybasin = "West Brook",
            supergyears = c(1981:2024),
            evalyears = c(2021:2022))
 ```
+
 #### 2022
+
 ```{r, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "West Brook",
            CY = 2022,
@@ -797,8 +865,10 @@ bigplotfun(mybasin = "West Brook",
 :::
 
 ### Staunton River
+
 ::: panel-tabset
 #### 2021
+
 ```{r, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "Staunton River",
            CY = 2021,
@@ -809,7 +879,9 @@ bigplotfun(mybasin = "Staunton River",
            supergyears = c(1994:2023),
            evalyears = c(2021:2023))
 ```
+
 #### 2022
+
 ```{r, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "Staunton River",
            CY = 2022,
@@ -820,7 +892,9 @@ bigplotfun(mybasin = "Staunton River",
            supergyears = c(1994:2023),
            evalyears = c(2021:2023))
 ```
+
 #### 2023
+
 ```{r, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "Staunton River",
            CY = 2023,
@@ -834,8 +908,10 @@ bigplotfun(mybasin = "Staunton River",
 :::
 
 ### Paine Run
+
 ::: panel-tabset
 #### 2021
+
 ```{r, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "Paine Run",
            CY = 2021,
@@ -846,7 +922,9 @@ bigplotfun(mybasin = "Paine Run",
            supergyears = c(1994:2023),
            evalyears = c(2021:2022))
 ```
+
 #### 2022
+
 ```{r, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "Paine Run",
            CY = 2022,
@@ -860,8 +938,10 @@ bigplotfun(mybasin = "Paine Run",
 :::
 
 ### Big Creek, Flathead
+
 ::: panel-tabset
 #### 2020
+
 ```{r, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "Flathead",
            mysubbasin = "Big Creek",
@@ -873,7 +953,9 @@ bigplotfun(mybasin = "Flathead",
            supergyears = c(1981:2023),
            evalyears = c(2019:2021))
 ```
+
 #### 2021
+
 ```{r, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "Flathead",
            mysubbasin = "Big Creek",
@@ -888,9 +970,11 @@ bigplotfun(mybasin = "Flathead",
 :::
 
 ### Spread Creek, Snake
+
 ::: panel-tabset
 #### 2022
-```{r, echo=FALSE, fig.height=18, fig.width=10}
+
+```{r, echo=FALSE, fig.height=18, fig.width=10, eval=FALSE}
 bigplotfun(mybasin = "Snake River",
            mysubbasin = NA,
            CY = 2022,
@@ -901,8 +985,10 @@ bigplotfun(mybasin = "Snake River",
            supergyears = c(1981:2023),
            evalyears = c(2022:2023))
 ```
+
 #### 2023
-```{r, echo=FALSE, fig.height=18, fig.width=10}
+
+```{r, echo=FALSE, fig.height=18, fig.width=10, eval=FALSE}
 bigplotfun(mybasin = "Snake River",
            mysubbasin = NA,
            CY = 2023,
@@ -916,8 +1002,10 @@ bigplotfun(mybasin = "Snake River",
 :::
 
 ### Shields River
+
 ::: panel-tabset
 #### 2020
+
 ```{r, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "Shields River",
            mysubbasin = NA,
@@ -929,8 +1017,10 @@ bigplotfun(mybasin = "Shields River",
            supergyears = c(1981:2023),
            evalyears = c(2020,2023))
 ```
+
 #### 2023
-```{r, echo=FALSE, fig.height=18, fig.width=10}
+
+```{r, echo=FALSE, fig.height=18, fig.width=10, eval=FALSE}
 bigplotfun(mybasin = "Shields River",
            mysubbasin = "Shields River",
            CY = 2023,
@@ -943,11 +1033,11 @@ bigplotfun(mybasin = "Shields River",
 ```
 :::
 
-
-
 ### Donner-Blitzen
+
 ::: panel-tabset
 #### 2020
+
 ```{r, eval=FALSE, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "Donner Blitzen",
            mysubbasin = "Donner Blitzen",
@@ -959,7 +1049,9 @@ bigplotfun(mybasin = "Donner Blitzen",
            supergyears = c(1981:2023),
            evalyears = c(2020:2023))
 ```
+
 #### 2021
+
 ```{r, eval=FALSE, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "Donner Blitzen",
            mysubbasin = "Donner Blitzen",
@@ -971,7 +1063,9 @@ bigplotfun(mybasin = "Donner Blitzen",
            supergyears = c(1981:2023),
            evalyears = c(2020:2023))
 ```
+
 #### 2022
+
 ```{r, eval=FALSE, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "Donner Blitzen",
            mysubbasin = "Donner Blitzen",
@@ -983,7 +1077,9 @@ bigplotfun(mybasin = "Donner Blitzen",
            supergyears = c(1981:2023),
            evalyears = c(2020:2023))
 ```
+
 #### 2023
+
 ```{r, eval=FALSE, echo=FALSE, fig.height=18, fig.width=10}
 bigplotfun(mybasin = "Donner Blitzen",
            mysubbasin = "Donner Blitzen",
@@ -996,6 +1092,3 @@ bigplotfun(mybasin = "Donner Blitzen",
            evalyears = c(2020:2023))
 ```
 :::
-
-
-
