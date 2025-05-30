@@ -33,12 +33,14 @@ book:
         - Event Delineation/WeeklySummary.qmd
         - Event Delineation/HydroEvents.qmd
         - Big G Little g/WedgeModel.qmd
+        - Qualitative/Hysteresis.qmd
+    - part: "Existing Tools"   
+      chapters:
+        - Qualitative/ModeledQ.qmd
     - part: "Paper"
       chapters:
         - Qualitative/Overview.qmd
         - Qualitative/SpaceTimeVar.qmd
-        - Qualitative/Hysteresis.qmd
-        - Qualitative/ModeledQ.qmd
         - Qualitative/LowFlow.qmd
         - Qualitative/Boxes.qmd
     - part: "DEPRECATED"   
