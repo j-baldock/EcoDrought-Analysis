@@ -14,27 +14,22 @@ title: "Overview"
 
 **Objectives:**
 
-1. Evaluate the extent and magnitude of spatial and temporal variation in headwater streamflow.
-    + Visualize time series data to show difference in streamflow regimes between reference gages (big G/NWIS) and upstream gages (little g's). Use CVPE to summarize the magnitude of the portfolio effect in headwater flow regimes.
-    + Back up with ridgeline plots and exceedance curves to describe spatial diversity in distribution of flow values, generally (at monthly time scales and within the "dry" season, respectively) 
-2. Explore non-linear and hysteretic relationship between flow at reference vs. at headwater gages
-    + Trim data to complete site-years and use scatterplots to show diversity in g~G relationships within and among basins. 
-    + Conduct event delineation and calculate the (modified) Lloyd index for each g~G pair of storms. Arrange sites on a  frequency/magnitude bi-plot and highlight differences among (rain-snow) basins. 
-3. Quantify the suitability of existing modeling techniques for predicting streamflow in headwater systems.
-    + Use NSE (Nash-Sutcliffe efficiency) to compare the performance of Stream Stats, PRMS (in the Donner-Blitzen only), and Hoyleman's neural net model to understand the utility of existing tools for modeling headwater streamflow. (How well do these tools perform when applied to catchments smaller than those used paramertize each tool?)
-    + Maybe this is a box or a discussion point?
-4. Demonstrate how drought-related low flow conditions manifest differently in streams across headwater networks. 
-    + Using site-specific low flow thresholds derived from contemporary data (sensu Hammond et al. 2022), show how streamflow drought duration and deficit vary among headwater streams and relative to big G (heatmaps and barplots)
-    + Explore how network heterogeneity changes with threshold magnitude and among years that differ in regional water availability (scatterplots)
-  
-
-**Conceptual Model:** develop a conceptual framework and set of hypotheses based on the objectives above How do we link/combine what we have learned so far to enhance our understanding of spatial diversity in headwater streamflow regimes? 
-
-* Moving beyond "The Natural Flow Regime" - understanding and quantifying flow regime diversity in headwater stream networks
-* Perhaps the fluvial synchrogram concept will be helpful as a starting point. Also see Scholl *et al.* (*in review*) and Rossi *et al.* (2024) for inspiration 
+1. Describe the extent and magnitude of spatiotemporal variation in headwater streamflow.
+    + Using time series and density/distribution plots to show differences in streamflow regimes between reference and headwater gages, particularly during summer.
+2. Show how spatial heterogeneity in summer streamflow regimes varies with regional water availability. 
+    + Pool data across basins and years and use regression to quantify the relationship between spatial streamflow heterogeneity and regional water availability.
+    + Visualize spatial patterns in median summer streamflow and show how patterns change among years (with regional water availability).
+3. Evaluate spatiotemporal variation in drought-related low flow conditions across headwater stream networks. 
+    + Derive reference ("fixed" thresholds from reference/Big G gages) and site-specific low flow thresholds from contemporary data (*sensu* Hammond *et al.* 2022) and use heatmaps to show how the duration and severity of low flow conditions varies among headwater locations and relative to big G.
+    + Pool data across basins and years and use regression to quantify the effect of regional water availability on spatial heterogeneity in drought-related low flow conditions. 
+    + Explore how the strength of the relationship changes depending on the magnitude of the low flow threshold used.
 
 
-**Boxes:** Use boxes to highlight additional details of the data, vignettes, and case studies that demonstrate spatiotemporal streamflow heterogeneity
+**Conceptual Model:** Based on our findings, develop a conceptual framework synthesizing the linkages between climate, catchment characteristics, and spatial heterogeneity in headwater streamflow regimes, and expected changes in these relationships under future drought conditions 
+* Extending "The Natural Flow Regime" - understanding and quantifying flow regime diversity in headwater stream networks
+
+
+**Boxes:** Use boxes to highlight additional details of the data, vignettes, and case studies that demonstrate spatiotemporal streamflow heterogeneity (and how this changes with prevailing climate). All optional...TBD. 
 
 1. High temporal resolution data reveals network diverse in streamflow response to individual storms and during low flow
     + Show sub-daily/hourly flow data for selected storms and baseflow periods (diurnal cycles during very low flows) to show heterogeneity at very fine temporal resolutions
@@ -44,10 +39,12 @@ title: "Overview"
 3. Synoptic surveys reveal super fine-scale spatial variation in flow at a single point in time. (perhaps separate boxes for DB and Shen)
     + Donner-Blitzen: longitudinal temperature and flow surveys and aerial thermal imagery show how localized groundwater inflow from geologic faults drives abrupt changes in stream conditions. (Christian Torgersen, Brandon Overstreet)
     + Shanandoah: dewatering surveys show how longitudinal flow variability can affect habitat connectivity within headwater streams, but this is mediated by catchment characteristics and changing regional water availability among years. See Hitt *et al.* (2024). (Karli Rogers, Than Hitt). Could show relationship between size of largest patch (or number of patches, distribution of patch sizes) and regional annual water availability (or flow at big G/UVA gages).
-4. Effects of groundwater on relative flow within basins. 
-    + Show the effect of groundwater availability (derived from PASTA) on mean summer flow (or distribution of summer values).
-    + This could be combined with the above box(es), but is potentially less powerful. *Low priority*
-
+4. Effects of groundwater on (relative?) median summer flow within basins. 
+    + Show the effect of groundwater availability (derived from PASTA and/or Snake groundwater model) on mean summer flow (or distribution of summer values).
+    + Explore how the strength of the relationship changes among years with regional water availability (Hyp: weakens during wet years at local controls become less important to flow dynamics).
+5. Quantify the suitability of existing modeling techniques for predicting streamflow in headwater systems.
+    + Use NSE (Nash-Sutcliffe efficiency) to compare the performance of Stream Stats, PRMS (in the Donner-Blitzen only), and Hoyleman's neural net model to understand the utility of existing tools for modeling headwater streamflow. (How well do these tools perform when applied to catchments smaller than those used paramertize each tool?)
+    + Maybe this is a box or a discussion point?
 
 
 
@@ -115,6 +112,90 @@ focalsites <- siteinfo_sp %>%
 mapview(focalsites, zcol = "designation")
 st_write(focalsites, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Study area maps/sites/focalsites.shp")
 ```
+
+```{r include=FALSE, eval=FALSE}
+# write individual shapefiles for each basin
+
+# big G only
+st_write(focalsites %>% filter(designation == "big"), "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Study area maps/sites/focalsites_bigG.shp")
+
+# Snake River
+st_write(focalsites %>% 
+           filter(basin == "Snake River", designation == "little") %>%
+           mutate(site_name = factor(site_name, levels = c("Spread Creek Dam", "Rock Creek", "NF Spread Creek Lower", 
+                                                           "NF Spread Creek Upper", "Grizzly Creek", "SF Spread Creek Lower", 
+                                                           "Grouse Creek", "SF Spread Creek Upper", "Leidy Creek Mouth"))) %>%
+           arrange(site_name) %>%
+           mutate(col_id = c(1:dim(.)[1])),
+         "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Study area maps/sites/focalsites_Snake.shp")
+
+# West Brook
+st_write(focalsites %>% 
+           filter(basin == "West Brook", designation == "little") %>%
+           mutate(site_name = factor(site_name, levels = c("West Brook NWIS", "West Brook Lower", "Mitchell Brook", 
+                                                           "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", 
+                                                           "West Brook Reservoir", "Sanderson Brook", "Avery Brook", 
+                                                           "West Whately Brook"))) %>%
+           arrange(site_name) %>%
+           mutate(col_id = c(1:dim(.)[1])),
+         "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Study area maps/sites/focalsites_WestBrook.shp")
+
+# Staunton River
+st_write(focalsites %>% 
+           filter(basin == "Staunton River", designation == "little") %>%
+           mutate(site_name = factor(site_name, levels = c("Staunton River 10", "Staunton River 09", "Staunton River 07", 
+                                                           "Staunton River 06", "Staunton River 03", "Staunton River 02"))) %>%
+           arrange(site_name) %>%
+           mutate(col_id = c(1:dim(.)[1])),
+         "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Study area maps/sites/focalsites_Staunton.shp")
+
+# Paine Run
+st_write(focalsites %>% 
+           filter(basin == "Paine Run", designation == "little") %>%
+           mutate(site_name = factor(site_name, levels = c("Paine Run 10", "Paine Run 08", "Paine Run 07", 
+                                                           "Paine Run 06", "Paine Run 02", "Paine Run 01"))) %>%
+           arrange(site_name) %>%
+           mutate(col_id = c(1:dim(.)[1])),
+         "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Study area maps/sites/focalsites_Paine.shp")
+
+# Yellowstone
+st_write(focalsites %>% 
+           filter(basin == "Shields River", designation == "little") %>%
+           mutate(site_name = factor(site_name, levels = c("Shields River Valley Ranch", "Deep Creek", "Crandall Creek", 
+                                                           "Buck Creek", "Dugout Creek", "Shields River ab Dugout", 
+                                                           "Lodgepole Creek", "EF Duck Creek be HF", "EF Duck Creek ab HF", 
+                                                           "Henrys Fork"))) %>%
+           arrange(site_name) %>%
+           mutate(col_id = c(1:dim(.)[1])),
+         "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Study area maps/sites/focalsites_Yellowstone.shp")
+
+# Flathead
+st_write(focalsites %>% 
+           filter(basin == "Flathead", designation == "little") %>%
+           mutate(site_name = factor(site_name, levels = c("BigCreekLower", "LangfordCreekLower", "LangfordCreekUpper", 
+                                                           "Big Creek NWIS", "BigCreekUpper", "HallowattCreekLower", 
+                                                           "NicolaCreek", "WernerCreek", "Hallowat Creek NWIS", 
+                                                           "CoalCreekLower", "CycloneCreekLower", "CycloneCreekMiddle", 
+                                                           "CycloneCreekUpper", "CoalCreekMiddle", "CoalCreekNorth", 
+                                                           "CoalCreekHeadwaters", "McGeeCreekLower", "McGeeCreekTrib", 
+                                                           "McGeeCreekUpper"))) %>%
+           arrange(site_name) %>%
+           mutate(col_id = c(1:dim(.)[1])),
+         "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Study area maps/sites/focalsites_Flathead.shp")
+
+# Donner Blitzen
+st_write(focalsites %>% 
+           filter(basin == "Donner Blitzen", designation == "little") %>%
+           mutate(site_name = factor(site_name, levels = c("Fish Creek NWIS", "Donner Blitzen ab Fish NWIS", 
+                                                           "Donner Blitzen nr Burnt Car NWIS", "Donner Blitzen ab Indian NWIS"))) %>%
+           arrange(site_name) %>%
+           mutate(col_id = c(1:dim(.)[1])),
+         "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Study area maps/sites/focalsites_DonnerBlitzen.shp")
+
+
+
+```
+
 
 
 ## Little g data

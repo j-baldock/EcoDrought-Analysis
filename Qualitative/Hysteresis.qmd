@@ -1,5 +1,5 @@
 ---
-title: "Objective 2"
+title: "Hysteresis"
 ---
 
 ```{r, include = FALSE}

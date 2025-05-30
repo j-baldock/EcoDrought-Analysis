@@ -1,5 +1,5 @@
 ---
-title: "Objective 4"
+title: "Low Flow Variation"
 ---
 
 ```{r, include = FALSE}
@@ -35,13 +35,14 @@ library(MCMCvis)
 ```
 
 
-**Purpose:** Demonstrate spatial variation in drought-related low flow conditions across headwater stream networks. 
+**Purpose:** Evaluate spatiotemporal variation in drought-related low flow conditions across headwater stream networks. 
 
 **Approach:**
 
-* Derive site-specific low flow thresholds from contemporary data (*sensu* Hammond *et al.* 2022). 
-* Use heatmaps and barplots to show duration and severity of low flow conditions and variation among sites and relative to big G.
-* Use scatterplots (or something similar) to explore how network heterogeneity changes with threshold magnitude and among years that differ in regional water availability
+* Derive reference ("fixed" thresholds from reference/Big G gages) and site-specific low flow thresholds from contemporary data (*sensu* Hammond *et al.* 2022). 
+* Use heatmaps to show how the duration and severity of low flow conditions varies among headwater locations and relative to big G.
+* Use scatterplots to quantify the effect of regional water availability on spatial heterogeneity in drought-related low flow conditions. 
+* Explore how the effect size changes depending on the magnitude of the low flow threshold used.
 
 
 ## Data
@@ -318,10 +319,12 @@ dat_clean_sub
 Create heatmap functions
 ```{r}
 # fixed drought threshold
-heatmapfun_fix <- function(bas, months, bigG) {
+heatmapfun_fix <- function(bas, months, bigG, orderr) {
   dd <- dat_clean_join %>% filter(basin == bas | site_name == bigG, month %in% months)
   mysites <- c(unique(unlist(dd %>% filter(designation == "big") %>% select(site_name))),
-               unique(unlist(dd %>% filter(designation == "little") %>% select(site_name))))
+               orderr
+               #unique(unlist(dd %>% filter(designation == "little") %>% select(site_name)))
+               )
   myrect <- dd %>% group_by(WaterYear) %>% summarize(mindate = min(date), maxdate = max(date)) %>% ungroup()
   p <- dd %>%
     ggplot() +
@@ -336,10 +339,12 @@ heatmapfun_fix <- function(bas, months, bigG) {
 return(p)
 }
 # variable drought threshold
-heatmapfun_var <- function(bas, months, bigG) {
+heatmapfun_var <- function(bas, months, bigG, orderr) {
   dd <- dat_clean_join %>% filter(basin == bas | site_name == bigG, month %in% months)
   mysites <- c(unique(unlist(dd %>% filter(designation == "big") %>% select(site_name))),
-               unique(unlist(dd %>% filter(designation == "little") %>% select(site_name))))
+               orderr
+               #unique(unlist(dd %>% filter(designation == "little") %>% select(site_name)))
+               )
   myrect <- dd %>% group_by(WaterYear) %>% summarize(mindate = min(date), maxdate = max(date)) %>% ungroup()
   p <- dd %>%
     ggplot() +
@@ -354,13 +359,13 @@ heatmapfun_var <- function(bas, months, bigG) {
 return(p)
 }
 # site-level drought threshold
-heatmapfun_site <- function(bas, months, bigG) {
+heatmapfun_site <- function(bas, months, bigG, orderr) {
   dd <- dat_clean_sub %>% filter(basin == bas)
   mysites <- c(unique(unlist(dd %>% filter(site_name != bigG) %>% select(site_name))), bigG)
   myrect <- dd %>% group_by(WaterYear) %>% summarize(mindate = min(date), maxdate = max(date)) %>% ungroup()
   p <- dd %>%
     ggplot() +
-    geom_tile(aes(x = date, y = factor(site_name, levels = (mysites)), fill = drought_fix)) +
+    geom_tile(aes(x = date, y = factor(site_name, levels = c(rev(orderr), bigG)), fill = drought_fix)) +
     scale_fill_viridis(option = "A", direction = -1, discrete = TRUE, limits = mydroughtlevels) +
     geom_rect(data = myrect, aes(xmin = mindate, xmax = maxdate, ymin = length(mysites)-0.5, ymax = length(mysites)+0.5), 
               color = "grey70", fill = NA, size = 1.25) +
@@ -376,32 +381,32 @@ return(p)
 ::: panel-tabset
 #### West Brook
 ```{r fig.height=7, fig.width=9}
-heatmapfun_fix(bas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9))
+heatmapfun_fix(bas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9), orderr = wborder)
 ```
 #### Paine Run
 ```{r fig.height=7, fig.width=9}
-heatmapfun_fix(bas = "Paine Run", bigG = "South River Harriston NWIS", months = c(7:9))
+heatmapfun_fix(bas = "Paine Run", bigG = "South River Harriston NWIS", months = c(7:9), orderr = paineorder)
 ```
 #### Staunton River
 ```{r fig.height=7, fig.width=9}
-heatmapfun_fix(bas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9))
+heatmapfun_fix(bas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9), orderr = stauntorder)
 ```
 #### Flathead
 ```{r fig.height=7, fig.width=9}
-heatmapfun_fix(bas = "Flathead", bigG = "North Fork Flathead River NWIS", months = c(7:9))
+heatmapfun_fix(bas = "Flathead", bigG = "North Fork Flathead River NWIS", months = c(7:9), orderr = flatorder)
 ```
 #### Snake River
 ```{r fig.height=7, fig.width=9}
-heatmapfun_fix(bas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9))
+heatmapfun_fix(bas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9), orderr = snakeorder)
 ```
 #### Yellowstone River
 ```{r fig.height=7, fig.width=9}
-heatmapfun_fix(bas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
+heatmapfun_fix(bas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), orderr = yellorder)
 ```
 
 #### Donner Blitzen
 ```{r fig.height=7, fig.width=9}
-heatmapfun_fix(bas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9))
+heatmapfun_fix(bas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9), orderr = donnerorder)
 ```
 :::
 
@@ -409,31 +414,31 @@ heatmapfun_fix(bas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchgle
 ::: panel-tabset
 #### West Brook
 ```{r fig.height=7, fig.width=9}
-heatmapfun_var(bas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9))
+heatmapfun_var(bas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9), orderr = wborder)
 ```
 #### Paine Run
 ```{r fig.height=7, fig.width=9}
-heatmapfun_var(bas = "Paine Run", bigG = "South River Harriston NWIS", months = c(7:9))
+heatmapfun_var(bas = "Paine Run", bigG = "South River Harriston NWIS", months = c(7:9), orderr = paineorder)
 ```
 #### Staunton River
 ```{r fig.height=7, fig.width=9}
-heatmapfun_var(bas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9))
+heatmapfun_var(bas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9), orderr = stauntorder)
 ```
 #### Flathead
 ```{r fig.height=7, fig.width=9}
-heatmapfun_var(bas = "Flathead", bigG = "North Fork Flathead River NWIS", months = c(7:9))
+heatmapfun_var(bas = "Flathead", bigG = "North Fork Flathead River NWIS", months = c(7:9), orderr = flatorder)
 ```
 #### Snake River
 ```{r fig.height=7, fig.width=9}
-heatmapfun_var(bas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9))
+heatmapfun_var(bas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9), orderr = snakeorder)
 ```
 #### Yellowstone River
 ```{r fig.height=7, fig.width=9}
-heatmapfun_var(bas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
+heatmapfun_var(bas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), orderr = yellorder)
 ```
 #### Donner Blitzen
 ```{r fig.height=7, fig.width=9}
-heatmapfun_var(bas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9))
+heatmapfun_var(bas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9), orderr = donnerorder)
 ```
 :::
 
@@ -442,30 +447,29 @@ heatmapfun_var(bas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchgle
 ::: panel-tabset
 #### West Brook
 ```{r fig.height=5, fig.width=9}
-heatmapfun_site(bas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9))
+heatmapfun_site(bas = "West Brook", bigG = "South River Conway NWIS", months = c(7:9), orderr = wborder)
 ```
 #### Staunton River
 ```{r fig.height=5, fig.width=9}
-heatmapfun_site(bas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9))
+heatmapfun_site(bas = "Staunton River", bigG = "Rapidan River NWIS", months = c(7:9), orderr = stauntorder)
 ```
 #### Flathead
 ```{r fig.height=5, fig.width=9}
-heatmapfun_site(bas = "Flathead", bigG = "North Fork Flathead River NWIS", months = c(7:9))
+heatmapfun_site(bas = "Flathead", bigG = "North Fork Flathead River NWIS", months = c(7:9), orderr = flatorder)
 ```
 #### Snake River
 ```{r fig.height=5, fig.width=9}
-heatmapfun_site(bas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9))
+heatmapfun_site(bas = "Snake River", bigG = "Pacific Creek at Moran NWIS", months = c(7:9), order = snakeorder)
 ```
 #### Yellowstone River
 ```{r fig.height=5, fig.width=9}
-heatmapfun_site(bas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9))
+heatmapfun_site(bas = "Shields River", bigG = "Yellowstone River Livingston NWIS", months = c(7:9), orderr = yellorder)
 ```
 #### Donner Blitzen
 ```{r fig.height=5, fig.width=9}
-heatmapfun_site(bas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9))
+heatmapfun_site(bas = "Donner Blitzen", bigG = "Donner Blitzen River nr Frenchglen NWIS", months = c(7:9), orderr = donnerorder)
 ```
 :::
-
 
 
 ## Deficit and duration
@@ -571,6 +575,31 @@ defdur_ssn <- dat_clean_join_deficit %>%
   group_by(site_name, basin, subbasin, region, designation, CalendarYear, WaterYear) %>% 
   summarize(ndays = n(),
             propdays = ndays/(31+31+30), 
+            
+            duration_50_fix = sum(deficit_50_fix > 0),
+            duration_45_fix = sum(deficit_45_fix > 0),
+            duration_40_fix = sum(deficit_40_fix > 0),
+            duration_35_fix = sum(deficit_35_fix > 0),
+            duration_30_fix = sum(deficit_30_fix > 0),
+            duration_25_fix = sum(deficit_25_fix > 0),
+            duration_20_fix = sum(deficit_20_fix > 0),
+            duration_15_fix = sum(deficit_15_fix > 0),
+            duration_10_fix = sum(deficit_10_fix > 0),
+            duration_05_fix = sum(deficit_05_fix > 0),
+            duration_02_fix = sum(deficit_02_fix > 0),
+            
+            duration_50_var = sum(deficit_50_var > 0),
+            duration_45_var = sum(deficit_45_var > 0),
+            duration_40_var = sum(deficit_40_var > 0),
+            duration_35_var = sum(deficit_35_var > 0),
+            duration_30_var = sum(deficit_30_var > 0),
+            duration_25_var = sum(deficit_25_var > 0),
+            duration_20_var = sum(deficit_20_var > 0),
+            duration_15_var = sum(deficit_15_var > 0),
+            duration_10_var = sum(deficit_10_var > 0),
+            duration_05_var = sum(deficit_05_var > 0),
+            duration_02_var = sum(deficit_02_var > 0),
+            
             duration_50_fix_prop = sum(deficit_50_fix > 0) / ndays,
             duration_45_fix_prop = sum(deficit_45_fix > 0) / ndays,
             duration_40_fix_prop = sum(deficit_40_fix > 0) / ndays,
@@ -950,6 +979,19 @@ defdur_ssn_sub <- dat_clean_sub_deficit %>%
   group_by(site_name, basin, subbasin, region, designation, CalendarYear, WaterYear) %>% 
   summarize(ndays = n(),
             propdays = ndays/(31+31+30), 
+            
+            duration_50_fix = sum(deficit_50_fix > 0),
+            duration_45_fix = sum(deficit_45_fix > 0),
+            duration_40_fix = sum(deficit_40_fix > 0),
+            duration_35_fix = sum(deficit_35_fix > 0),
+            duration_30_fix = sum(deficit_30_fix > 0),
+            duration_25_fix = sum(deficit_25_fix > 0),
+            duration_20_fix = sum(deficit_20_fix > 0),
+            duration_15_fix = sum(deficit_15_fix > 0),
+            duration_10_fix = sum(deficit_10_fix > 0),
+            duration_05_fix = sum(deficit_05_fix > 0),
+            duration_02_fix = sum(deficit_02_fix > 0),
+            
             duration_50_fix_prop = sum(deficit_50_fix > 0) / ndays,
             duration_45_fix_prop = sum(deficit_45_fix > 0) / ndays,
             duration_40_fix_prop = sum(deficit_40_fix > 0) / ndays,
@@ -1297,92 +1339,100 @@ First, using drought as defined from fixed thresholds (low flow thresholds deriv
 
 ```{r}
 defdur_ssn2 <- defdur_ssn %>% 
-  filter(designation == "little") %>%
-  left_join(defdur_ssn_sub %>% 
-              filter(designation == "little") %>%
-              select(site_name, basin, WaterYear) %>%
-              group_by(basin, WaterYear) %>%
-              ungroup() %>%
-              mutate(nsites = length(unique(site_name)))) %>%
-  filter(nsites >= 0) %>%
+  filter(designation == "little", basin != "Paine Run") %>%
+  # left_join(defdur_ssn_sub %>% 
+  #             filter(designation == "little") %>%
+  #             select(site_name, basin, WaterYear) %>%
+  #             group_by(basin, WaterYear) %>%
+  #             ungroup() %>%
+  #             mutate(nsites = length(unique(site_name)))) %>%
+  # filter(nsites >= 0) %>%
   mutate(basin = ifelse(basin == "Shields River", "Yellowstone River",
-                        ifelse(basin == "Flathead", "Flathead River", basin))) %>%
-  mutate(basin = factor(basin, levels = c("West Brook", "Staunton River", "Flathead River", "Yellowstone River", "Snake River", "Donner Blitzen")))
+                        ifelse(basin == "Flathead", "Flathead River", 
+                               ifelse(basin == "Donner Blitzen", "Donner-Blitzen River", basin)))) %>%
+  mutate(basin = factor(basin, levels = c("West Brook", "Staunton River", "Flathead River", "Yellowstone River", "Snake River", "Donner-Blitzen River")))
 
 wateravail2 <- wateravail %>% 
   mutate(basin = ifelse(basin == "Shields River", "Yellowstone River",
-                        ifelse(basin == "Flathead", "Flathead River", basin))) %>%
-  mutate(basin = factor(basin, levels = c("West Brook", "Piney River", "Staunton River", "Paine Run", "Flathead River", "Yellowstone River", "Snake River", "Donner Blitzen")))
+                        ifelse(basin == "Flathead", "Flathead River",  
+                               ifelse(basin == "Donner Blitzen", "Donner-Blitzen River", basin)))) %>%
+  mutate(basin = factor(basin, levels = c("West Brook", "Piney River", "Staunton River", "Paine Run", "Flathead River", "Yellowstone River", "Snake River", "Donner-Blitzen River")))
 ```
 
 ::: panel-tabset
 ##### Duration: basins combined
 ```{r echo=FALSE}
+mycols <- brewer.pal(7, "Set2")[-3]
+
 p1 <- defdur_ssn2 %>%
-  filter(designation == "little") %>%
+  filter(designation == "little", ndays >= 87) %>%
   group_by(basin, WaterYear) %>%
   summarize(sddur = sd(duration_02_fix_prop),
+            rangedur = max(duration_02_fix)-min(duration_02_fix),
             nsites = n()) %>%
   ungroup() %>%
   left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
-  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
-  geom_smooth(method = "lm", color = "black") +
+  ggplot(aes(x = tyz_sum_perc, y = rangedur)) +
+  geom_smooth(method = "lm", color = "black", aes(weight = nsites)) +
   geom_point(aes(fill = basin, size = nsites), shape = 21) +
-  scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values = mycols) +
   #facet_wrap(~basin) +
   annotate("text", label = "2nd perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
-  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.x = element_blank(), legend.position = "none") + ylim(-0.1,0.55)
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.x = element_blank(), legend.position = "none") + ylim(0,100)
 
 p2 <- defdur_ssn2 %>%
-  filter(designation == "little") %>%
+  filter(designation == "little", ndays >= 87) %>%
   group_by(basin, WaterYear) %>%
   summarize(sddur = sd(duration_05_fix_prop),
+            rangedur = max(duration_05_fix)-min(duration_05_fix),
             nsites = n()) %>%
   ungroup() %>%
   left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
-  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
-  geom_smooth(method = "lm", color = "black") +
+  ggplot(aes(x = tyz_sum_perc, y = rangedur)) +
+  geom_smooth(method = "lm", color = "black", aes(weight = nsites)) +
   geom_point(aes(fill = basin, size = nsites), shape = 21) +
-  scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values = mycols) +
   guides(size = "none", fill = guide_legend(title = "Basin", override.aes = list(size = 5))) +
   #facet_wrap(~basin) +
   annotate("text", label = "5th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
-  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text = element_blank()) + ylim(-0.1,0.55)
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text = element_blank()) + ylim(0,100)
 
 p3 <- defdur_ssn2 %>%
-  filter(designation == "little") %>%
+  filter(designation == "little", ndays >= 87) %>%
   group_by(basin, WaterYear) %>%
   summarize(sddur = sd(duration_10_fix_prop),
+            rangedur = max(duration_10_fix)-min(duration_10_fix),
             nsites = n()) %>%
   ungroup() %>%
   left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
-  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
-  geom_smooth(method = "lm", color = "black") +
+  ggplot(aes(x = tyz_sum_perc, y = rangedur)) +
+  geom_smooth(method = "lm", color = "black", aes(weight = nsites)) +
   geom_point(aes(fill = basin, size = nsites), shape = 21) +
-  scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values = mycols) +
   #facet_wrap(~basin) +
   annotate("text", label = "10th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
-  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), legend.position = "none") + ylim(-0.1,0.55)
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), legend.position = "none") + ylim(0,100)
 
 p4 <- defdur_ssn2 %>%
-  filter(designation == "little") %>%
+  filter(designation == "little", ndays >= 87) %>%
   group_by(basin, WaterYear) %>%
   summarize(sddur = sd(duration_20_fix_prop),
+            rangedur = max(duration_20_fix)-min(duration_20_fix),
             nsites = n()) %>%
   ungroup() %>%
   left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
-  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
-  geom_smooth(method = "lm", color = "black") +
+  ggplot(aes(x = tyz_sum_perc, y = rangedur)) +
+  geom_smooth(method = "lm", color = "black", aes(weight = nsites)) +
   geom_point(aes(fill = basin, size = nsites), shape = 21) +
-  scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values = mycols) +
   guides(fill = "none", size = guide_legend(title = "Number of sites")) +
   #facet_wrap(~basin) +
   annotate("text", label = "20th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
-  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.y = element_blank()) + ylim(-0.1,0.55)
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.y = element_blank()) + ylim(0,100)
 
 annotate_figure(egg::ggarrange(p1, p2, p3, p4), 
-                left = text_grob("Among-site variation in drought duration (SD)", hjust = 0.45, rot = 90), 
-                bottom = text_grob("Regional water availability (percentile)", hjust = 0.75))
+                left = text_grob("Spatial heterogeneity in drought duration (days)", hjust = 0.45, rot = 90), 
+                bottom = text_grob("Regional water availability (%)", hjust = 0.75))
 ```
 ##### Duration: by basin
 ```{r echo=FALSE}
@@ -1569,13 +1619,19 @@ effecttib <- tibble(threshold = rep(NA, times = length(colnums)),
 for (i in 1:length(colnums)) {
   effecttib$threshold[i] <- parse_number(names(defdur_ssn2)[colnums[i]+2])
   dd <- defdur_ssn2 %>%
-    filter(designation == "little") %>%
+    filter(designation == "little", ndays >= 87) %>%
     group_by(basin, WaterYear) %>%
-    summarize_at(colnums[i], sd) %>%
+    summarize(n = n()) %>%
     ungroup() %>%
-    left_join(wateravail2 %>% select(basin, WaterYear, tyz_sum_perc)) %>%
-    rename(sddur = 3)
-  mymod <- summary(lm(sddur ~ tyz_sum_perc, data = dd))
+    left_join(defdur_ssn2 %>%
+                filter(designation == "little", ndays >= 87) %>%
+                group_by(basin, WaterYear) %>%
+                summarize_at(colnums[i], funs(min, max)) %>%
+                ungroup()) %>%
+    mutate(rangedur = max-min) %>%
+    left_join(wateravail2 %>% select(basin, WaterYear, tyz_sum_perc)) #%>%
+    #rename(sddur = 4)
+  mymod <- summary(lm(rangedur ~ tyz_sum_perc, data = dd, weights = n))
   effecttib$int_est[i] <- mymod$coefficients[1,1]
   effecttib$int_se[i] <- mymod$coefficients[1,2]
   effecttib$slo_est[i] <- mymod$coefficients[2,1]
@@ -1611,79 +1667,86 @@ Second, using drought as defined from site-specific thresholds (low flow thresho
 ```{r}
 defdur_ssn_sub2 <- defdur_ssn_sub %>%
   mutate(basin = ifelse(basin == "Shields River", "Yellowstone River",
-                        ifelse(basin == "Flathead", "Flathead River", basin))) %>%
+                        ifelse(basin == "Flathead", "Flathead River", 
+                               ifelse(basin == "Donner Blitzen", "Donner-Blitzen River", basin)))) %>%
   mutate(basin = factor(basin, levels = c("West Brook", "Piney River", "Staunton River", "Paine Run", 
-                                          "Flathead River", "Yellowstone River", "Snake River", "Donner Blitzen")))
+                                          "Flathead River", "Yellowstone River", "Snake River", "Donner-Blitzen River")))
 ```
 
 ::: panel-tabset
 ##### Duration: basins combined
 ```{r echo=FALSE}
+mycols <- brewer.pal(7, "Set2")[-3]
+
 p1 <- defdur_ssn_sub2 %>%
-  filter(designation == "little") %>%
+  filter(designation == "little", ndays >= 87) %>%
   group_by(basin, WaterYear) %>%
   summarize(sddur = sd(duration_02_fix_prop),
+            rangedur = max(duration_02_fix)-min(duration_02_fix),
             nsites = n()) %>%
   ungroup() %>%
   left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
-  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
-  geom_smooth(method = "lm", color = "black") +
+  ggplot(aes(x = tyz_sum_perc, y = rangedur)) +
+  geom_smooth(method = "lm", color = "black", aes(weight = nsites)) +
   geom_point(aes(fill = basin, size = nsites), shape = 21) +
-  scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values = mycols) +
   #facet_wrap(~basin) +
   annotate("text", label = "2nd perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
-  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.x = element_blank(), legend.position = "none") + ylim(-0.03,0.2)
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.x = element_blank(), legend.position = "none") + ylim(-10,60)
 
 p2 <- defdur_ssn_sub2 %>%
-  filter(designation == "little") %>%
+  filter(designation == "little", ndays >= 87) %>%
   group_by(basin, WaterYear) %>%
   summarize(sddur = sd(duration_05_fix_prop),
+            rangedur = max(duration_05_fix)-min(duration_05_fix),
             nsites = n()) %>%
   ungroup() %>%
   left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
-  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
-  geom_smooth(method = "lm", color = "black") +
+  ggplot(aes(x = tyz_sum_perc, y = rangedur)) +
+  geom_smooth(method = "lm", color = "black", aes(weight = nsites)) +
   geom_point(aes(fill = basin, size = nsites), shape = 21) +
-  scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values = mycols) +
   guides(size = "none", fill = guide_legend(title = "Basin", override.aes = list(size = 5))) +
   #facet_wrap(~basin) +
   annotate("text", label = "5th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
-  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text = element_blank()) + ylim(-0.03,0.2)
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text = element_blank()) + ylim(-10,60)
 
 p3 <- defdur_ssn_sub2 %>%
-  filter(designation == "little") %>%
+  filter(designation == "little", ndays >= 87) %>%
   group_by(basin, WaterYear) %>%
   summarize(sddur = sd(duration_10_fix_prop),
+            rangedur = max(duration_10_fix)-min(duration_10_fix),
             nsites = n()) %>%
   ungroup() %>%
   left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
-  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
-  geom_smooth(method = "lm", color = "black") +
+  ggplot(aes(x = tyz_sum_perc, y = rangedur)) +
+  geom_smooth(method = "lm", color = "black", aes(weight = nsites)) +
   geom_point(aes(fill = basin, size = nsites), shape = 21) +
-  scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values = mycols) +
   #facet_wrap(~basin) +
   annotate("text", label = "10th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
-  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), legend.position = "none") + ylim(-0.03,0.2)
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), legend.position = "none") + ylim(-10,60)
 
 p4 <- defdur_ssn_sub2 %>%
-  filter(designation == "little") %>%
+  filter(designation == "little", ndays >= 87) %>%
   group_by(basin, WaterYear) %>%
   summarize(sddur = sd(duration_20_fix_prop),
+            rangedur = max(duration_20_fix)-min(duration_20_fix),
             nsites = n()) %>%
   ungroup() %>%
   left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
-  ggplot(aes(x = tyz_sum_perc, y = sddur)) +
-  geom_smooth(method = "lm", color = "black") +
+  ggplot(aes(x = tyz_sum_perc, y = rangedur)) +
+  geom_smooth(method = "lm", color = "black", aes(weight = nsites)) +
   geom_point(aes(fill = basin, size = nsites), shape = 21) +
-  scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values = mycols) +
   guides(fill = "none", size = guide_legend(title = "Number of sites")) +
   #facet_wrap(~basin) +
   annotate("text", label = "20th perc.", x = Inf, y = Inf, hjust = 1, vjust = 1) +
-  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.y = element_blank()) + ylim(-0.03,0.2)
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text.y = element_blank()) + ylim(-10,60)
 
 annotate_figure(egg::ggarrange(p1, p2, p3, p4), 
-                left = text_grob("Among-site variation in drought duration (SD)", hjust = 0.45, rot = 90), 
-                bottom = text_grob("Regional water availability (percentile)", hjust = 0.75))
+                left = text_grob("Spatial heterogeneity in drought duration (days)", hjust = 0.45, rot = 90), 
+                bottom = text_grob("Regional water availability (%)", hjust = 0.75))
 ```
 ##### Duration: by basin
 ```{r echo=FALSE}
@@ -1874,13 +1937,19 @@ effecttib <- tibble(threshold = rep(NA, times = length(colnums)),
 for (i in 1:length(colnums)) {
   effecttib$threshold[i] <- parse_number(names(defdur_ssn_sub2)[colnums[i]+2])
   dd <- defdur_ssn_sub2 %>%
-    filter(designation == "little") %>%
+    filter(designation == "little", ndays >= 87) %>%
     group_by(basin, WaterYear) %>%
-    summarize_at(colnums[i], sd) %>%
+    summarize(n = n()) %>%
     ungroup() %>%
-    left_join(wateravail2 %>% select(basin, WaterYear, tyz_sum_perc)) %>%
-    rename(sddur = 3)
-  mymod <- summary(lm(sddur ~ tyz_sum_perc, data = dd))
+    left_join(defdur_ssn_sub2 %>%
+                filter(designation == "little", ndays >= 87) %>%
+                group_by(basin, WaterYear) %>%
+                summarize_at(colnums[i], funs(min, max)) %>%
+                ungroup()) %>%
+    mutate(rangedur = max-min) %>%
+    left_join(wateravail2 %>% select(basin, WaterYear, tyz_sum_perc)) #%>%
+    #rename(sddur = 4)
+  mymod <- summary(lm(rangedur ~ tyz_sum_perc, data = dd, weights = n))
   effecttib$int_est[i] <- mymod$coefficients[1,1]
   effecttib$int_se[i] <- mymod$coefficients[1,2]
   effecttib$slo_est[i] <- mymod$coefficients[2,1]
@@ -1907,6 +1976,191 @@ p2 <- effecttib %>%
 
 egg::ggarrange(p1, p2, nrow = 2)
 ```
+
+### Paper figs
+
+```{r}
+# site-level drought threshold
+bas <- "Flathead"
+months <- c(7:9)
+bigG <- "North Fork Flathead River NWIS"
+
+dd <- dat_clean_join %>% filter(basin == bas, month %in% months, WaterYear == 2021) %>% mutate(site_name = factor(site_name, levels = rev(c(bigG, flatorder))))
+dd_sub <- dat_clean_sub %>% filter(basin == bas, month %in% months, WaterYear == 2021) %>% mutate(site_name = factor(site_name, levels = rev(c(bigG, flatorder))))
+mysites <- unlist(unique(dd_sub$site_name))
+dd <- dd %>% filter(site_name %in% mysites)
+myrect <- dd %>% group_by(WaterYear) %>% summarize(mindate = min(date), maxdate = max(date)) %>% ungroup()
+
+
+# HEAT MAPS
+heat1 <- dd %>%
+  ggplot() +
+  geom_tile(aes(x = date, y = site_name, fill = drought_fix)) +
+  scale_fill_viridis(option = "A", direction = -1, discrete = TRUE, limits = mydroughtlevels) +
+  #geom_rect(data = myrect, aes(xmin = mindate, xmax = maxdate, ymin = length(mysites)-0.5, ymax = length(mysites)+0.5), 
+  #          color = "grey70", fill = NA, size = 1.25) +
+  xlab("Date") + ylab("Site") +
+  theme_bw() + theme(axis.title = element_blank(), panel.background = element_rect(fill = 'grey90'),
+                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                     axis.text = element_text(color = "black")) +
+  geom_line(data = data.frame(x = c(min(dd$date)-days(10), max(dd$date)+days(10)), y = rep(2:length(mysites), each = 2)-0.5), 
+            aes(x = x, y = y, group = y), color = "grey70") +
+  coord_cartesian(xlim = c(min(dd$date), max(dd$date))) +
+  scale_y_discrete(expand = c(0,0), labels = rev(c("Ref.", 1:13))) + 
+  scale_x_date(expand = c(0,0), breaks = as.Date(c("2021-07-01", "2021-08-01", "2021-09-01", "2021-09-30")), 
+               labels = c("Jul", "Aug", "Sep", "Oct")) +
+  guides(fill = guide_legend(title = "Drought\nthreshold (%)"))
+
+heat2 <- dd_sub %>%
+  ggplot() +
+  geom_tile(aes(x = date, y = site_name, fill = drought_fix)) +
+  scale_fill_viridis(option = "A", direction = -1, discrete = TRUE, limits = mydroughtlevels) +
+  #geom_rect(data = myrect, aes(xmin = mindate, xmax = maxdate, ymin = length(mysites)-0.5, ymax = length(mysites)+0.5), 
+  #          color = "grey70", fill = NA, size = 1.25) +
+  xlab("Date") + ylab("Site") +
+  theme_bw() + theme(axis.title = element_blank(), panel.background = element_rect(fill = 'grey90'),
+                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                     axis.text = element_text(color = "black")) +
+  geom_line(data = data.frame(x = c(min(dd_sub$date)-days(10), max(dd_sub$date)+days(10)), y = rep(2:length(mysites), each = 2)-0.5), 
+            aes(x = x, y = y, group = y), color = "grey70") +
+  coord_cartesian(xlim = c(min(dd_sub$date), max(dd_sub$date))) +
+  scale_y_discrete(expand = c(0,0), labels = rev(c("Ref.", 1:13))) + 
+  scale_x_date(expand = c(0,0), breaks = as.Date(c("2021-07-01", "2021-08-01", "2021-09-01", "2021-09-30")), 
+               labels = c("Jul", "Aug", "Sep", "Oct")) +
+  guides(fill = guide_legend(title = "Drought\nthreshold (%)"))
+
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/Heatmaps_Flathead_2021.jpg", width = 4, height = 5, units = "in", res = 1000)
+ggarrange(heat1, heat2, nrow = 2, common.legend = TRUE, legend = "right")
+dev.off()
+
+
+# SCATTERPLOTS
+scat1 <- defdur_ssn2 %>%
+  filter(designation == "little", ndays >= 87) %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_10_fix_prop),
+            rangedur = max(duration_10_fix)-min(duration_10_fix),
+            nsites = n()) %>%
+  ungroup() %>%
+  left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = rangedur)) +
+  geom_smooth(method = "lm", color = "black", aes(weight = nsites)) +
+  geom_point(aes(fill = basin, size = nsites), shape = 21) +
+  scale_fill_manual(values = mycols) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), 
+                     axis.text = element_text(color = "black")) + ylim(-10,100) +
+  guides(fill = guide_legend(title = "Basin", override.aes = list(size = 5), order = 1), 
+         size = guide_legend(title = "Number of sites", order = 2))
+
+scat2 <- defdur_ssn_sub2 %>%
+  filter(designation == "little", ndays >= 87) %>%
+  group_by(basin, WaterYear) %>%
+  summarize(sddur = sd(duration_10_fix_prop),
+            rangedur = max(duration_10_fix)-min(duration_10_fix),
+            nsites = n()) %>%
+  ungroup() %>%
+  left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  ggplot(aes(x = tyz_sum_perc, y = rangedur)) +
+  geom_smooth(method = "lm", color = "black", aes(weight = nsites)) +
+  geom_point(aes(fill = basin, size = nsites), shape = 21) +
+  scale_fill_manual(values = mycols) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), 
+                     axis.text = element_text(color = "black")) + ylim(-10,100) +
+  guides(fill = guide_legend(title = "Basin", override.aes = list(size = 5), order = 1), 
+         size = guide_legend(title = "Number of sites", order = 2))
+
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/DroughtScatter_all.jpg", width = 4.5, height = 5, units = "in", res = 1000)
+ggarrange(scat1, scat2, nrow = 2, common.legend = TRUE, legend = "right")
+dev.off()
+
+
+# REGRESSION PLOTS
+colnums <- c(8:18)
+effecttib <- tibble(threshold = rep(NA, times = length(colnums)),
+                    int_est = rep(NA, times = length(colnums)),
+                    int_se = rep(NA, times = length(colnums)),
+                    slo_est = rep(NA, times = length(colnums)),
+                    slo_se = rep(NA, times = length(colnums)))
+for (i in 1:length(colnums)) {
+  effecttib$threshold[i] <- parse_number(names(defdur_ssn2)[colnums[i]+2])
+  dd <- defdur_ssn2 %>%
+    filter(designation == "little", ndays >= 87) %>%
+    group_by(basin, WaterYear) %>%
+    summarize(n = n()) %>%
+    ungroup() %>%
+    left_join(defdur_ssn2 %>%
+                filter(designation == "little", ndays >= 87) %>%
+                group_by(basin, WaterYear) %>%
+                summarize_at(colnums[i], funs(min, max)) %>%
+                ungroup()) %>%
+    mutate(rangedur = max-min) %>%
+    left_join(wateravail2 %>% select(basin, WaterYear, tyz_sum_perc)) #%>%
+    #rename(sddur = 4)
+  mymod <- summary(lm(rangedur ~ tyz_sum_perc, data = dd, weights = n))
+  effecttib$int_est[i] <- mymod$coefficients[1,1]
+  effecttib$int_se[i] <- mymod$coefficients[1,2]
+  effecttib$slo_est[i] <- mymod$coefficients[2,1]
+  effecttib$slo_se[i] <- mymod$coefficients[2,2]
+}
+
+
+colnums <- c(8:18)
+effecttib2 <- tibble(threshold = rep(NA, times = length(colnums)),
+                    int_est = rep(NA, times = length(colnums)),
+                    int_se = rep(NA, times = length(colnums)),
+                    slo_est = rep(NA, times = length(colnums)),
+                    slo_se = rep(NA, times = length(colnums)))
+for (i in 1:length(colnums)) {
+  effecttib2$threshold[i] <- parse_number(names(defdur_ssn_sub2)[colnums[i]+2])
+  dd <- defdur_ssn_sub2 %>%
+    filter(designation == "little", ndays >= 87) %>%
+    group_by(basin, WaterYear) %>%
+    summarize(n = n()) %>%
+    ungroup() %>%
+    left_join(defdur_ssn_sub2 %>%
+                filter(designation == "little", ndays >= 87) %>%
+                group_by(basin, WaterYear) %>%
+                summarize_at(colnums[i], funs(min, max)) %>%
+                ungroup()) %>%
+    mutate(rangedur = max-min) %>%
+    left_join(wateravail2 %>% select(basin, WaterYear, tyz_sum_perc)) #%>%
+    #rename(sddur = 4)
+  mymod <- summary(lm(rangedur ~ tyz_sum_perc, data = dd, weights = n))
+  effecttib2$int_est[i] <- mymod$coefficients[1,1]
+  effecttib2$int_se[i] <- mymod$coefficients[1,2]
+  effecttib2$slo_est[i] <- mymod$coefficients[2,1]
+  effecttib2$slo_se[i] <- mymod$coefficients[2,2]
+}
+
+
+regr1 <- effecttib %>%
+  ggplot(aes(x = threshold, y = slo_est)) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  geom_line(color = "grey") +
+  geom_errorbar(aes(ymin = slo_est-slo_se, ymax = slo_est+slo_se), width = 1) +
+  geom_point(shape = 21, fill = "white") + 
+  geom_point(data = effecttib %>% filter(threshold == 10), aes(x = threshold, y = slo_est), size = 2) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text = element_text(color = "black")) +
+  ylim(-0.82,0.22)
+
+regr2 <- effecttib2 %>%
+  ggplot(aes(x = threshold, y = slo_est)) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  geom_line(color = "grey") +
+  geom_errorbar(aes(ymin = slo_est-slo_se, ymax = slo_est+slo_se), width = 1) +
+  geom_point(shape = 21, fill = "white") + 
+  geom_point(data = effecttib2 %>% filter(threshold == 10), aes(x = threshold, y = slo_est), size = 2) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.title = element_blank(), axis.text = element_text(color = "black")) +
+  ylim(-0.82,0.22)
+
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/DroughtEffect.jpg", width = 2.75, height = 5, units = "in", res = 1000)
+ggarrange(regr1, regr2, nrow = 2)
+dev.off()
+
+```
+
+
+
 
 ## Presentation figs
 
