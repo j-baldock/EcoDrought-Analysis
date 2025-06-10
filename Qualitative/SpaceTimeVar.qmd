@@ -36,6 +36,9 @@ library(moments)
 library(fmsb)
 library(terra)
 library(ggspatial)
+library(lme4)
+library(MuMIn)
+library(lmerTest)
 ```
 
 
@@ -743,8 +746,8 @@ dev.off()
 
 How does the range of (summer) flow change with water availability?
 
-First, on daily values:
-```{r, fig.width=7, fig.height=7}
+First, on daily values: (*NOT EVALUATED*)
+```{r, fig.width=7, fig.height=7, eval=FALSE}
 tempdat <- dat_clean %>% 
   filter(basin == "West Brook", !is.na(logYield), Month %in% c(7:9)) %>%
   mutate(site_name = factor(site_name, levels = wborder))
@@ -850,6 +853,8 @@ annotate_figure(egg::ggarrange(p1 + theme(axis.title.x = element_blank(), axis.t
 
 ```
 
+
+### By Basin
 
 Create function to plot interannual distribution of streamflow values, annual distributions of streamflow values, and scatterplot plot of 
 ```{r}
@@ -1013,9 +1018,9 @@ dendb
 :::
 
 
-### Combined plots 
+### Combined analysis 
 
-Interanntual summer log(yield) distributions for all basins
+Plot interanntual summer log(yield) distributions for all basins
 ```{r  fig.width=2.5, fig.height=11}
 p <- egg::ggarrange(
   # West Brook
@@ -1048,7 +1053,7 @@ p <- egg::ggarrange(
           plot.margin = margin(t = 1, r = 1, b = 2, l = 1), panel.border = element_rect(colour = mycols[7], fill = NA, linewidth = 1.5)),
   nrow = 7)
 
-annotate_figure(p, left = "Density")
+#annotate_figure(p, left = "Density")
 
 jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/EcoD_summerdensity_all.jpg", width = 2.25, height = 11, units = "in", res = 1000)
 annotate_figure(p, left = "Density")
@@ -1056,7 +1061,9 @@ dev.off()
 ```
 
 
-Scatterplot: relative difference range vs. regional water availability
+How does regional water availability affect relative difference range of streamflow values (headwaters vs. reference gages)?
+
+Some data manipulation
 ```{r}
 # define basin-years to keep
 keepyears <- bind_rows(
@@ -1112,30 +1119,89 @@ mydat <- dat_clean %>%
   mutate(basin = factor(basin, levels = c("West Brook", "Staunton River", "Paine Run", 
                                           "Flathead River", "Yellowstone River", "Snake River", "Donner-Blitzen River"))) 
 
-# show linear model summary, weighted by number of sites
+mydat
+```
+
+Show simple linear model summary, weighted by number of sites
+```{r}
 summary(lm(pe_range ~ tyz_sum_perc, data = mydat, weights = nsites))
 ```
+
+Show distribution of spatial streamflow heterogeneity by basin. Lots of structuring by basin, driven in large part by Staunton and Donner-Blitzen Rivers.
+```{r}
+par(mar = c(9,4,0.5,0.5))
+boxplot(pe_range ~ basin, data = mydat, ylab = "Spatial streamflow heterogeneity", xlab = "", las = 2, col = mycols)
+```
+
+
+Use a random slope/random intercept mixed effects model to estimate the among-basin mean effect of regional water availability on spatial streamflow heterogeneity.
+
+**Notes:**
+
+* This regression is not weighted by number of headwater sites used to calculate spatial heterogeneity because variance decomposition using *rptR* does not support use of weights.
+* This uses z-scored x-values...using the raw percentiles leads to model convergence issues
+
+```{r}
+mydat <- mydat %>% mutate(z_tyz_sum_perc = scale(tyz_sum_perc))
+lmod <- lmer(pe_range ~ z_tyz_sum_perc + (1 + z_tyz_sum_perc | basin), data = mydat)
+summary(lmod)
+# r.squaredGLMM(lmod)
+```
+
+Get p-values for global slope and intercept: (doesn't to run in Quarto...works fine in R)
+```{r}
+coef(summary(as_lmerModLmerTest(lmod)))
+```
+
+
+Plot relationship between spatial streamflow heterogeneity and regional water availability with gloabl (among-population mean) regression line. 
 ```{r fig.width = 5, fig.height = 4}
-# plot
-randiffplot <- mydat %>%
-  ggplot(aes(x = tyz_sum_perc, y = pe_range)) +
-  geom_smooth(method = "lm", mapping = aes(weight = nsites), color = "black") +
-  geom_point(aes(fill = basin, size = nsites), shape = 21) +
+# get predicted values and 95% credible interval
+effects_tyz <- effects::effect(term = "z_tyz_sum_perc", mod = as_lmerModLmerTest(lmod), xlevels = list(z_tyz_sum_perc = seq(min(mydat$z_tyz_sum_perc), max(mydat$z_tyz_sum_perc), length.out = 1000)), se = list(level = 0.95))
+x_tyz <- as_tibble(effects_tyz) %>% mutate(tyz_sum_perc = (z_tyz_sum_perc * attr(mydat$z_tyz_sum_perc, "scaled:scale")) + attr(mydat$z_tyz_sum_perc, "scaled:center"))
+
+# trim data for panel labesl
+mydat_labs <- bind_rows(mydat %>% filter(basin == "West Brook", WaterYear %in% c(2020,2021)),
+                        mydat %>% filter(basin == "Snake River", WaterYear %in% c(2021,2022))) %>%
+  mutate(labs = c("b", "c", "d", "e"))
+
+# plot 
+randiffplot <- ggplot() + 
+  geom_ribbon(data = x_tyz, aes(x = tyz_sum_perc, ymin = lower, ymax = upper), fill = "grey80") +
+  geom_line(data = x_tyz, aes(x = tyz_sum_perc, y = fit), color = "black", size = 1.25) +
+  geom_point(data = mydat, aes(x = tyz_sum_perc, y = pe_range, fill = basin, size = nsites), shape = 21) + 
   scale_fill_brewer(palette = "Set2") +
-  #facet_wrap(~basin) +
+  geom_text(data = mydat_labs, aes(x = tyz_sum_perc, y = pe_range, label = labs), size = 3) +
   theme_bw() + theme(panel.grid = element_blank(), axis.text = element_text(color = "black")) +
   ylab("Spatial streamflow heterogeneity") + xlab("Regional water availability (%)") +
   guides(fill = guide_legend(title = "Basin", override.aes = list(size = 5), order = 1), size = guide_legend(title = "Number of sites", order = 2)) +
   geom_abline(intercept = 0, slope = 0, linetype = "dashed")
-print(randiffplot)
 
-jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/EcoD_RangeDiff_allsites_skinny.jpg", width = 4.5, height = 5, units = "in", res = 1000)
+# write to file
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/EcoD_RangeDiff_allsites.jpg", width = 4.75, height = 5, units = "in", res = 1000)
 randiffplot
 dev.off()
 ```
 
+Use *rptR* to decompose variance in spatial streamflow heterogeneity into fixed (regional water availability) and random (basin) effect sources:
+```{r message=FALSE}
+rmod <- rptGaussian(pe_range ~ z_tyz_sum_perc + (1 + z_tyz_sum_perc | basin), data = mydat, grname = c("basin", "Fixed"), ratio = TRUE, adjusted = FALSE, nboot = 1000)
+print(rmod)
+rmod$mod
+plot(rmod, grname = "basin")
+plot(rmod, grname = "Fixed")
+```
+
+The strong effect of basin is largely driven by Staunton and Donner-Blitzen Rivers. Without those basins, random effect variance shrinks and fixed effect variance expands considerably. Much of this pattern is likely due to low sample sizes (few headwater gages in these basins, particularly in the Donner-Blitzen)
+```{r message=FALSE}
+rmod <- rptGaussian(pe_range ~ z_tyz_sum_perc + (1 + z_tyz_sum_perc | basin), data = mydat %>% filter(!basin %in% c("Staunton River", "Donner-Blitzen River")), grname = c("basin", "Fixed"), ratio = TRUE, adjusted = FALSE, nboot = 1000)
+print(rmod)
+```
+
 
 ## Median summer flow
+
+### By Basin
 
 ::: panel-tabset
 #### West Brook
