@@ -1176,6 +1176,7 @@ randiffplot <- ggplot() +
   ylab("Spatial streamflow heterogeneity") + xlab("Regional water availability (%)") +
   guides(fill = guide_legend(title = "Basin", override.aes = list(size = 5), order = 1), size = guide_legend(title = "Number of sites", order = 2)) +
   geom_abline(intercept = 0, slope = 0, linetype = "dashed")
+randiffplot
 
 # write to file
 jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/EcoD_RangeDiff_allsites.jpg", width = 4.75, height = 5, units = "in", res = 1000)
