@@ -32,6 +32,8 @@ library(hydroGOF)
 library(fmsb)
 library(R2jags)
 library(MCMCvis)
+library(rptR)
+library(loo)
 ```
 
 
@@ -1976,6 +1978,276 @@ p2 <- effecttib %>%
 
 egg::ggarrange(p1, p2, nrow = 2)
 ```
+
+
+#### Attenuation strength
+
+Calculate difference in drought duration between headwaters gages and reference gage
+```{r}
+defdur_ssn_sub2_little <- defdur_ssn_sub2 %>% filter(designation == "little")
+defdur_ssn_sub2_big <- defdur_ssn_sub2 %>% filter(designation == "big") %>% select(basin, WaterYear, ndays, duration_50_fix:duration_02_fix)
+names(defdur_ssn_sub2_big) <- c("basin", "WaterYear", "ndays_big", "duration_50_fix_big", "duration_45_fix_big", "duration_40_fix_big", "duration_35_fix_big", "duration_30_fix_big", "duration_25_fix_big", "duration_20_fix_big", "duration_15_fix_big", "duration_10_fix_big", "duration_05_fix_big", "duration_02_fix_big")
+
+joineddefdur <- defdur_ssn_sub2_little %>% left_join(defdur_ssn_sub2_big) %>%
+  mutate(ndays_diff = ndays - ndays_big,
+         duration_50_fix_diff = duration_50_fix - duration_50_fix_big,
+         duration_45_fix_diff = duration_45_fix - duration_45_fix_big,
+         duration_40_fix_diff = duration_40_fix - duration_40_fix_big,
+         duration_35_fix_diff = duration_35_fix - duration_35_fix_big,
+         duration_30_fix_diff = duration_30_fix - duration_30_fix_big,
+         duration_25_fix_diff = duration_25_fix - duration_25_fix_big,
+         duration_20_fix_diff = duration_20_fix - duration_20_fix_big,
+         duration_15_fix_diff = duration_15_fix - duration_15_fix_big,
+         duration_10_fix_diff = duration_10_fix - duration_10_fix_big,
+         duration_05_fix_diff = duration_05_fix - duration_05_fix_big,
+         duration_02_fix_diff = duration_02_fix - duration_02_fix_big) %>%
+  left_join(wateravail2 %>% select(basin, WaterYear, totalyield:tyz_sum_perc))
+```
+
+Plot difference in drought duration by regional water availability for 4 low flow thresholds
+```{r}
+p1 <- joineddefdur %>%
+  mutate(groups = paste(basin, WaterYear, sep = "_")) %>% 
+  ggplot(aes(x = tyz_sum_perc, y = duration_10_fix_diff)) +
+  # geom_quantile(quantiles = c(0.05, 0.5, 0.95)) +
+  geom_point(aes(fill = basin), shape = 21, size = 2, position = position_jitter(seed = 1, width = 1)) +
+  scale_fill_manual(values = mycols) +
+  theme_bw() + theme(panel.grid = element_blank()) + ylim(-60,60)
+
+p2 <- joineddefdur %>%
+  mutate(groups = paste(basin, WaterYear, sep = "_")) %>% 
+  ggplot(aes(x = tyz_sum_perc, y = duration_20_fix_diff)) +
+  # geom_quantile(quantiles = c(0.05, 0.5, 0.95)) +
+  geom_point(aes(fill = basin), shape = 21, size = 2, position = position_jitter(seed = 1, width = 1)) +
+  scale_fill_manual(values = mycols) +
+  theme_bw() + theme(panel.grid = element_blank()) + ylim(-60,60)
+
+p3 <- joineddefdur %>%
+  mutate(groups = paste(basin, WaterYear, sep = "_")) %>% 
+  ggplot(aes(x = tyz_sum_perc, y = duration_30_fix_diff)) +
+  # geom_quantile(quantiles = c(0.05, 0.5, 0.95)) +
+  geom_point(aes(fill = basin), shape = 21, size = 2, position = position_jitter(seed = 1, width = 1)) +
+  scale_fill_manual(values = mycols) +
+  theme_bw() + theme(panel.grid = element_blank()) + ylim(-60,60)
+
+p4 <- joineddefdur %>%
+  mutate(groups = paste(basin, WaterYear, sep = "_")) %>% 
+  ggplot(aes(x = tyz_sum_perc, y = duration_40_fix_diff)) +
+  # geom_quantile(quantiles = c(0.05, 0.5, 0.95)) +
+  geom_point(aes(fill = basin), shape = 21, size = 2, position = position_jitter(seed = 1, width = 1)) +
+  scale_fill_manual(values = mycols) +
+  theme_bw() + theme(panel.grid = element_blank()) + ylim(-60,60)
+
+ggarrange(p1, p2, p3, p4, nrow = 2, ncol = 2, common.legend = TRUE, legend = "right")
+```
+
+Specify ~simple JAGS model: linear regression between regional water availability and low flow duration, where sigma is modeled as a function of regional water availability
+```{r}
+cat("model {
+
+##--- LIKELIHOOD ---------------------------------------------------##
+
+for (i in 1:nObs) {
+
+  D[i] ~ dnorm(mu[i], pow(sigma[i], -2))
+  mu[i] <- alpha + beta * W[i]
+  log(sigma[i]) <- sig.alpha + sig.beta * W[i]
+  
+  # Log-likelihood
+  loglik[i] <- logdensity.norm(D[i], mu[i], pow(sigma[i], -2))
+  }
+
+
+##--- PRIORS --------------------------------------------------------##
+
+alpha ~ dnorm(0, pow(10, -2))
+beta ~ dnorm(0, pow(10, -2))
+sig.alpha ~ dnorm(0, pow(10, -2))
+sig.beta ~ dnorm(0, pow(10, -2))
+
+
+##--- DERIVED VALUES ------------------------------------------------##
+
+# attenuation strength
+AS <- exp(sig.alpha + sig.beta * 0) / exp(sig.alpha + sig.beta * 100)
+
+}", file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/DroughtModel.txt")
+```
+
+Fit models for each threshold, in a loop
+```{r results='hide'}
+modlist <- list()
+npreds <- 101
+thresh <- c(50,45,40,35,30,25,20,15,10,5,2)
+
+for (i in 1:11) {
+  names(joineddefdur)[57+i]
+  jags.data <- list("nObs" = dim(joineddefdur)[1] + npreds, 
+                    "D" = c(unlist(joineddefdur[,57+i]), rep(NA, times = npreds)), 
+                    "W" = c(joineddefdur$tyz_sum_perc, seq(from = 0, to = 100, by = 1)))
+  jags.params <- c("alpha", "beta", "sig.alpha", "sig.beta", "AS", "D", "loglik")
+  fit <- jags(data = jags.data, parameters.to.save = jags.params,
+              model.file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/DroughtModel.txt",
+              n.chains = 3, n.thin = 10, n.burnin = 1000, n.iter = 6000, DIC = FALSE)
+  modlist[[i]] <- fit
+}
+```
+
+Get attenuation strength (*sensu* Chezik et al. 2017) for each model (low flow threshold, %) and summarize as median and 95% credible interval
+```{r}
+attenlist <- list()
+for (i in 1:length(modlist)) { attenlist[[i]] <- modlist[[i]]$BUGSoutput$sims.list$AS }
+attentib <- tibble(threshold = rep(thresh, each = 1500), attenuation = unlist(attenlist))
+```
+
+Plot attenuation strength by low flow threshold
+```{r}
+attentib_sum <- attentib %>% 
+  group_by(threshold) %>% 
+  summarize(median = quantile(attenuation, probs = 0.50),
+            cilow = quantile(attenuation, probs = 0.025),
+            ciupp = quantile(attenuation, probs = 0.975)) %>%
+  ungroup()
+
+attentib_sum %>%
+  ggplot() +
+  geom_abline(intercept = 1, slope = 0, linetype = "dashed", color = "grey50") +
+  geom_errorbar(aes(x = threshold, ymin = cilow, ymax = ciupp), width = 1) +
+  geom_point(aes(x = threshold, y = median)) +
+  theme_bw() + theme(panel.grid = element_blank()) + ylim(0,9) +
+  xlab("Low flow threshold (%)") + ylab("Attenuation strength")
+```
+
+Set top model as that with the greatest attenuation strength: 15% low flow threshold
+```{r}
+top_mod <- modlist[[8]]
+```
+
+Show traceplots
+```{r}
+MCMCtrace(top_mod, ind = TRUE, params = c("alpha", "beta", "sig.alpha", "sig.beta", "AS"), pdf = FALSE)
+```
+
+Get MCMC samples and summary
+```{r}
+# generate MCMC samples and store as an array
+modelout <- top_mod$BUGSoutput
+McmcList <- vector("list", length = dim(modelout$sims.array)[2])
+for(i in 1:length(McmcList)) { McmcList[[i]] = as.mcmc(modelout$sims.array[,i,]) }
+# rbind MCMC samples from 10 chains 
+Mcmcdat <- rbind(McmcList[[1]], McmcList[[2]], McmcList[[3]])
+param.summary <- modelout$summary
+head(param.summary)
+dim(Mcmcdat)
+```
+
+Show LOO-CV tables and plot: model is well specified
+```{r}
+# get log-likelihoods
+loglik1 <- top_mod$BUGSoutput$sims.list$loglik[,c(1:163)]
+reff1 <- relative_eff(exp(loglik1), chain_id = c(rep(1,500), rep(2,500), rep(3,500)))
+loo1 <- loo(loglik1, r_eff = reff1)
+print(loo1)
+plot(loo1)
+```
+
+Plot model output: attenuation of spatial heterogeneity in low flow duration with regional water availability
+```{r}
+# Get predictions
+d_preds <- Mcmcdat[,165:265]
+# summarize lower and upper prediction intervales (attenuation)
+pi_low <- apply(d_preds, 2, quantile, probs = c(0.025),  na.rm = TRUE)
+pi_upp <- apply(d_preds, 2, quantile, probs = c(0.975),  na.rm = TRUE)
+
+# plot
+ggplot() +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low, ymax = pi_upp), alpha = 0.3) +
+  # geom_smooth(aes(x = seq(from = 0, to = 100, by = 1), y = pi_low), color = "black", size = 1.5) +
+  # geom_smooth(aes(x = seq(from = 0, to = 100, by = 1), y = pi_upp), color = "black", size = 1.5) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  geom_point(data = joineddefdur, aes(x = tyz_sum_perc, y = duration_20_fix_diff, fill = basin), 
+             shape = 21, size = 2, position = position_jitter(seed = 1, width = 1)) +
+  scale_fill_manual(values = mycols) +
+  theme_bw() + theme(panel.grid = element_blank()) + #ylim(-60,60) +
+  xlab("Regional water availability (%)") + ylab("Difference in low flow duration\n(days, headwaters-reference)")
+```
+
+##### Combined figure
+
+
+```{r fig.width=6, fig.height=6}
+# site-level drought threshold
+bas <- "West Brook"
+months <- c(7:9)
+bigG <- "South River Conway NWIS"
+
+dd_wet <- dat_clean_sub %>% filter(basin == bas, month %in% months, WaterYear == 2021) %>% mutate(site_name = factor(site_name, levels = rev(c(bigG, wborder))))
+dd_dry <- dat_clean_sub %>% filter(basin == bas, month %in% months, WaterYear == 2020) %>% mutate(site_name = factor(site_name, levels = rev(c(bigG, wborder))))
+
+mysites <- unlist(unique(dd_wet$site_name))
+# dd <- dd %>% filter(site_name %in% mysites)
+
+# HEAT MAPS
+heat1 <- dd_dry %>%
+  ggplot() +
+  geom_tile(aes(x = date, y = site_name, fill = drought_fix)) +
+  scale_fill_viridis(option = "A", direction = -1, discrete = TRUE, limits = mydroughtlevels) +
+  xlab("Date") + ylab("Site") +
+  theme_bw() + theme(axis.title = element_blank(), panel.background = element_rect(fill = 'grey90'),
+                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                     axis.text = element_text(color = "black"), legend.position = "none") +
+  geom_line(data = data.frame(x = c(min(dd_dry$date)-days(10), max(dd_dry$date)+days(10)), 
+                              y = rep(2:length(mysites), each = 2)-0.5), 
+            aes(x = x, y = y, group = y), color = "grey70") +
+  coord_cartesian(xlim = c(min(dd_dry$date), max(dd_dry$date))) +
+  scale_y_discrete(expand = c(0,0), labels = rev(c("Ref.", 1:8))) + 
+  scale_x_date(expand = c(0,0), breaks = as.Date(c("2020-07-01", "2020-08-01", "2020-09-01", "2020-09-30")), 
+               labels = c("Jul", "Aug", "Sep", "Oct")) +
+  guides(fill = guide_legend(title = "Drought\nthreshold (%)"))
+
+heat2 <- dd_wet %>%
+  ggplot() +
+  geom_tile(aes(x = date, y = site_name, fill = drought_fix)) +
+  scale_fill_viridis(option = "A", direction = -1, discrete = TRUE, limits = mydroughtlevels) +
+  xlab("Date") + ylab("Site") +
+  theme_bw() + theme(axis.title = element_blank(), panel.background = element_rect(fill = 'grey90'),
+                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                     axis.text = element_text(color = "black"), legend.position = "none") +
+  geom_line(data = data.frame(x = c(min(dd_wet$date)-days(10), max(dd_wet$date)+days(10)), 
+                              y = rep(2:length(mysites), each = 2)-0.5), 
+            aes(x = x, y = y, group = y), color = "grey70") +
+  coord_cartesian(xlim = c(min(dd_wet$date), max(dd_wet$date))) +
+  scale_y_discrete(expand = c(0,0), labels = rev(c("Ref.", 1:8))) + 
+  scale_x_date(expand = c(0,0), breaks = as.Date(c("2021-07-01", "2021-08-01", "2021-09-01", "2021-09-30")), 
+               labels = c("Jul", "Aug", "Sep", "Oct")) +
+  guides(fill = guide_legend(title = "Drought\nthreshold (%)"))
+
+scatter <- ggplot() +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low, ymax = pi_upp), alpha = 0.3) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  geom_point(data = joineddefdur, aes(x = tyz_sum_perc, y = duration_20_fix_diff, fill = basin), 
+             shape = 21, size = 2, position = position_jitter(seed = 1, width = 1)) +
+  scale_fill_manual(values = mycols) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.text = element_text(color = "black"), legend.position = "none") + 
+  scale_x_continuous(breaks = seq(0,100,20), limits = c(-8,111)) +
+  xlab("Regional water availability (%)") + ylab("Difference in low flow duration (days)")
+
+effectplot <- attentib_sum %>%
+  ggplot() +
+  geom_abline(intercept = 1, slope = 0, linetype = "dashed", color = "grey50") +
+  geom_errorbar(aes(x = threshold, ymin = cilow, ymax = ciupp), width = 1) +
+  geom_point(aes(x = threshold, y = median), shape = 21, fill = "white", size = 2) +
+  geom_point(data = attentib_sum %>% filter(threshold == 15), 
+             aes(x = threshold, y = median), size = 2) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.text = element_text(color = "black")) + ylim(0,9) +
+  xlab("Low flow threshold (%)") + ylab(expression(paste("Attenuation strength (", sigma[0], " / ",  sigma[100], ")", sep = "")))
+
+
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/DroughtDuration_sitelevel_WestBrook_2020-2021.jpg", width = 6.5, height = 6.5, units = "in", res = 1000)
+egg::ggarrange(heat1, scatter, heat2, effectplot, nrow = 2, ncol = 2)
+dev.off()
+```
+
 
 ### Paper figs
 

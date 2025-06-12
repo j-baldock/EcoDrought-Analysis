@@ -1,0 +1,29 @@
+model {
+
+##--- LIKELIHOOD ---------------------------------------------------##
+
+for (i in 1:nObs) {
+
+  D[i] ~ dnorm(mu[i], pow(sigma[i], -2))
+  mu[i] <- alpha + beta * W[i]
+  log(sigma[i]) <- sig.alpha + sig.beta * W[i]
+  
+  # Log-likelihood
+  loglik[i] <- logdensity.norm(D[i], mu[i], pow(sigma[i], -2))
+  }
+
+
+##--- PRIORS --------------------------------------------------------##
+
+alpha ~ dnorm(0, pow(10, -2))
+beta ~ dnorm(0, pow(10, -2))
+sig.alpha ~ dnorm(0, pow(10, -2))
+sig.beta ~ dnorm(0, pow(10, -2))
+
+
+##--- DERIVED VALUES ------------------------------------------------##
+
+# attenuation strength
+AS <- exp(sig.alpha + sig.beta * 0) / exp(sig.alpha + sig.beta * 100)
+
+}
