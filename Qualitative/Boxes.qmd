@@ -6,6 +6,7 @@ title: "Boxes"
 library(tidyverse)
 library(mapview)
 library(sf)
+library(terra)
 library(ggpubr)
 library(fasstr)
 library(dygraphs)
@@ -65,6 +66,27 @@ Water availability
 wateravail <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/BigG_wateravailability_annual.csv")
 ```
 
+Watersheds (filter to Snake River only)
+```{r results='hide'}
+sheds_list <- list()
+myfiles <- list.files(path = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/", pattern = ".shp")
+for (i in 1:length(myfiles)) {
+  sheds_list[[i]] <- st_read(paste("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Watersheds/", myfiles[i], sep = ""))
+}
+sheds <- do.call(rbind, sheds_list) %>% 
+  mutate(site_id = ifelse(site_id == "SP01", "SP07", ifelse(site_id == "SP07", "SP01", site_id))) %>%
+  left_join(siteinfo) %>%
+  filter(basin == "Snake River")
+
+sheds <- st_transform(sheds, crs = crs(siteinfo_sp))
+#mapview(sheds %>% arrange(desc(area_sqmi)), alpha.regions = 0.2)
+```
+
+Spring prevalence
+```{r fig.width=5, fig.height=7.5}
+springprev <- rast("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Snake Groundwater/SpringPrev_UpperSnake_BedSurf_nolakes_flowbuff100.tif")
+plot(springprev)
+```
 
 
 
@@ -89,6 +111,8 @@ wateravail <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDroug
 
 *Purpose:* Explore the effect of groundwater on relative summer (July-September) water availability. 
 
+### PASTA approach
+
 Load PASTA daily derived parameters: summarize as July-September site-specific means (across all years)
 ```{r}
 pasta <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Covariates/pasta_derived_parameters_daily.csv") %>%
@@ -106,7 +130,7 @@ Create flow by groundwater plotting function.
 ```{r}
 mdaystib <- tibble(Month = c(1:12), mdays = c(31,28,31,30,31,30,31,31,30,31,30,31))
 
-gwflowfun <- function (subbas, years, dropsites, months = c(1:12)) {
+gwflowfun <- function (subbas, years, dropsites, months = c(7:9)) {
   dat_clean %>% 
   filter(subbasin == subbas, CalendarYear %in% years, Month %in% months) %>%
   group_by(site_name, subbasin, designation, CalendarYear) %>% #, Month, MonthName) %>%
@@ -137,22 +161,124 @@ gwflowfun <- function (subbas, years, dropsites, months = c(1:12)) {
 Plot the relationship between standardized annual summer mean discharge and amplitude ratio from PASTA, where lower amplitude ratio values are indicative of greater groundwater availability. Mean flow for each site is standardized by year to remove interannual variation in climate/regional water availability
 
 ::: panel-tabset
-### West Brook
+#### West Brook
 ```{r}
 gwflowfun(subbas = "West Brook", dropsites = c("West Brook Reservoir", "Mitchell Brook"), years = c(2020:2024))
 ```
-### Staunton River
+#### Staunton River
 ```{r}
 gwflowfun(subbas = "Staunton River", dropsites = NA, years = c(2019:2022))
 ```
-### Snake River
+#### Snake River
 ```{r}
 gwflowfun(subbas = "Snake River", dropsites = NA, years = c(2018, 2020:2022), months = c(7:9))
 ```
-### Shields River
+#### Shields River
 ```{r}
 gwflowfun(subbas = "Shields River", dropsites = NA, years = c(2017,2019,2020,2022,2023), months = c(7:9))
 ```
 :::
 
 
+
+### Spring prevalence approach
+
+Extract groundwater metrics from MaxEnt spring prevalence model
+```{r}
+# convert to SpatVectors
+sites_flow <- vect(siteinfo_sp %>% filter(basin == "Snake River"))
+sheds <- vect(sheds)
+
+# transform
+sites_flow <- terra::project(sites_flow, crs(springprev))
+sheds <- terra::project(sheds, crs(springprev))
+
+# extract average and weighted spring prevalence for each basin
+sites <- sheds$site_name
+gwlist <- list()
+st <- Sys.time()
+for (i in 1:length(sites)) {
+  spring_mask <- mask(crop(springprev, sheds[sheds$site_name == sites[i],]), sheds[sheds$site_name == sites[i],]) # crop and mask by basin
+  dist_rast <- distance(spring_mask, sites_flow[sites_flow$site_name == sites[i],]) %>% mask(spring_mask) # calculate distance between each raster cell and site location
+  gwlist[[i]] <- tibble(site_name = sites[i],
+                        area_sqmi = sites_flow$area_sqmi[i],
+                        springprev_point = terra::extract(springprev, sites_flow[sites_flow$site_name == sites[i],], na.rm = TRUE)[,2],
+                        springprev_basinmean = as.numeric(global(spring_mask, "mean", na.rm = T)), # extract(spring_buff, sheds_yoy[sheds_yoy$site == sites[i],], fun = mean, na.rm = TRUE)[,2],
+                        springprev_iew01km = as.numeric(global(spring_mask * (1 / exp(dist_rast/1000)), "sum", na.rm = T) / global(1 / exp(dist_rast/1000), "sum", na.rm = T)),
+                        springprev_iew05km = as.numeric(global(spring_mask * (1 / exp(dist_rast/5000)), "sum", na.rm = T) / global(1 / exp(dist_rast/5000), "sum", na.rm = T))
+                        )
+  print(i)
+}
+Sys.time() - st
+gwmetrics_snake <- do.call(rbind, gwlist) # bind as tibble
+gwmetrics_snake
+```
+
+
+Plot groundwater index across upper Snake River basin
+```{r}
+springprev_cont <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Snake Groundwater/GroundwaterMetrics_Normalized_PredPoints.shp")
+mapview(st_as_sf(springprev_cont), zcol = "springpre3", col.regions = viridis(n = 100, direction = -1))
+```
+
+Plot groundwater index across the Spread Creek sub-watershed (note the change in color scale). This map needs cleaning, but you get the idea
+```{r}
+springprev_cont_snake <- mask(crop(springprev_cont, sheds[sheds$site_name == "Spread Creek Dam",]), sheds[sheds$site_name == "Spread Creek Dam",])
+
+mynet <- vect("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Watershed Delineation/Streams/Snake_Streams.shp")
+crs(mynet) <- crs(siteinfo_sp)
+mynet <- terra::project(mynet, crs(sheds))
+mynet <- crop(mynet, sheds[sheds$site_name == "Spread Creek Dam",])
+
+ggplot() +
+  geom_sf(data = st_as_sf(sheds[sheds$site_name == "Spread Creek Dam",]), color = "black", fill = "white", linewidth = 0.4) + 
+  geom_sf(data = st_as_sf(mynet), color = "white", linewidth = 1, lineend = "round") +
+  geom_sf(data = st_as_sf(mynet), color = "royalblue4", linewidth = 0.6, lineend = "round") +
+  geom_sf(data = st_as_sf(springprev_cont_snake), aes(colour = springpre3), size = 2) +
+  scale_colour_viridis(option = "D", direction = -1, limits = range(springprev_cont_snake$springpre3), na.value = "grey") +
+  geom_sf(data = st_as_sf(sites_flow) %>% filter(designation != "big"), shape = 21, fill = "white", size = 2) +
+  labs(colour = "Groundwater\nindex") + #annotation_scale() +
+  theme_bw() + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), axis.text = element_blank()) 
+```
+
+Plot relationship between groundwater availability and mean summer log(specific discharge). 
+
+```{r}
+dat_summer <- dat_clean %>% 
+  filter(basin == "Snake River", Month %in% c(7:9)) %>%
+  group_by(site_name, basin, designation, WaterYear) %>% #, Month, MonthName) %>%
+  summarise(ndays = n(),
+            logYield_mean = mean(logYield, na.rm = TRUE),
+            logYield_min = min(logYield, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(pdays = ndays/92) %>%
+  filter(pdays > 0.9) %>%
+  left_join(gwmetrics_snake) #%>%
+  #left_join(wateravail %>% filter(basin == "Snake River") %>% select(WaterYear, totalyield_sum, totalyield_sum_z))
+
+#summary(lm(logYield_mean ~ springprev_iew05km*totalyield_sum, data = dat_summer))
+
+dat_summer %>%
+  #filter(site_name != "Grizzly Creek") %>%
+  #filter(WaterYear %in% c(2020:2023)) %>%
+  ggplot(aes(x = springprev_iew05km, y = logYield_mean)) +
+  geom_smooth(method = "lm", aes(x = springprev_iew05km, y = logYield_mean), se = FALSE, color = "grey50") + 
+  geom_point(aes(color = site_name)) + 
+  theme_bw() + theme(panel.grid = element_blank()) +
+  xlab("Groundwater index") + ylab("Mean summer log(specific discharge)") +
+  facet_wrap(~WaterYear)
+
+dat_summer %>%
+  filter(WaterYear %in% c(2020:2023)) %>%
+  ggplot(aes(x = springprev_iew05km, y = logYield_mean)) +
+  geom_smooth(method = "lm", aes(x = springprev_iew05km, y = logYield_mean), se = FALSE, color = "grey50") + 
+  geom_point(aes(color = site_name, shape = factor(WaterYear))) + 
+  theme_bw() + theme(panel.grid = element_blank()) +
+  xlab("Groundwater index") + ylab("Mean summer log(specific discharge)")
+```
+
+With the exception of Grizzly Creek, there is a surprisingly tight relationship between the groundwater index and summer streamflow: higher water availability in reaches with high groundwater availability. Not surprising, but it's a very nice validation of the MaxEnt approach to estimating groundwater availability and links to summer habitat conditions. 
+
+Grizzly is the exception, of course. High groundwater index despite very low flows. I've never been there, so I'm wondering what Robert makes of this. One thought I had is that where discharge is measured may be out on an alluvial fan, which may be in a losing reach as water spread outs into more porous material. We built the groundwater model to estimate the prevalence of springs, not where water is lost to the subsurface. So the groundwater index would not reflect these more nuanced dynamics. Alternatively (or additionally), looking at satellite imagery, there is a large beaver complex just upstream of the discharge monitoring site...which may reduce surface flows immediately downstream as shallow sediments are recharged. Scanning satellite imagery, it is pretty clear where springs discharge in the headwaters of Grizzly Creek. So, the MaxEnt model may not necessarily be wrong, but it doesn't account for other factors which have important effects on streamflow at even finer spatial scales.
+
+This box could have 3 main elements: a photo of a groundwater spring (?), the map of groundwater availability across Spread Creek, and the scatterplots for 2020-2023 (years with good data availability)
