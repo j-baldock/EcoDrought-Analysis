@@ -1,0 +1,40 @@
+model {
+
+##--- LIKELIHOOD ---------------------------------------------------##
+
+for (i in 1:nObs) {
+
+  D[i] ~ dnorm(mu[i], pow(sigma[i], -2))
+  mu[i] <- alpha[basins[i]] + beta[basins[i]] * W[i]
+  log(sigma[i]) <- sig.alpha[basins[i]] + sig.beta[basins[i]] * W[i]
+  }
+
+
+##--- RANDOM EFFECTS ------------------------------------------------##
+
+for (j in numBasins) {
+    alpha[j] ~ dnorm(mu.alpha, pow(5, -2)) 
+    beta[j] ~ dnorm(mu.beta, pow(5, -2)) 
+
+    sig.alpha[j] ~ dnorm(mu.sig.alpha, pow(5, -2)) 
+    sig.beta[j] ~ dnorm(mu.sig.beta, pow(5, -2)) 
+}
+    
+
+##--- PRIORS --------------------------------------------------------##
+
+mu.alpha ~ dnorm(0, pow(10, -2))
+mu.beta ~ dnorm(0, pow(10, -2))
+
+mu.sig.alpha ~ dnorm(0, pow(10, -2))
+mu.sig.beta ~ dnorm(0, pow(10, -2))
+#sigma.sig.alpha ~ dunif(0.0001, 100)
+#sigma.sig.beta ~ dunif(0.0001, 100)
+
+
+##--- DERIVED VALUES ------------------------------------------------##
+
+# attenuation strength
+#AS <- exp(mu.sig.alpha + mu.sig.beta * 0) / exp(mu.sig.alpha + mu.sig.beta * 100)
+
+}

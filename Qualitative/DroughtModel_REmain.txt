@@ -1,0 +1,50 @@
+model {
+
+##--- LIKELIHOOD ---------------------------------------------------##
+
+for (i in 1:nObs) {
+
+  D[i] ~ dnorm(mu[i], pow(sigma[i], -2))
+  mu[i] <- alpha[basins[i]] + beta[basins[i]] * W[i]
+  log(sigma[i]) <- sig.alpha + sig.beta * W[i]
+  
+  # Log-likelihood
+  loglik[i] <- logdensity.norm(D[i], mu[i], pow(sigma[i], -2))
+  }
+
+
+##--- RANDOM EFFECTS ------------------------------------------------##
+
+for (j in numBasins) {
+    alpha[j] ~ dnorm(mu.alpha, pow(sigma.alpha, -2)) 
+    beta[j] ~ dnorm(mu.beta, pow(sigma.beta, -2)) 
+}
+    
+
+##--- PRIORS --------------------------------------------------------##
+
+mu.alpha ~ dnorm(0, pow(10, -2))
+mu.beta ~ dnorm(0, pow(10, -2))
+sigma.alpha ~ dunif(0, 100)
+sigma.beta ~ dunif(0, 100)
+
+sig.alpha ~ dnorm(0, pow(10, -2))
+sig.beta ~ dnorm(0, pow(10, -2))
+
+
+##--- DERIVED VALUES ------------------------------------------------##
+
+# attenuation strength
+AS <- exp(sig.alpha + sig.beta * 0) / exp(sig.alpha + sig.beta * 100)
+
+# predictions
+for (i in 1:nPreds) {
+    P1[i] ~ dnorm(alpha[1] + beta[1] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+    P3[i] ~ dnorm(alpha[3] + beta[3] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+    P5[i] ~ dnorm(alpha[5] + beta[5] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+    P6[i] ~ dnorm(alpha[6] + beta[6] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+    P7[i] ~ dnorm(alpha[7] + beta[7] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+    P8[i] ~ dnorm(alpha[8] + beta[8] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+}
+
+}

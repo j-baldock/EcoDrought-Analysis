@@ -26,4 +26,9 @@ sig.beta ~ dnorm(0, pow(10, -2))
 # attenuation strength
 AS <- exp(sig.alpha + sig.beta * 0) / exp(sig.alpha + sig.beta * 100)
 
+# predictions
+for (i in 1:nPreds) {
+    P[i] ~ dnorm(alpha + beta * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+}
+
 }

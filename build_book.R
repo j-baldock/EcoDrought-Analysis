@@ -72,6 +72,11 @@ quarto::quarto_render("Qualitative/LowFlow.qmd",
                       output_format = "html")
 
 
+quarto::quarto_render("Qualitative/Boxes.qmd", 
+                      #cache_refresh = TRUE, # default is FALSE
+                      output_format = "html")
+
+
 # Deprecated
 
 quarto::quarto_render("Big G Little g/GgDiffKS.qmd", 
