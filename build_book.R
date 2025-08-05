@@ -68,7 +68,7 @@ quarto::quarto_render("Qualitative/ModeledQ.qmd",
                       output_format = "html")
 
 quarto::quarto_render("Qualitative/LowFlow.qmd", 
-                      #cache_refresh = TRUE, # default is FALSE
+                      cache_refresh = TRUE, # default is FALSE
                       output_format = "html")
 
 

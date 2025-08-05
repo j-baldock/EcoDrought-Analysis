@@ -17,7 +17,7 @@ for (i in 1:nObs) {
 
 for (j in numBasins) {
     alpha[j] ~ dnorm(mu.alpha, pow(sigma.alpha, -2)) 
-    beta[j] ~ dnorm(mu.beta, pow(sigma.beta, -2)) 
+    beta[j] ~ dnorm(mu.beta, pow(sigma.beta, -2))
 }
     
 
@@ -25,6 +25,7 @@ for (j in numBasins) {
 
 mu.alpha ~ dnorm(0, pow(10, -2))
 mu.beta ~ dnorm(0, pow(10, -2))
+
 sigma.alpha ~ dunif(0, 100)
 sigma.beta ~ dunif(0, 100)
 
@@ -37,14 +38,29 @@ sig.beta ~ dnorm(0, pow(10, -2))
 # attenuation strength
 AS <- exp(sig.alpha + sig.beta * 0) / exp(sig.alpha + sig.beta * 100)
 
-# predictions
+# prediction means
 for (i in 1:nPreds) {
-    P1[i] ~ dnorm(alpha[1] + beta[1] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
-    P3[i] ~ dnorm(alpha[3] + beta[3] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
-    P5[i] ~ dnorm(alpha[5] + beta[5] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
-    P6[i] ~ dnorm(alpha[6] + beta[6] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
-    P7[i] ~ dnorm(alpha[7] + beta[7] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
-    P8[i] ~ dnorm(alpha[8] + beta[8] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+    P0m[i] <- mu.alpha + mu.beta * Wp[i]
+    P1m[i] <- alpha[1] + beta[1] * Wp[i]
+    P3m[i] <- alpha[3] + beta[3] * Wp[i]
+    P5m[i] <- alpha[5] + beta[5] * Wp[i]
+    P6m[i] <- alpha[6] + beta[6] * Wp[i]
+    P7m[i] <- alpha[7] + beta[7] * Wp[i]
+    P8m[i] <- alpha[8] + beta[8] * Wp[i]
 }
+
+# prediction intervals
+for (i in 1:nPreds) {
+    P0i[i] ~ dnorm(mu.alpha + mu.beta * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+    P1i[i] ~ dnorm(alpha[1] + beta[1] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+    P3i[i] ~ dnorm(alpha[3] + beta[3] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+    P5i[i] ~ dnorm(alpha[5] + beta[5] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+    P6i[i] ~ dnorm(alpha[6] + beta[6] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+    P7i[i] ~ dnorm(alpha[7] + beta[7] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+    P8i[i] ~ dnorm(alpha[8] + beta[8] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+}
+
+# sigma means
+for (i in 1:nPreds) { S0m[i] <- exp(sig.alpha + sig.beta * Wp[i]) }
 
 }

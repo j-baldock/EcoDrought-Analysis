@@ -16,10 +16,16 @@ for (j in numBasins) {
     alpha[j] ~ dnorm(mu.alpha, pow(5, -2)) 
     beta[j] ~ dnorm(mu.beta, pow(5, -2)) 
 
-    sig.alpha[j] ~ dnorm(mu.sig.alpha, pow(5, -2)) 
-    sig.beta[j] ~ dnorm(mu.sig.beta, pow(5, -2)) 
-}
+    #sig.alpha[j] ~ dnorm(mu.sig.alpha, pow(5, -2)) 
+    #sig.beta[j] ~ dnorm(mu.sig.beta, pow(5, -2)) 
     
+    sig.alpha[j] <- B[j,1]
+    sig.beta[j] <- B[j,2]
+    B[j,1:2] ~ dmnorm(B.hat[j,], Tau.B[,])
+    B.hat[j,1] <- mu.sig.alpha
+    B.hat[j,2] <- mu.sig.beta
+}
+
 
 ##--- PRIORS --------------------------------------------------------##
 
@@ -30,6 +36,17 @@ mu.sig.alpha ~ dnorm(0, pow(10, -2))
 mu.sig.beta ~ dnorm(0, pow(10, -2))
 #sigma.sig.alpha ~ dunif(0.0001, 100)
 #sigma.sig.beta ~ dunif(0.0001, 100)
+
+# variance-covariance matrix components
+Tau.B[1:2,1:2] <- inverse(Sigma.B[,])
+Sigma.B[1,1] <- pow(vc.alpha, 2)
+Sigma.B[2,2] <- pow(vc.beta, 2)
+Sigma.B[1,2] <- rho * vc.alpha * vc.beta
+Sigma.B[2,1] <- Sigma.B[1,2]
+
+vc.alpha ~ dunif(0.001, 100)
+vc.beta ~ dunif(0.001, 100)
+rho ~ dunif(-1,1)
 
 
 ##--- DERIVED VALUES ------------------------------------------------##
