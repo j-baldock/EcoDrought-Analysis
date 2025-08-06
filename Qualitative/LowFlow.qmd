@@ -2019,6 +2019,12 @@ joineddefdur <- joineddefdur %>% mutate(basin_num = as.numeric(basin))
 joineddefdur %>% group_by(basin) %>% summarize(basin_num = unique(basin_num))
 ```
 
+
+```{r}
+joineddefdur %>% filter(basin == "Donner-Blitzen River")
+```
+
+
 Plot difference in drought duration by regional water availability for 4 low flow thresholds
 ```{r}
 p1 <- joineddefdur %>%
@@ -2057,7 +2063,8 @@ ggarrange(p1, p2, p3, p4, nrow = 2, ncol = 2, common.legend = TRUE, legend = "ri
 ```
 
 
-### Specify JAGS model
+
+### Simple 
 
 Specify ~simple JAGS model: linear regression between regional water availability and low flow duration, where sigma is modeled as a function of regional water availability
 ```{r}
@@ -2101,144 +2108,7 @@ for (i in 1:nPreds) { S0m[i] <- exp(sig.alpha + sig.beta * Wp[i]) }
 }", file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/DroughtModel.txt")
 ```
 
-Add random effect of basin to primary relationship
-```{r}
-cat("model {
-
-##--- LIKELIHOOD ---------------------------------------------------##
-
-for (i in 1:nObs) {
-
-  D[i] ~ dnorm(mu[i], pow(sigma[i], -2))
-  mu[i] <- alpha[basins[i]] + beta[basins[i]] * W[i]
-  log(sigma[i]) <- sig.alpha + sig.beta * W[i]
-  
-  # Log-likelihood
-  loglik[i] <- logdensity.norm(D[i], mu[i], pow(sigma[i], -2))
-  }
-
-
-##--- RANDOM EFFECTS ------------------------------------------------##
-
-for (j in numBasins) {
-    alpha[j] ~ dnorm(mu.alpha, pow(sigma.alpha, -2)) 
-    beta[j] ~ dnorm(mu.beta, pow(sigma.beta, -2))
-}
-    
-
-##--- PRIORS --------------------------------------------------------##
-
-mu.alpha ~ dnorm(0, pow(10, -2))
-mu.beta ~ dnorm(0, pow(10, -2))
-
-sigma.alpha ~ dunif(0, 100)
-sigma.beta ~ dunif(0, 100)
-
-sig.alpha ~ dnorm(0, pow(10, -2))
-sig.beta ~ dnorm(0, pow(10, -2))
-
-
-##--- DERIVED VALUES ------------------------------------------------##
-
-# attenuation strength
-AS <- exp(sig.alpha + sig.beta * 0) / exp(sig.alpha + sig.beta * 100)
-
-# prediction means
-for (i in 1:nPreds) {
-    P0m[i] <- mu.alpha + mu.beta * Wp[i]
-    P1m[i] <- alpha[1] + beta[1] * Wp[i]
-    P3m[i] <- alpha[3] + beta[3] * Wp[i]
-    P5m[i] <- alpha[5] + beta[5] * Wp[i]
-    P6m[i] <- alpha[6] + beta[6] * Wp[i]
-    P7m[i] <- alpha[7] + beta[7] * Wp[i]
-    P8m[i] <- alpha[8] + beta[8] * Wp[i]
-}
-
-# prediction intervals
-for (i in 1:nPreds) {
-    P0i[i] ~ dnorm(mu.alpha + mu.beta * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
-    P1i[i] ~ dnorm(alpha[1] + beta[1] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
-    P3i[i] ~ dnorm(alpha[3] + beta[3] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
-    P5i[i] ~ dnorm(alpha[5] + beta[5] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
-    P6i[i] ~ dnorm(alpha[6] + beta[6] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
-    P7i[i] ~ dnorm(alpha[7] + beta[7] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
-    P8i[i] ~ dnorm(alpha[8] + beta[8] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
-}
-
-# sigma means
-for (i in 1:nPreds) { S0m[i] <- exp(sig.alpha + sig.beta * Wp[i]) }
-
-}", file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/DroughtModel_REmain.txt")
-```
-
-Add random effect of basin to sigma relationship
-```{r}
-cat("model {
-
-##--- LIKELIHOOD ---------------------------------------------------##
-
-for (i in 1:nObs) {
-
-  D[i] ~ dnorm(mu[i], pow(sigma[i], -2))
-  mu[i] <- alpha[basins[i]] + beta[basins[i]] * W[i]
-  log(sigma[i]) <- sig.alpha[basins[i]] + sig.beta[basins[i]] * W[i]
-  }
-
-
-##--- RANDOM EFFECTS ------------------------------------------------##
-
-for (j in numBasins) {
-    alpha[j] ~ dnorm(mu.alpha, pow(5, -2)) 
-    beta[j] ~ dnorm(mu.beta, pow(5, -2)) 
-
-    #sig.alpha[j] ~ dnorm(mu.sig.alpha, pow(5, -2)) 
-    #sig.beta[j] ~ dnorm(mu.sig.beta, pow(5, -2)) 
-    
-    sig.alpha[j] <- B[j,1]
-    sig.beta[j] <- B[j,2]
-    B[j,1:2] ~ dmnorm(B.hat[j,], Tau.B[,])
-    B.hat[j,1] <- mu.sig.alpha
-    B.hat[j,2] <- mu.sig.beta
-}
-
-
-##--- PRIORS --------------------------------------------------------##
-
-mu.alpha ~ dnorm(0, pow(10, -2))
-mu.beta ~ dnorm(0, pow(10, -2))
-
-mu.sig.alpha ~ dnorm(0, pow(10, -2))
-mu.sig.beta ~ dnorm(0, pow(10, -2))
-#sigma.sig.alpha ~ dunif(0.0001, 100)
-#sigma.sig.beta ~ dunif(0.0001, 100)
-
-# variance-covariance matrix components
-Tau.B[1:2,1:2] <- inverse(Sigma.B[,])
-Sigma.B[1,1] <- pow(vc.alpha, 2)
-Sigma.B[2,2] <- pow(vc.beta, 2)
-Sigma.B[1,2] <- rho * vc.alpha * vc.beta
-Sigma.B[2,1] <- Sigma.B[1,2]
-
-vc.alpha ~ dunif(0.001, 100)
-vc.beta ~ dunif(0.001, 100)
-rho ~ dunif(-1,1)
-
-
-##--- DERIVED VALUES ------------------------------------------------##
-
-# attenuation strength
-#AS <- exp(mu.sig.alpha + mu.sig.beta * 0) / exp(mu.sig.alpha + mu.sig.beta * 100)
-
-}", file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/DroughtModel_REsigma.txt")
-```
-
-
-### Fit models
-
-Fit simple and random effect models for each threshold, in a loop
-
-#### Simple 
-
+Fit model for each threshold, in a loop
 ```{r results='hide'}
 modlist_simple <- list()
 npreds <- 101
@@ -2308,6 +2178,10 @@ for(i in 1:length(McmcList)) { McmcList[[i]] = as.mcmc(modelout$sims.array[,i,])
 Mcmcdat <- rbind(McmcList[[1]], McmcList[[2]], McmcList[[3]])
 ```
 
+Traceplots
+```{r}
+MCMCtrace(top_mod, ind = TRUE, params = c("alpha", "beta", "sig.alpha", "sig.beta", "AS"), pdf = FALSE)
+```
 
 Plot data and prediction interval
 ```{r}
@@ -2347,7 +2221,78 @@ ggplot() +
 ```
 
 
-#### Random effects
+### Random effects
+
+Random effect of basin on primary relationship
+```{r}
+cat("model {
+
+##--- LIKELIHOOD ---------------------------------------------------##
+
+for (i in 1:nObs) {
+
+  D[i] ~ dnorm(mu[i], pow(sigma[i], -2))
+  mu[i] <- alpha[basins[i]] + beta[basins[i]] * W[i]
+  log(sigma[i]) <- sig.alpha + sig.beta * W[i]
+  
+  # Log-likelihood
+  loglik[i] <- logdensity.norm(D[i], mu[i], pow(sigma[i], -2))
+  }
+
+
+##--- RANDOM EFFECTS ------------------------------------------------##
+
+for (j in numBasins) {
+    alpha[j] ~ dnorm(mu.alpha, pow(sigma.alpha, -2)) 
+    beta[j] ~ dnorm(mu.beta, pow(sigma.beta, -2))
+}
+    
+
+##--- PRIORS --------------------------------------------------------##
+
+mu.alpha ~ dnorm(0, pow(10, -2))
+mu.beta ~ dnorm(0, pow(10, -2))
+
+sigma.alpha ~ dunif(0, 100)
+sigma.beta ~ dunif(0, 100)
+
+sig.alpha ~ dnorm(0, pow(10, -2))
+sig.beta ~ dnorm(0, pow(10, -2))
+
+
+##--- DERIVED VALUES ------------------------------------------------##
+
+# attenuation strength
+AS <- exp(sig.alpha + sig.beta * 0) / exp(sig.alpha + sig.beta * 100)
+
+# prediction means
+for (i in 1:nPreds) {
+    P0m[i] <- mu.alpha + mu.beta * Wp[i]
+    P1m[i] <- alpha[1] + beta[1] * Wp[i]
+    P3m[i] <- alpha[3] + beta[3] * Wp[i]
+    P5m[i] <- alpha[5] + beta[5] * Wp[i]
+    P6m[i] <- alpha[6] + beta[6] * Wp[i]
+    P7m[i] <- alpha[7] + beta[7] * Wp[i]
+    P8m[i] <- alpha[8] + beta[8] * Wp[i]
+}
+
+# prediction intervals
+for (i in 1:nPreds) {
+    P0i[i] ~ dnorm(mu.alpha + mu.beta * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+    P1i[i] ~ dnorm(alpha[1] + beta[1] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+    P3i[i] ~ dnorm(alpha[3] + beta[3] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+    P5i[i] ~ dnorm(alpha[5] + beta[5] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+    P6i[i] ~ dnorm(alpha[6] + beta[6] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+    P7i[i] ~ dnorm(alpha[7] + beta[7] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+    P8i[i] ~ dnorm(alpha[8] + beta[8] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+}
+
+# sigma means
+for (i in 1:nPreds) { S0m[i] <- exp(sig.alpha + sig.beta * Wp[i]) }
+
+}", file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/DroughtModel_REmain.txt")
+```
+
 
 ```{r results='hide'}
 modlist_remain <- list()
@@ -2423,6 +2368,11 @@ for(i in 1:length(McmcList)) { McmcList[[i]] = as.mcmc(modelout$sims.array[,i,])
 Mcmcdat <- rbind(McmcList[[1]], McmcList[[2]], McmcList[[3]])
 ```
 
+Traceplots
+```{r}
+MCMCtrace(top_mod, ind = TRUE, params = c("alpha", "beta", "mu.alpha", "mu.beta", "sig.alpha", "sig.beta", "AS"), pdf = FALSE)
+```
+
 Plot data and global prediction interval
 ```{r}
 # summarize lower and upper prediction intervales (attenuation)
@@ -2479,17 +2429,17 @@ pi_med8 <- apply(Mcmcdat[,grep("P8m", colnames(Mcmcdat))], 2, quantile, probs = 
 # plot
 ggplot() +
   geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low1, ymax = pi_upp1), alpha = 0.3, fill = mycols[1]) +
-  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low3, ymax = pi_upp3), alpha = 0.3, fill = mycols[3]) +
-  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low5, ymax = pi_upp5), alpha = 0.3, fill = mycols[5]) +
-  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low6, ymax = pi_upp6), alpha = 0.3, fill = mycols[6]) +
-  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low7, ymax = pi_upp7), alpha = 0.3, fill = mycols[7]) +
-  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low8, ymax = pi_upp8), alpha = 0.3, fill = mycols[8]) +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low3, ymax = pi_upp3), alpha = 0.3, fill = mycols[2]) +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low5, ymax = pi_upp5), alpha = 0.3, fill = mycols[3]) +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low6, ymax = pi_upp6), alpha = 0.3, fill = mycols[4]) +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low7, ymax = pi_upp7), alpha = 0.3, fill = mycols[5]) +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low8, ymax = pi_upp8), alpha = 0.3, fill = mycols[6]) +
   geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med1), color = mycols[1], size = 1.3) +
-  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med3), color = mycols[3], size = 1.3) +
-  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med5), color = mycols[5], size = 1.3) +
-  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med6), color = mycols[6], size = 1.3) +
-  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med7), color = mycols[7], size = 1.3) +
-  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med8), color = mycols[8], size = 1.3) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med3), color = mycols[2], size = 1.3) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med5), color = mycols[3], size = 1.3) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med6), color = mycols[4], size = 1.3) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med7), color = mycols[5], size = 1.3) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med8), color = mycols[6], size = 1.3) +
   # geom_smooth(aes(x = seq(from = 0, to = 100, by = 1), y = pi_low), color = "black", size = 1.5) +
   # geom_smooth(aes(x = seq(from = 0, to = 100, by = 1), y = pi_upp), color = "black", size = 1.5) +
   geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
@@ -2517,6 +2467,422 @@ ggplot() +
   xlab("Regional water availability (%)") + ylab("Model standard deviation")
 ```
 
+### Full random effects
+
+Add random effect of basin to sigma relationship
+```{r}
+cat("model {
+
+##--- LIKELIHOOD ---------------------------------------------------##
+
+for (i in 1:nObs) {
+
+  D[i] ~ dnorm(mu[i], pow(sigma[i], -2))
+  mu[i] <- alpha[basins[i]] + beta[basins[i]] * W[i]
+  log(sigma[i]) <- sig.alpha[basins[i]] + sig.beta[basins[i]] * W[i]
+  }
+
+
+##--- RANDOM EFFECTS ------------------------------------------------##
+
+for (j in numBasins) {
+    alpha[j] ~ dnorm(mu.alpha, pow(sigma.alpha, -2)) 
+    beta[j] ~ dnorm(mu.beta, pow(sigma.beta, -2)) 
+
+    sig.alpha[j] ~ dnorm(mu.sig.alpha, pow(sigma.sig.alpha, -2)) 
+    sig.beta[j] ~ dnorm(mu.sig.beta, pow(sigma.sig.beta, -2)) 
+}
+
+
+##--- PRIORS --------------------------------------------------------##
+
+mu.alpha ~ dnorm(0, pow(10, -2))
+mu.beta ~ dnorm(0, pow(10, -2))
+
+sigma.alpha ~ dunif(0, 100)
+sigma.beta ~ dunif(0, 100)
+
+mu.sig.alpha ~ dnorm(0, pow(10, -2))
+mu.sig.beta ~ dnorm(0, pow(10, -2))
+
+sigma.sig.alpha ~ dunif(0, 100)
+sigma.sig.beta ~ dunif(0, 100)
+
+
+##--- DERIVED VALUES ------------------------------------------------##
+
+# attenuation strength
+AS0 <- exp(mu.sig.alpha + mu.sig.beta * 0) / exp(mu.sig.alpha + mu.sig.beta * 100)
+AS1 <- exp(sig.alpha[1] + sig.beta[1] * 0) / exp(sig.alpha[1] + sig.beta[1] * 100)
+AS3 <- exp(sig.alpha[3] + sig.beta[3] * 0) / exp(sig.alpha[3] + sig.beta[3] * 100)
+AS5 <- exp(sig.alpha[5] + sig.beta[5] * 0) / exp(sig.alpha[5] + sig.beta[5] * 100)
+AS6 <- exp(sig.alpha[6] + sig.beta[6] * 0) / exp(sig.alpha[6] + sig.beta[6] * 100)
+AS7 <- exp(sig.alpha[7] + sig.beta[7] * 0) / exp(sig.alpha[7] + sig.beta[7] * 100)
+#AS8 <- exp(sig.alpha[8] + sig.beta[8] * 0) / exp(sig.alpha[8] + sig.beta[8] * 100)
+
+# prediction means
+for (i in 1:nPreds) {
+    P0m[i] <- mu.alpha + mu.beta * Wp[i]
+    P1m[i] <- alpha[1] + beta[1] * Wp[i]
+    P3m[i] <- alpha[3] + beta[3] * Wp[i]
+    P5m[i] <- alpha[5] + beta[5] * Wp[i]
+    P6m[i] <- alpha[6] + beta[6] * Wp[i]
+    P7m[i] <- alpha[7] + beta[7] * Wp[i]
+    #P8m[i] <- alpha[8] + beta[8] * Wp[i]
+}
+
+# prediction intervals
+for (i in 1:nPreds) {
+    P0i[i] ~ dnorm(mu.alpha + mu.beta * Wp[i], pow(exp(mu.sig.alpha + mu.sig.beta * Wp[i]), -2))
+    P1i[i] ~ dnorm(alpha[1] + beta[1] * Wp[i], pow(exp(sig.alpha[1] + sig.beta[1] * Wp[i]), -2))
+    P3i[i] ~ dnorm(alpha[3] + beta[3] * Wp[i], pow(exp(sig.alpha[3] + sig.beta[3] * Wp[i]), -2))
+    P5i[i] ~ dnorm(alpha[5] + beta[5] * Wp[i], pow(exp(sig.alpha[5] + sig.beta[5] * Wp[i]), -2))
+    P6i[i] ~ dnorm(alpha[6] + beta[6] * Wp[i], pow(exp(sig.alpha[6] + sig.beta[6] * Wp[i]), -2))
+    P7i[i] ~ dnorm(alpha[7] + beta[7] * Wp[i], pow(exp(sig.alpha[7] + sig.beta[7] * Wp[i]), -2))
+    #P8i[i] ~ dnorm(alpha[8] + beta[8] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+}
+
+# sigma means
+for (i in 1:nPreds) { 
+    S0m[i] <- exp(mu.sig.alpha + mu.sig.beta * Wp[i]) 
+    S1m[i] <- exp(sig.alpha[1] + sig.beta[1] * Wp[i]) 
+    S3m[i] <- exp(sig.alpha[3] + sig.beta[3] * Wp[i]) 
+    S5m[i] <- exp(sig.alpha[5] + sig.beta[5] * Wp[i]) 
+    S6m[i] <- exp(sig.alpha[6] + sig.beta[6] * Wp[i]) 
+    S7m[i] <- exp(sig.alpha[7] + sig.beta[7] * Wp[i]) 
+}
+
+
+}", file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/DroughtModel_REsigma.txt")
+```
+
+
+```{r}
+modlist <- list()
+npreds <- 101
+thresh <- c(50,45,40,35,30,25,20,15,10,5,2)
+
+inits <- list(
+  list(mu.alpha = 0, mu.beta = 0, mu.sig.alpha = 0, mu.sig.beta = 0),
+  list(mu.alpha = 0, mu.beta = 0, mu.sig.alpha = 0, mu.sig.beta = 0),
+  list(mu.alpha = 0, mu.beta = 0, mu.sig.alpha = 0, mu.sig.beta = 0)
+)
+
+joineddefdur2 <- joineddefdur %>% filter(basin_num != 8)
+
+jags.data <- list("nObs" = dim(joineddefdur2)[1], 
+                  "D" = unlist(joineddefdur2[,57+8]), 
+                  "W" = joineddefdur2$tyz_sum_perc,
+                  "basins" = joineddefdur2$basin_num, "numBasins" = c(1,3,5,6,7),
+                  "nPreds" = npreds, "Wp" = seq(from = 0, to = 100, length.out = npreds))
+jags.params <- c("mu.alpha", "mu.beta", "alpha", "beta", "mu.sig.alpha", "mu.sig.beta", "sig.alpha", "sig.beta",
+                 "sigma.alpha", "sigma.beta", "sigma.sig.alpha", "sigma.sig.beta",
+                 "AS0", "AS1", "AS3", "AS5", "AS6", "AS7", 
+                 "P0m", "P1m", "P3m", "P5m", "P6m", "P7m", 
+                 "P0i", "P1i", "P3i", "P5i", "P6i", "P7i",
+                 "S0m", "S1m", "S3m", "S5m", "S6m", "S7m")
+fit_resigma <- jags(data = jags.data, parameters.to.save = jags.params, inits = inits,
+                   model.file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/DroughtModel_REsigma.txt",
+                   n.chains = 3, n.thin = 200, n.burnin = 10000, n.iter = 110000, DIC = FALSE)
+
+```
+
+
+```{r}
+MCMCtrace(fit_resigma, ind = TRUE, params = c("mu.alpha", "mu.beta", "alpha", "beta", "mu.sig.alpha", "mu.sig.beta", "sig.alpha", "sig.beta",
+                 "sigma.alpha", "sigma.beta", "sigma.sig.alpha", "sigma.sig.beta"), pdf = FALSE)
+```
+
+Set top model based on strongest attenuation
+```{r}
+top_mod <- fit_resigma
+modelout <- top_mod$BUGSoutput
+McmcList <- vector("list", length = dim(modelout$sims.array)[2])
+for(i in 1:length(McmcList)) { McmcList[[i]] = as.mcmc(modelout$sims.array[,i,]) }
+Mcmcdat <- rbind(McmcList[[1]], McmcList[[2]], McmcList[[3]])
+```
+
+Plot data and global prediction interval
+```{r}
+# summarize lower and upper prediction intervales (attenuation)
+d_preds <- Mcmcdat[,grep("P0i", colnames(Mcmcdat))]
+pi_low <- apply(d_preds, 2, quantile, probs = c(0.025),  na.rm = TRUE)
+pi_upp <- apply(d_preds, 2, quantile, probs = c(0.975),  na.rm = TRUE)
+pi_med <- apply(Mcmcdat[,grep("P0m", colnames(Mcmcdat))], 2, quantile, probs = c(0.5),  na.rm = TRUE)
+
+# plot
+ggplot() +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low, ymax = pi_upp), alpha = 0.3) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med), size = 1, lineend = "round") +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  geom_point(data = joineddefdur2, aes(x = tyz_sum_perc, y = duration_15_fix_diff, fill = basin), 
+             shape = 21, size = 2, position = position_jitter(seed = 1.3, width = 1)) +
+  scale_fill_manual(values = mycols) +
+  theme_bw() + theme(panel.grid = element_blank()) + #ylim(-60,60) +
+  xlab("Regional water availability (%)") + ylab("Difference in low flow duration (days)")
+```
+
+Plot data and basin-specific prediction interval
+```{r}
+# summarize lower and upper prediction intervales (attenuation)
+d_preds <- Mcmcdat[,grep("P1i", colnames(Mcmcdat))]
+pi_low1 <- apply(d_preds, 2, quantile, probs = c(0.025),  na.rm = TRUE)
+pi_upp1 <- apply(d_preds, 2, quantile, probs = c(0.975),  na.rm = TRUE)
+pi_med1 <- apply(Mcmcdat[,grep("P1m", colnames(Mcmcdat))], 2, quantile, probs = c(0.5),  na.rm = TRUE)
+# summarize lower and upper prediction intervales (attenuation)
+d_preds <- Mcmcdat[,grep("P3i", colnames(Mcmcdat))]
+pi_low3 <- apply(d_preds, 2, quantile, probs = c(0.025),  na.rm = TRUE)
+pi_upp3 <- apply(d_preds, 2, quantile, probs = c(0.975),  na.rm = TRUE)
+pi_med3 <- apply(Mcmcdat[,grep("P3m", colnames(Mcmcdat))], 2, quantile, probs = c(0.5),  na.rm = TRUE)
+# summarize lower and upper prediction intervales (attenuation)
+d_preds <- Mcmcdat[,grep("P5i", colnames(Mcmcdat))]
+pi_low5 <- apply(d_preds, 2, quantile, probs = c(0.025),  na.rm = TRUE)
+pi_upp5 <- apply(d_preds, 2, quantile, probs = c(0.975),  na.rm = TRUE)
+pi_med5 <- apply(Mcmcdat[,grep("P5m", colnames(Mcmcdat))], 2, quantile, probs = c(0.5),  na.rm = TRUE)
+# summarize lower and upper prediction intervales (attenuation)
+d_preds <- Mcmcdat[,grep("P6i", colnames(Mcmcdat))]
+pi_low6 <- apply(d_preds, 2, quantile, probs = c(0.025),  na.rm = TRUE)
+pi_upp6 <- apply(d_preds, 2, quantile, probs = c(0.975),  na.rm = TRUE)
+pi_med6 <- apply(Mcmcdat[,grep("P6m", colnames(Mcmcdat))], 2, quantile, probs = c(0.5),  na.rm = TRUE)
+# summarize lower and upper prediction intervales (attenuation)
+d_preds <- Mcmcdat[,grep("P7i", colnames(Mcmcdat))]
+pi_low7 <- apply(d_preds, 2, quantile, probs = c(0.025),  na.rm = TRUE)
+pi_upp7 <- apply(d_preds, 2, quantile, probs = c(0.975),  na.rm = TRUE)
+pi_med7 <- apply(Mcmcdat[,grep("P7m", colnames(Mcmcdat))], 2, quantile, probs = c(0.5),  na.rm = TRUE)
+```
+
+::: panel-tabset
+
+#### Combined
+```{r}
+ggplot() +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low1, ymax = pi_upp1), alpha = 0.3, fill = mycols[1]) +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low3, ymax = pi_upp3), alpha = 0.3, fill = mycols[2]) +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low5, ymax = pi_upp5), alpha = 0.3, fill = mycols[3]) +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low6, ymax = pi_upp6), alpha = 0.3, fill = mycols[4]) +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low7, ymax = pi_upp7), alpha = 0.3, fill = mycols[5]) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med1), color = mycols[1], size = 1.3) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med3), color = mycols[2], size = 1.3) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med5), color = mycols[3], size = 1.3) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med6), color = mycols[4], size = 1.3) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med7), color = mycols[5], size = 1.3) +
+  # geom_smooth(aes(x = seq(from = 0, to = 100, by = 1), y = pi_low), color = "black", size = 1.5) +
+  # geom_smooth(aes(x = seq(from = 0, to = 100, by = 1), y = pi_upp), color = "black", size = 1.5) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  geom_point(data = joineddefdur2, aes(x = tyz_sum_perc, y = duration_15_fix_diff, fill = basin), 
+             shape = 21, size = 2, position = position_jitter(seed = 1, width = 1)) +
+  scale_fill_manual(values = mycols) +
+  theme_bw() + theme(panel.grid = element_blank()) + #ylim(-60,60) +
+  xlab("Regional water availability (%)") + ylab("Difference in low flow duration (days)")
+```
+
+#### West Brook
+```{r}
+ggplot() +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low1, ymax = pi_upp1), alpha = 0.3, fill = mycols[1]) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med1), color = mycols[1], size = 1.3) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  geom_point(data = joineddefdur2 %>% filter(basin_num == 1), aes(x = tyz_sum_perc, y = duration_15_fix_diff), 
+             shape = 21, size = 2, position = position_jitter(seed = 1, width = 1), fill = mycols[1]) +
+  theme_bw() + theme(panel.grid = element_blank()) + #ylim(-60,60) +
+  xlab("Regional water availability (%)") + ylab("Difference in low flow duration (days)") + ggtitle("West Brook")
+```
+
+#### Staunton
+```{r}
+ggplot() +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low3, ymax = pi_upp3), alpha = 0.3, fill = mycols[2]) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med3), color = mycols[2], size = 1.3) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  geom_point(data = joineddefdur2 %>% filter(basin_num == 3), aes(x = tyz_sum_perc, y = duration_15_fix_diff), 
+             shape = 21, size = 2, position = position_jitter(seed = 1, width = 1), fill = mycols[2]) +
+  theme_bw() + theme(panel.grid = element_blank()) + #ylim(-60,60) +
+  xlab("Regional water availability (%)") + ylab("Difference in low flow duration (days)") + ggtitle("Staunton")
+```
+
+#### Flathead
+```{r}
+ggplot() +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low5, ymax = pi_upp5), alpha = 0.3, fill = mycols[3]) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med5), color = mycols[3], size = 1.3) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  geom_point(data = joineddefdur2 %>% filter(basin_num == 5), aes(x = tyz_sum_perc, y = duration_15_fix_diff), 
+             shape = 21, size = 2, position = position_jitter(seed = 1, width = 1), fill = mycols[3]) +
+  theme_bw() + theme(panel.grid = element_blank()) + #ylim(-60,60) +
+  xlab("Regional water availability (%)") + ylab("Difference in low flow duration (days)") + ggtitle("Flathead")
+```
+
+#### Yellowstone
+```{r}
+ggplot() +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low6, ymax = pi_upp6), alpha = 0.3, fill = mycols[4]) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med6), color = mycols[4], size = 1.3) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  geom_point(data = joineddefdur2 %>% filter(basin_num == 6), aes(x = tyz_sum_perc, y = duration_15_fix_diff), 
+             shape = 21, size = 2, position = position_jitter(seed = 1, width = 1), fill = mycols[4]) +
+  theme_bw() + theme(panel.grid = element_blank()) + #ylim(-60,60) +
+  xlab("Regional water availability (%)") + ylab("Difference in low flow duration (days)") + ggtitle("Yellowstone")
+```
+
+#### Snake
+```{r}
+ggplot() +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low7, ymax = pi_upp7), alpha = 0.3, fill = mycols[5]) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med7), color = mycols[5], size = 1.3) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  geom_point(data = joineddefdur2 %>% filter(basin_num == 7), aes(x = tyz_sum_perc, y = duration_15_fix_diff), 
+             shape = 21, size = 2, position = position_jitter(seed = 1, width = 1), fill = mycols[5]) +
+  theme_bw() + theme(panel.grid = element_blank()) + #ylim(-60,60) +
+  xlab("Regional water availability (%)") + ylab("Difference in low flow duration (days)") + ggtitle("Snake")
+```
+
+:::
+
+
+Plot global effect of water availability on sigma
+```{r}
+# summarize lower and upper prediction intervales (attenuation)
+d_preds <- Mcmcdat[,grep("S0m", colnames(Mcmcdat))]
+pi_low <- apply(d_preds, 2, quantile, probs = c(0.025),  na.rm = TRUE)
+pi_upp <- apply(d_preds, 2, quantile, probs = c(0.975),  na.rm = TRUE)
+pi_med <- apply(d_preds, 2, quantile, probs = c(0.500),  na.rm = TRUE)
+
+# plot
+ggplot() +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low, ymax = pi_upp), alpha = 0.3) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med), size = 1, lineend = "round") +
+  scale_fill_manual(values = mycols) +
+  theme_bw() + theme(panel.grid = element_blank()) + 
+  xlab("Regional water availability (%)") + ylab("Model standard deviation")
+```
+
+Plot basin-specific effects of water availability on sigma
+```{r}
+# summarize lower and upper prediction intervales (attenuation)
+d_preds <- Mcmcdat[,grep("S1m", colnames(Mcmcdat))]
+pi_low1 <- apply(d_preds, 2, quantile, probs = c(0.025),  na.rm = TRUE)
+pi_upp1 <- apply(d_preds, 2, quantile, probs = c(0.975),  na.rm = TRUE)
+pi_med1 <- apply(d_preds, 2, quantile, probs = c(0.500),  na.rm = TRUE)
+# summarize lower and upper prediction intervales (attenuation)
+d_preds <- Mcmcdat[,grep("S3m", colnames(Mcmcdat))]
+pi_low3 <- apply(d_preds, 2, quantile, probs = c(0.025),  na.rm = TRUE)
+pi_upp3 <- apply(d_preds, 2, quantile, probs = c(0.975),  na.rm = TRUE)
+pi_med3 <- apply(d_preds, 2, quantile, probs = c(0.500),  na.rm = TRUE)
+# summarize lower and upper prediction intervales (attenuation)
+d_preds <- Mcmcdat[,grep("S5m", colnames(Mcmcdat))]
+pi_low5 <- apply(d_preds, 2, quantile, probs = c(0.025),  na.rm = TRUE)
+pi_upp5 <- apply(d_preds, 2, quantile, probs = c(0.975),  na.rm = TRUE)
+pi_med5 <- apply(d_preds, 2, quantile, probs = c(0.500),  na.rm = TRUE)
+# summarize lower and upper prediction intervales (attenuation)
+d_preds <- Mcmcdat[,grep("S6m", colnames(Mcmcdat))]
+pi_low6 <- apply(d_preds, 2, quantile, probs = c(0.025),  na.rm = TRUE)
+pi_upp6 <- apply(d_preds, 2, quantile, probs = c(0.975),  na.rm = TRUE)
+pi_med6 <- apply(d_preds, 2, quantile, probs = c(0.500),  na.rm = TRUE)
+# summarize lower and upper prediction intervales (attenuation)
+d_preds <- Mcmcdat[,grep("S7m", colnames(Mcmcdat))]
+pi_low7 <- apply(d_preds, 2, quantile, probs = c(0.025),  na.rm = TRUE)
+pi_upp7 <- apply(d_preds, 2, quantile, probs = c(0.975),  na.rm = TRUE)
+pi_med7 <- apply(d_preds, 2, quantile, probs = c(0.500),  na.rm = TRUE)
+
+```
+
+
+::: panel-tabset
+
+#### Combined
+```{r}
+ggplot() +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low1, ymax = pi_upp1), alpha = 0.3, fill = mycols[1]) +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low3, ymax = pi_upp3), alpha = 0.3, fill = mycols[2]) +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low5, ymax = pi_upp5), alpha = 0.3, fill = mycols[3]) +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low6, ymax = pi_upp6), alpha = 0.3, fill = mycols[4]) +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low7, ymax = pi_upp7), alpha = 0.3, fill = mycols[5]) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med1), color = mycols[1], size = 1.3) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med3), color = mycols[2], size = 1.3) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med5), color = mycols[3], size = 1.3) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med6), color = mycols[4], size = 1.3) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med7), color = mycols[5], size = 1.3) +
+  theme_bw() + theme(panel.grid = element_blank()) + #ylim(0,35) +
+  xlab("Regional water availability (%)") + ylab("Model standard deviation")
+```
+
+#### West Brook
+```{r}
+ggplot() +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low1, ymax = pi_upp1), alpha = 0.3, fill = mycols[1]) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med1), color = mycols[1], size = 1.3) +
+  theme_bw() + theme(panel.grid = element_blank()) + #ylim(0,35) +
+  xlab("Regional water availability (%)") + ylab("Model standard deviation") + ggtitle("West Brook")
+```
+
+#### Staunton
+```{r}
+ggplot() +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low3, ymax = pi_upp3), alpha = 0.3, fill = mycols[2]) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med3), color = mycols[2], size = 1.3) +
+  theme_bw() + theme(panel.grid = element_blank()) + #ylim(0,35) +
+  xlab("Regional water availability (%)") + ylab("Model standard deviation") + ggtitle("Staunton")
+```
+
+#### Flathead
+```{r}
+ggplot() +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low5, ymax = pi_upp5), alpha = 0.3, fill = mycols[3]) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med5), color = mycols[3], size = 1.3) +
+  theme_bw() + theme(panel.grid = element_blank()) + #ylim(0,35) +
+  xlab("Regional water availability (%)") + ylab("Model standard deviation") + ggtitle("Flathead")
+```
+
+#### Yellowstone
+```{r}
+ggplot() +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low6, ymax = pi_upp6), alpha = 0.3, fill = mycols[4]) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med6), color = mycols[4], size = 1.3) +
+  theme_bw() + theme(panel.grid = element_blank()) + #ylim(0,35) +
+  xlab("Regional water availability (%)") + ylab("Model standard deviation") + ggtitle("Yellowstone")
+```
+
+#### Snake
+```{r}
+ggplot() +
+  geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low7, ymax = pi_upp7), alpha = 0.3, fill = mycols[5]) +
+  geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med7), color = mycols[5], size = 1.3) +
+  theme_bw() + theme(panel.grid = element_blank()) + #ylim(0,35) +
+  xlab("Regional water availability (%)") + ylab("Model standard deviation") + ggtitle("Snake")
+```
+
+:::
+
+
+
+
+
+
+
+
+```{r results='hide'}
+modlist_remain <- list()
+npreds <- 101
+thresh <- c(50,45,40,35,30,25,20,15,10,5,2)
+
+for (i in 1:11) {
+  names(joineddefdur)[57+i]
+  jags.data <- list("nObs" = dim(joineddefdur)[1], 
+                    "D" = unlist(joineddefdur[,57+i]), 
+                    "W" = joineddefdur$tyz_sum_perc,
+                    "nPreds" = npreds, "Wp" = seq(from = 0, to = 100, length.out = npreds),
+                    "basins" = joineddefdur$basin_num, "numBasins" = c(1,3,5,6,7,8))
+  jags.params <- c("alpha", "beta", "mu.alpha", "sigma.alpha", "mu.beta", "sigma.beta", "sig.alpha", "sig.beta", "AS", "D", 
+                   "P0m", "P1m", "P3m", "P5m", "P6m", "P7m", "P8m", 
+                   "P0i", "P1i", "P3i", "P5i", "P6i", "P7i", "P8i", 
+                   "S0m", "loglik")
+  fit <- jags(data = jags.data, parameters.to.save = jags.params,
+              model.file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/DroughtModel_REmain.txt",
+              n.chains = 3, n.thin = 20, n.burnin = 2000, n.iter = 17000, DIC = FALSE)
+  modlist_remain[[i]] <- fit
+}
+
+```
 
 
 ```{r eval=FALSE, include=FALSE}
@@ -2560,27 +2926,12 @@ jags.data <- list("nObs" = dim(joineddefdur)[1],
 jags.params <- c("mu.alpha", "mu.beta", "alpha", "beta", "mu.sig.alpha", "mu.sig.beta", "sig.alpha", "sig.beta", "D", "vc.alpha", "vc.beta", "rho")
 fit_resigma <- jags(data = jags.data, parameters.to.save = jags.params,
                    model.file = "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/DroughtModel_REsigma.txt",
-                   n.chains = 3, n.thin = 10, n.burnin = 1000, n.iter = 6000, DIC = FALSE)
+                   n.chains = 3, n.thin = 20, n.burnin = 2000, n.iter = 17000, DIC = FALSE)
 
 
 ```
 
-### Traceplots
 
-#### Simple
-```{r eval=FALSE, include=FALSE}
-MCMCtrace(fit_simple, ind = TRUE, params = c("alpha", "beta", "sig.alpha", "sig.beta", "AS"), pdf = FALSE)
-```
-
-#### Primary Random Effects
-```{r eval=FALSE, include=FALSE}
-MCMCtrace(fit_remain, ind = TRUE, params = c("alpha", "beta", "mu.alpha", "mu.beta", "sig.alpha", "sig.beta", "AS"), pdf = FALSE)
-```
-
-#### Full Random Effects
-```{r eval=FALSE, include=FALSE}
-MCMCtrace(fit_resigma, ind = TRUE, params = c("mu.alpha", "mu.beta", "alpha", "beta", "mu.sig.alpha", "mu.sig.beta", "sig.alpha", "sig.beta", "AS", "vc.alpha", "vc.beta", "rho"), pdf = FALSE)
-```
 
 
 

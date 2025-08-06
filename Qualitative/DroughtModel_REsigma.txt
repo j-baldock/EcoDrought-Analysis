@@ -13,17 +13,11 @@ for (i in 1:nObs) {
 ##--- RANDOM EFFECTS ------------------------------------------------##
 
 for (j in numBasins) {
-    alpha[j] ~ dnorm(mu.alpha, pow(5, -2)) 
-    beta[j] ~ dnorm(mu.beta, pow(5, -2)) 
+    alpha[j] ~ dnorm(mu.alpha, pow(sigma.alpha, -2)) 
+    beta[j] ~ dnorm(mu.beta, pow(sigma.beta, -2)) 
 
-    #sig.alpha[j] ~ dnorm(mu.sig.alpha, pow(5, -2)) 
-    #sig.beta[j] ~ dnorm(mu.sig.beta, pow(5, -2)) 
-    
-    sig.alpha[j] <- B[j,1]
-    sig.beta[j] <- B[j,2]
-    B[j,1:2] ~ dmnorm(B.hat[j,], Tau.B[,])
-    B.hat[j,1] <- mu.sig.alpha
-    B.hat[j,2] <- mu.sig.beta
+    sig.alpha[j] ~ dnorm(mu.sig.alpha, pow(sigma.sig.alpha, -2)) 
+    sig.beta[j] ~ dnorm(mu.sig.beta, pow(sigma.sig.beta, -2)) 
 }
 
 
@@ -32,26 +26,58 @@ for (j in numBasins) {
 mu.alpha ~ dnorm(0, pow(10, -2))
 mu.beta ~ dnorm(0, pow(10, -2))
 
+sigma.alpha ~ dunif(0, 100)
+sigma.beta ~ dunif(0, 100)
+
 mu.sig.alpha ~ dnorm(0, pow(10, -2))
 mu.sig.beta ~ dnorm(0, pow(10, -2))
-#sigma.sig.alpha ~ dunif(0.0001, 100)
-#sigma.sig.beta ~ dunif(0.0001, 100)
 
-# variance-covariance matrix components
-Tau.B[1:2,1:2] <- inverse(Sigma.B[,])
-Sigma.B[1,1] <- pow(vc.alpha, 2)
-Sigma.B[2,2] <- pow(vc.beta, 2)
-Sigma.B[1,2] <- rho * vc.alpha * vc.beta
-Sigma.B[2,1] <- Sigma.B[1,2]
-
-vc.alpha ~ dunif(0.001, 100)
-vc.beta ~ dunif(0.001, 100)
-rho ~ dunif(-1,1)
+sigma.sig.alpha ~ dunif(0, 100)
+sigma.sig.beta ~ dunif(0, 100)
 
 
 ##--- DERIVED VALUES ------------------------------------------------##
 
 # attenuation strength
-#AS <- exp(mu.sig.alpha + mu.sig.beta * 0) / exp(mu.sig.alpha + mu.sig.beta * 100)
+AS0 <- exp(mu.sig.alpha + mu.sig.beta * 0) / exp(mu.sig.alpha + mu.sig.beta * 100)
+AS1 <- exp(sig.alpha[1] + sig.beta[1] * 0) / exp(sig.alpha[1] + sig.beta[1] * 100)
+AS3 <- exp(sig.alpha[3] + sig.beta[3] * 0) / exp(sig.alpha[3] + sig.beta[3] * 100)
+AS5 <- exp(sig.alpha[5] + sig.beta[5] * 0) / exp(sig.alpha[5] + sig.beta[5] * 100)
+AS6 <- exp(sig.alpha[6] + sig.beta[6] * 0) / exp(sig.alpha[6] + sig.beta[6] * 100)
+AS7 <- exp(sig.alpha[7] + sig.beta[7] * 0) / exp(sig.alpha[7] + sig.beta[7] * 100)
+#AS8 <- exp(sig.alpha[8] + sig.beta[8] * 0) / exp(sig.alpha[8] + sig.beta[8] * 100)
+
+# prediction means
+for (i in 1:nPreds) {
+    P0m[i] <- mu.alpha + mu.beta * Wp[i]
+    P1m[i] <- alpha[1] + beta[1] * Wp[i]
+    P3m[i] <- alpha[3] + beta[3] * Wp[i]
+    P5m[i] <- alpha[5] + beta[5] * Wp[i]
+    P6m[i] <- alpha[6] + beta[6] * Wp[i]
+    P7m[i] <- alpha[7] + beta[7] * Wp[i]
+    #P8m[i] <- alpha[8] + beta[8] * Wp[i]
+}
+
+# prediction intervals
+for (i in 1:nPreds) {
+    P0i[i] ~ dnorm(mu.alpha + mu.beta * Wp[i], pow(exp(mu.sig.alpha + mu.sig.beta * Wp[i]), -2))
+    P1i[i] ~ dnorm(alpha[1] + beta[1] * Wp[i], pow(exp(sig.alpha[1] + sig.beta[1] * Wp[i]), -2))
+    P3i[i] ~ dnorm(alpha[3] + beta[3] * Wp[i], pow(exp(sig.alpha[3] + sig.beta[3] * Wp[i]), -2))
+    P5i[i] ~ dnorm(alpha[5] + beta[5] * Wp[i], pow(exp(sig.alpha[5] + sig.beta[5] * Wp[i]), -2))
+    P6i[i] ~ dnorm(alpha[6] + beta[6] * Wp[i], pow(exp(sig.alpha[6] + sig.beta[6] * Wp[i]), -2))
+    P7i[i] ~ dnorm(alpha[7] + beta[7] * Wp[i], pow(exp(sig.alpha[7] + sig.beta[7] * Wp[i]), -2))
+    #P8i[i] ~ dnorm(alpha[8] + beta[8] * Wp[i], pow(exp(sig.alpha + sig.beta * Wp[i]), -2))
+}
+
+# sigma means
+for (i in 1:nPreds) { 
+    S0m[i] <- exp(mu.sig.alpha + mu.sig.beta * Wp[i]) 
+    S1m[i] <- exp(sig.alpha[1] + sig.beta[1] * Wp[i]) 
+    S3m[i] <- exp(sig.alpha[3] + sig.beta[3] * Wp[i]) 
+    S5m[i] <- exp(sig.alpha[5] + sig.beta[5] * Wp[i]) 
+    S6m[i] <- exp(sig.alpha[6] + sig.beta[6] * Wp[i]) 
+    S7m[i] <- exp(sig.alpha[7] + sig.beta[7] * Wp[i]) 
+}
+
 
 }
