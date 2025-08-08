@@ -26,25 +26,25 @@ for (j in numBasins) {
 mu.alpha ~ dnorm(0, pow(10, -2))
 mu.beta ~ dnorm(0, pow(10, -2))
 
-sigma.alpha ~ dunif(0, 100)
-sigma.beta ~ dunif(0, 100)
+sigma.alpha ~ dunif(0.0001, 100)
+sigma.beta ~ dunif(0.0001, 100)
 
 mu.sig.alpha ~ dnorm(0, pow(10, -2))
 mu.sig.beta ~ dnorm(0, pow(10, -2))
 
-sigma.sig.alpha ~ dunif(0, 100)
-sigma.sig.beta ~ dunif(0, 100)
+sigma.sig.alpha ~ dunif(0.0001, 1)
+sigma.sig.beta ~ dunif(0.0001, 1)
 
 
 ##--- DERIVED VALUES ------------------------------------------------##
 
 # attenuation strength
-AS0 <- exp(mu.sig.alpha + mu.sig.beta * 0) / exp(mu.sig.alpha + mu.sig.beta * 100)
-AS1 <- exp(sig.alpha[1] + sig.beta[1] * 0) / exp(sig.alpha[1] + sig.beta[1] * 100)
-AS3 <- exp(sig.alpha[3] + sig.beta[3] * 0) / exp(sig.alpha[3] + sig.beta[3] * 100)
-AS5 <- exp(sig.alpha[5] + sig.beta[5] * 0) / exp(sig.alpha[5] + sig.beta[5] * 100)
-AS6 <- exp(sig.alpha[6] + sig.beta[6] * 0) / exp(sig.alpha[6] + sig.beta[6] * 100)
-AS7 <- exp(sig.alpha[7] + sig.beta[7] * 0) / exp(sig.alpha[7] + sig.beta[7] * 100)
+# AS0 <- exp(mu.sig.alpha + mu.sig.beta * 0) / exp(mu.sig.alpha + mu.sig.beta * 100)
+# AS1 <- exp(sig.alpha[1] + sig.beta[1] * 0) / exp(sig.alpha[1] + sig.beta[1] * 100)
+# AS3 <- exp(sig.alpha[3] + sig.beta[3] * 0) / exp(sig.alpha[3] + sig.beta[3] * 100)
+# AS5 <- exp(sig.alpha[5] + sig.beta[5] * 0) / exp(sig.alpha[5] + sig.beta[5] * 100)
+# AS6 <- exp(sig.alpha[6] + sig.beta[6] * 0) / exp(sig.alpha[6] + sig.beta[6] * 100)
+# AS7 <- exp(sig.alpha[7] + sig.beta[7] * 0) / exp(sig.alpha[7] + sig.beta[7] * 100)
 #AS8 <- exp(sig.alpha[8] + sig.beta[8] * 0) / exp(sig.alpha[8] + sig.beta[8] * 100)
 
 # prediction means
