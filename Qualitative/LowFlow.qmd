@@ -2768,8 +2768,8 @@ scatter_basinwithcis <- ggplot() +
   geom_point(data = joineddefdur, aes(x = tyz_sum_perc, y = duration_20_fix_diff, fill = basin), 
              shape = 21, size = 2, position = position_jitter(seed = 1, width = 1)) +
   scale_fill_manual(values = mycols) +
-  theme_bw() + theme(panel.grid = element_blank(), legend.position = "none") + #ylim(-60,60) +
-  xlab("Regional water availability (%)") + ylab("Difference in low flow duration (days)")
+  theme_bw() + theme(panel.grid = element_blank(), legend.position = "none", axis.text = element_text(color = "black")) + #ylim(-60,60) +
+  xlab("Water availability (percentile)") + ylab("Difference in low flow duration (days)")
 
 scatter_basinnocis <- ggplot() +
   geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med1), color = mycols[1], size = 1.3, lineend = "round") +
@@ -2782,8 +2782,8 @@ scatter_basinnocis <- ggplot() +
   geom_point(data = joineddefdur, aes(x = tyz_sum_perc, y = duration_20_fix_diff, fill = basin), 
              shape = 21, size = 2, position = position_jitter(seed = 1, width = 1)) +
   scale_fill_manual(values = mycols) +
-  theme_bw() + theme(panel.grid = element_blank(), legend.position = "none") + #ylim(-60,60) +
-  xlab("Regional water availability (%)") + ylab("Difference in low flow duration (days)")
+  theme_bw() + theme(panel.grid = element_blank(), legend.position = "none", axis.text = element_text(color = "black")) + #ylim(-60,60) +
+  xlab("Water availability (percentile)") + ylab("Difference in low flow duration (days)")
 
 scatter_global <- ggplot() +
   geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low0, ymax = pi_upp0), alpha = 0.3) +
@@ -2792,8 +2792,8 @@ scatter_global <- ggplot() +
   geom_point(data = joineddefdur, aes(x = tyz_sum_perc, y = duration_20_fix_diff, fill = basin), 
              shape = 21, size = 2, position = position_jitter(seed = 1, width = 1)) +
   scale_fill_manual(values = mycols) +
-  theme_bw() + theme(panel.grid = element_blank(), legend.position = "none") + #ylim(-60,60) +
-  xlab("Regional water availability (%)") + ylab("Difference in low flow duration (days)")
+  theme_bw() + theme(panel.grid = element_blank(), legend.position = "none", axis.text = element_text(color = "black")) + #ylim(-60,60) +
+  xlab("Water availability (percentile)") + ylab("Difference in low flow duration (days)")
     
     
 
@@ -2806,8 +2806,8 @@ sigmaplot <- ggplot() +
   geom_ribbon(aes(x = seq(from = 0, to = 100, by = 1), ymin = pi_low, ymax = pi_upp), alpha = 0.3) +
   geom_line(aes(x = seq(from = 0, to = 100, by = 1), y = pi_med), size = 1, lineend = "round") +
   scale_fill_manual(values = mycols) +
-  theme_bw() + theme(panel.grid = element_blank()) + ylim(0,max(pi_upp)) +
-  xlab("Regional water availability (%)") + ylab(expression(paste("Model standard deviation (", sigma, ")")))
+  theme_bw() + theme(panel.grid = element_blank(), axis.text = element_text(color = "black")) + ylim(0,max(pi_upp)) +
+  xlab("Water availability (percentile)") + ylab(expression(paste("Model standard deviation (", sigma, ")")))
 
 
 # Attenuation strength
@@ -2823,8 +2823,8 @@ effectplot <- attentib_sum %>%
   geom_errorbar(aes(x = threshold, ymin = cilow, ymax = ciupp), width = 1) +
   geom_point(aes(x = threshold, y = median), shape = 21, fill = "white", size = 2) +
   geom_point(data = attentib_sum %>% filter(threshold == 15), aes(x = threshold, y = median), size = 2) +
-  theme_bw() + theme(panel.grid = element_blank()) + ylim(0,12) +
-  xlab("Low flow threshold (%)") + ylab("Attenuation strength")
+  theme_bw() + theme(panel.grid = element_blank(), axis.text = element_text(color = "black")) + ylim(0,12) +
+  xlab("Critical flow threshold (percentile)") + ylab("Attenuation strength")
 
 
 
@@ -2836,8 +2836,9 @@ jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Work
 egg::ggarrange(heat1, scatter_basinwithcis, heat2, sigmaplot, ggplot() + theme_void(), effectplot, nrow = 3, ncol = 2)
 dev.off()
 
-jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/DroughtDuration_sitelevel_WestBrook_2020-2021_updatebasinnoci.jpg", width = 6.5, height = 9, units = "in", res = 1000)
-egg::ggarrange(heat1, scatter_basinnocis, heat2, sigmaplot, ggplot() + theme_void(), effectplot, nrow = 3, ncol = 2)
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/DroughtDuration_sitelevel_WestBrook_2020-2021_updatebasinnoci_wide.jpg", width = 8.75, height = 5.5, units = "in", res = 1000)
+egg::ggarrange(heat1, heat2, ggplot() + theme_void(), 
+               scatter_basinnocis, sigmaplot, effectplot, nrow = 2, ncol = 3)
 dev.off()
 ```
 
