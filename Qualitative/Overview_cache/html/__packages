@@ -36,3 +36,11 @@ nhdplusTools
 glue
 zoo
 hydroGOF
+terra
+geometry
+ncdf4
+lattice
+rasterVis
+rgl
+orca
+plot3D

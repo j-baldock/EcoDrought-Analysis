@@ -75,6 +75,9 @@ library(dtw)
 library(nhdplusTools)
 library(glue)
 library(hydroGOF)
+library(terra)
+library(plotly)
+library(geometry)
 ```
 
 
@@ -92,7 +95,7 @@ siteinfo_sp <- st_as_sf(siteinfo, coords = c("long", "lat"), crs = 4326)
 mapview(siteinfo_sp, zcol = "designation")
 ```
 
-```{r include=FALSE, eval=FALSE}
+```{r}
 # Write shapefile of focal sites for external mapping
 focalsites <- siteinfo_sp %>% 
   filter(site_name %in% c("West Brook NWIS", "West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook", "South River Conway NWIS",
@@ -110,7 +113,7 @@ focalsites <- siteinfo_sp %>%
                           "Fish Creek NWIS", "Donner Blitzen ab Fish NWIS", "Donner Blitzen nr Burnt Car NWIS", "Donner Blitzen ab Indian NWIS", "Donner Blitzen River nr Frenchglen NWIS")) %>%
   mutate(designation = ifelse(designation == "big", "big", "little"))
 mapview(focalsites, zcol = "designation")
-st_write(focalsites, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Study area maps/sites/focalsites.shp")
+# st_write(focalsites, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Study area maps/sites/focalsites.shp")
 ```
 
 ```{r include=FALSE, eval=FALSE}
@@ -343,6 +346,27 @@ write_csv(dat_clean, "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought
 ```
 
 
+
+```{r}
+p1 <- siteinfo %>% 
+  filter(site_name %in% unique(dat_clean$site_name)) %>% 
+  mutate(area_sqkm = area_sqmi*2.58999,
+         basin = factor(basin, levels = c("Donner Blitzen", "Snake River", "Flathead", "Shields River", 
+                                          "Paine Run", "Staunton River", "West Brook"))) %>%
+  mutate(basin = recode(basin, "Shields River" = "Yellowstone River", "Flathead" = "Flathead River", "Donner Blitzen" = "Donner und Blitzen River")) %>%
+  ggplot() + 
+  geom_boxplot(aes(y = basin, x = area_sqkm, fill = basin)) + scale_x_log10() +
+  geom_point(aes(y = basin, x = area_sqkm)) +
+  theme_bw() + theme(panel.grid = element_blank(), legend.position = "none", axis.text = element_text(color = "black")) + 
+  xlab(expression(paste("Catchment area, km"^2))) + ylab("Basin") +
+  scale_fill_manual(values = rev(brewer.pal(7, "Set2")[c(1,2,3,5,4,6,7)]))
+
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/CatchmentSize_boxplot.jpg", width = 5, height = 3, units = "in", res = 1000)
+p1
+dev.off()
+```
+
+
 ## Big G data
 
 Load big/super G data
@@ -505,4 +529,517 @@ wateravail %>% select(-sampsize) %>% left_join(climdf_summ %>% select(-sampsize)
   stat_cor(method = "pearson", aes(label = ..r.label..))
 ```
 :::
+
+
+## Hydroclimatic context
+
+### Climate data and focal sites
+
+Load the NETCDF climate data and convert to usable/raster format
+```{r}
+# Climate classification data loading and plotting in R
+# Equivalent to the MATLAB script
+
+library(ncdf4)      # for reading NetCDF
+library(terra)      # for raster handling
+library(ggplot2)    # for plotting
+library(rasterVis)  # for nice levelplots of rasters
+# library(rgdal)      # for geotiff/geoshow equivalents
+library(rgl)
+
+# 1. Data import from NetCDF file
+filename <- "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Spatial data/HydrologicClimateClassification.nc"
+
+# Open NetCDF
+nc <- nc_open(filename)
+print(nc)   # equivalent to MATLAB ncdisp
+
+# Variable names (must match those in the file)
+varNames <- c(
+  "grid_aridity_Im",
+  "grid_seasonalityOfAridity_Imr",
+  "grid_annualSnowFraction_fs",
+  "grid_latitude",
+  "grid_longitude",
+  "array_aridity_Im",
+  "array_seasonalityOfAridity_Imr",
+  "array_annualSnowFraction_fs",
+  "array_latitude",
+  "array_longitude",
+  "array_rgbColour"
+)
+
+# Extract variables into a list (like a struct in MATLAB)
+ClimateClassification <- lapply(varNames, function(v) ncvar_get(nc, v))
+names(ClimateClassification) <- varNames
+
+nc_close(nc)
+
+# 2a. Example maps of gridded climate indices ----------------------------
+
+# Wrap into SpatRaster objects (terra) for plotting
+grid_Im  <- rast(ClimateClassification$grid_aridity_Im)
+grid_Imr <- rast(ClimateClassification$grid_seasonalityOfAridity_Imr)
+grid_fs  <- rast(ClimateClassification$grid_annualSnowFraction_fs)
+
+# Assign CRS and extent (need to use lat/lon arrays)
+lat <- ClimateClassification$grid_latitude
+lon <- ClimateClassification$grid_longitude
+ext(grid_Im) <- c(min(lon), max(lon), min(lat), max(lat))
+crs(grid_Im) <- "EPSG:4326"
+ext(grid_Imr) <- ext(grid_Im); crs(grid_Imr) <- "EPSG:4326"
+ext(grid_fs)  <- ext(grid_Im); crs(grid_fs)  <- "EPSG:4326"
+
+# correct orientation
+grid_Im  <- flip(grid_Im, direction = "vertical")
+grid_Imr <- flip(grid_Imr, direction = "vertical")
+grid_fs  <- flip(grid_fs, direction = "vertical")
+
+# Plot rasters
+levelplot(grid_Im, margin = FALSE, main = "Aridity index I_m",
+          at = seq(-1, 1, 0.1), col.regions = viridis::viridis(20))
+
+levelplot(grid_Imr, margin = FALSE, main = "Aridity seasonality index I_{m,r}",
+          at = seq(0, 2, 0.1), col.regions = viridis::viridis(20))
+
+levelplot(grid_fs, margin = FALSE, main = "Fraction precipitation as snow f_s",
+          at = seq(0, 1, 0.05), col.regions = viridis::viridis(20))
+
+# 2b. Combined climate map -----------------------------------------------
+
+df_array <- data.frame(
+  lon = ClimateClassification$array_longitude,
+  lat = ClimateClassification$array_latitude,
+  col = rgb(
+    ClimateClassification$array_rgbColour[,1],
+    ClimateClassification$array_rgbColour[,2],
+    ClimateClassification$array_rgbColour[,3],
+    maxColorValue = 1
+  )
+)
+
+ggplot(df_array, aes(x = lon, y = lat, color = col)) +
+  geom_point(size = 0.5) +
+  scale_color_identity() +
+  coord_equal() +
+  theme_minimal() +
+  labs(title = "Climatic gradients from climate indices")
+
+# 2c. RGB colour legend (3D scatterplot) ---------------------------------
+
+df_legend <- data.frame(
+  Im  = ClimateClassification$array_aridity_Im,
+  Imr = ClimateClassification$array_seasonalityOfAridity_Imr,
+  fs  = ClimateClassification$array_annualSnowFraction_fs,
+  col = df_array$col
+)
+
+# Using plotly for interactive 3D equivalent of MATLAB scatter3
+library(plotly)
+library(orca)
+plot_ly(df_legend, x = ~Im, y = ~Imr, z = ~fs,
+        type = "scatter3d", mode = "markers", 
+        marker = list(color = df_legend$col, size = 2, opacity = 0.5)) %>%
+  layout(scene = list(
+    xaxis = list(title = "Aridity"),
+    yaxis = list(title = "Seasonality"),
+    zaxis = list(title = "Snow fraction")
+  ))
+
+plot_ly(df_legend, x = ~Im, y = ~Imr, z = ~fs,
+        type = "scatter3d", mode = "markers", 
+        marker = list(color = "grey", size = 2, opacity = 0.5)) %>%
+  layout(scene = list(
+    xaxis = list(title = "Aridity"),
+    yaxis = list(title = "Seasonality"),
+    zaxis = list(title = "Snow fraction")
+  ))
+
+# 2d. GeoTIFF plot of the main map ---------------------------------------
+
+# geofile <- "C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Data/Spatial data/ClimateClassification_mainMap_geoReferenced.tif"
+# map_rast <- rast(geofile)
+# 
+# plot(map_rast, main = "Climatic gradients from climate indices")
+```
+
+
+Stack rasters and extract values for focal sites
+```{r}
+# combine the climate variables into a raster stack
+# add 1 to Im to force positive (needed for expansion factors)
+climate_stack <- c(grid_Im+1, grid_Imr, grid_fs)
+names(climate_stack) <- c("Im", "Imr", "fs")
+
+
+# convert to tibble
+climate_df <- tidyterra::as_tibble(climate_stack)
+# hydroclidf_noNA <- as_tibble(hydrocli) %>% filter(!is.na(aridity))
+summary(climate_df)
+
+# get site location data
+sitevec <- vect(focalsites)
+
+# extract climate data for each site
+extracted_vals <- extract(climate_stack, sitevec)
+range(extracted_vals$Im)
+range(extracted_vals$Imr)
+range(extracted_vals$fs)
+```
+
+Get centroid from base hull
+```{r}
+hull <- convhulln(extracted_vals[,-1])
+hull_vertices <- extracted_vals[unique(as.vector(hull)), ]
+centroid <- colMeans(hull_vertices[,-1])
+```
+
+
+### Hydroclimatic envelope
+
+Test pit: develop code to expand and estimate convex hulls, subset global points, and plot in 3d
+```{r eval=FALSE}
+# set expansion factor
+scf <- 2
+
+# define hull
+pts_expanded <- sweep(sweep(extracted_vals[,-1], 2, centroid, "-") * scf, 2, centroid, "+")
+hull_indices <- geometry::convhulln(pts_expanded)
+
+# subset global points in hull
+points_in_hull <- inhulln(hull_indices, as.matrix(climate_df))
+points_in_hull_num <- as.numeric(points_in_hull)
+# points_in_hull_num[points_in_hull_num == 0] <- NA
+
+# create new hydroclimate envelope layer
+new_layer <- rast(climate_stack[[1]], vals = points_in_hull_num)
+names(new_layer) <- "myhc"
+# plot(new_layer)
+
+# 
+# hydroclidf <- as_tibble(c(climate_stack, new_layer)) %>%
+#   filter(!is.na(myhc)) %>%
+#   # mutate(myhc = as.numeric(points_in_hull)) %>%
+#   # mutate(myhc = if_else(is.na(snowfrac), NA, myhc)) %>%
+#   mutate(color = if_else(myhc == 1, "red", if_else(myhc == 0, "grey", NA)))
+
+hydroclidf <- as_tibble(c(climate_stack, new_layer)) %>%
+  filter(myhc == 1)
+
+# rgl::plot3d(x = hydroclidf$Im, y = hydroclidf$Imr, z = hydroclidf$fs, col = hydroclidf$color)
+
+plot_ly() %>%
+  add_markers(
+    data = climate_df,
+    x = ~Im, y = ~Imr, z = ~fs,
+    marker = list(size = 1, opacity = 0.2, color = "grey"),
+    name = "All points"
+  ) %>%
+  # Add highlighted global points in hull
+  add_markers(
+    data = hydroclidf,
+    x = ~Im, y = ~Imr, z = ~fs,
+    marker = list(size = 1, opacity = 0.5, color = "blue"),
+    name = "All points"
+  ) %>%
+  #Add highlighted subset of points with different style
+  add_markers(
+    data = extracted_vals,
+    x = ~Im, y = ~Imr, z = ~fs,
+    marker = list(size = 5, opacity = 0.8, color = "black", symbol = "circle"),
+    name = "Highlighted points"
+  ) %>%
+  layout(
+    scene = list(
+      xaxis = list(title = "Aridity"),
+      yaxis = list(title = "Seasonality"),
+      zaxis = list(title = "Snow fraction")
+    )
+  )
+
+```
+
+
+Subset global climate data using 3d convex hull fit to focal sites, with different percentage expansion factors. 
+```{r}
+scale_factor <- seq(from = 1, to = 2, by = 0.1)
+new_layer_list_raw <- list()
+new_layer_list <- list()
+
+for (i in 1:length(scale_factor)) {
+  # Expand all original points relative to centroid
+  pts_expanded <- sweep(sweep(extracted_vals[,-1], 2, centroid, "-") * scale_factor[i], 2, centroid, "+")
+  # recompute convex hull
+  hull_expanded <- geometry::convhulln(pts_expanded)
+  # subset points/raster cells
+  points_in_hull <- geometry::inhulln(hull_expanded, as.matrix(climate_df))
+  points_in_hull_num <- as.numeric(points_in_hull)
+  # create layer and save in list (for 3-d scatterplots and hulls)
+  new_layer <- rast(climate_stack[[1]], vals = points_in_hull_num)
+  names(new_layer) <- paste("expand_", scale_factor[i], sep = "")
+  new_layer_list_raw[[i]] <- new_layer
+  # for mapping, we need to set the 0's (cells not in hydroclimate zone) to NA
+  points_in_hull_num[points_in_hull_num == 0] <- NA
+  # create layer and save in list (for mapping)
+  new_layer <- rast(climate_stack[[1]], vals = points_in_hull_num)
+  names(new_layer) <- paste("expand_", scale_factor[i], sep = "")
+  new_layer_list[[i]] <- new_layer
+}
+```
+
+
+Draw the map
+```{r}
+# color palette
+mypal <- hcl.colors(length(scale_factor), palette = "Emrld")
+
+# write plot to file
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/Fig1_WorldMap_ClimateContext_REDO.jpg", width = 8, height = 4, units = "in", res = 1000)
+# par(mar = c(0,0,0,10), xpd = TRUE)
+maps::map("world", col="grey", fill=TRUE, lwd = 0.2, mar = c(0,0,0,5))
+# box()
+for (i in rev(1:length(scale_factor))) {
+  plot(new_layer_list[[i]], add = TRUE, col = mypal[i], legend = FALSE)
+}
+maps::map("world", col = NA, fill=TRUE, add = TRUE, lwd = 0.2, mar = c(0,0,0,5))
+legend("right", legend = scale_factor, fill = mypal, title = "Hydroclimatic\nenvelope\n(exp. factor)", bty = "n", xpd = TRUE, inset = c(-0.05,0), cex = 0.8)
+dev.off()
+```
+
+
+Draw 3-d scatterplots with envelopes
+```{r eval=FALSE}
+mylayer <- new_layer_list_raw[[1]]
+names(mylayer) <- "myhc"
+
+hydroclidf <- as_tibble(c(climate_stack, mylayer)) %>%
+  filter(!is.na(fs)) %>%
+  # mutate(myhc = as.numeric(points_in_hull)) %>%
+  # mutate(myhc = if_else(is.na(snowfrac), NA, myhc)) %>%
+  mutate(color = if_else(myhc == 1, "red", if_else(myhc == 0, "grey", NA)))
+
+scatterplot3d(hydroclidf[,c(1:3)], color = hydroclidf$color, pch = 16, cex.symbols = 0.2, grid = FALSE, angle = 50)
+
+rgl::plot3d(x = hydroclidf$Im, y = hydroclidf$Imr, z = hydroclidf$fs, col = hydroclidf$color)
+```
+
+
+```{r}
+# define color palette
+mycols <- brewer.pal(7, "Set2")
+coltib <- tibble(basin = c("West Brook", "Staunton River", "Paine Run", "Flathead River", "Yellowstone River", "Snake River", "Donner und Blitzen River"),
+                 color = brewer.pal(7, "Set2"))
+
+# reconfigure extracted values (focal sites)
+extracted_vals2 <- tibble(extracted_vals) %>%
+  mutate(basin = recode(focalsites$basin, "Shields River" = "Yellowstone River", "Flathead" = "Flathead River", "Donner Blitzen" = "Donner und Blitzen River")) %>%
+  left_join(coltib) %>%
+  mutate(Im = Im - 1)
+
+# color points in hull, expansion factor = 1.0
+mylayer <- new_layer_list_raw[[1]]
+names(mylayer) <- "myhc"
+hydroclidf_1 <- as_tibble(c(climate_stack, mylayer)) %>%
+  filter(myhc == 1) %>% mutate(Im = Im-1)
+
+# color points in hull, expansion factor = 1.5
+mylayer <- new_layer_list_raw[[11]]
+names(mylayer) <- "myhc"
+hydroclidf_2 <- as_tibble(c(climate_stack, mylayer)) %>%
+  filter(myhc == 1) %>% mutate(Im = Im-1)
+
+
+# Start with the base scatter of all points
+p <- plot_ly() %>%
+  add_markers(
+    data = df_legend,
+    x = ~Im, y = ~Imr, z = ~fs,
+    marker = list(size = 1, opacity = 0.2, color = "grey"),
+    name = "All points"
+  ) %>%
+  #Add convex hull mesh
+  # add_trace(
+  #   type = "mesh3d",
+  #   x = pts[hull,1], y = pts[hull,2], z = pts[hull,3],
+  #   i = hull[,1]-1, j = hull[,2]-1, k = hull[,3]-1,  # zero-based indexing
+  #   opacity = 0.2,
+  #   color = I("red"),
+  #   name = "Convex hull"
+  # ) %>%
+  # Add highlighted global points in hull
+  add_markers(
+    data = hydroclidf_1,
+    x = ~Im, y = ~Imr, z = ~fs,
+    marker = list(size = 1, opacity = 0.3, color = "black"),
+    name = "All points"
+  ) %>%
+  #Add highlighted subset of points with different style
+  add_markers(
+    data = extracted_vals2,
+    x = ~Im, y = ~Imr, z = ~fs,
+    marker = list(size = 5, opacity = 0.8, color = extracted_vals2$color, symbol = "circle"),
+    name = "Highlighted points"
+  ) %>%
+  layout(
+    scene = list(
+      xaxis = list(title = "Aridity"),
+      yaxis = list(title = "Seasonality"),
+      zaxis = list(title = "Snow fraction")
+    )
+  )
+p
+```
+
+Write 3d scatterplots to file
+```{r}
+library(plot3D)
+
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/Fig1_3Dscatter_basehull.jpg", width = 5, height = 5, units = "in", res = 1000)
+par(mar = c(2,2,2,2), mgp = c(5,1,0))
+scatter3D(x = df_legend$Im, y = df_legend$Imr, z = df_legend$fs, 
+          col = alpha("grey", 0.2), cex = 0.15, pch = 16, bty = "b2",
+          xlab = "", ylab = "", zlab = "",
+          phi = 25, theta = -50, expand = 0.75, ticktype = "detailed")
+scatter3D(x = hydroclidf_1$Im, y = hydroclidf_1$Imr, z = hydroclidf_1$fs, 
+          col = alpha("black", 0.4), cex = 0.2, pch = 16, add = TRUE)
+scatter3D(x = extracted_vals2$Im, y = extracted_vals2$Imr, z = extracted_vals2$fs, 
+          bg = extracted_vals2$color, col = "black", cex = 1.5, pch = 21, add = TRUE)
+dev.off()
+
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/Fig1_3Dscatter_BIGhull.jpg", width = 5, height = 5, units = "in", res = 1000)
+par(mar = c(2,2,2,2), mgp = c(5,1,0))
+scatter3D(x = df_legend$Im, y = df_legend$Imr, z = df_legend$fs, 
+          col = alpha("grey", 0.2), cex = 0.15, pch = 16, bty = "b2",
+          xlab = "", ylab = "", zlab = "",
+          phi = 25, theta = -50, expand = 0.75, ticktype = "detailed")
+scatter3D(x = hydroclidf_2$Im, y = hydroclidf_2$Imr, z = hydroclidf_2$fs, 
+          col = alpha("black", 0.4), cex = 0.2, pch = 16, add = TRUE)
+scatter3D(x = extracted_vals2$Im, y = extracted_vals2$Imr, z = extracted_vals2$fs, 
+          bg = extracted_vals2$color, col = "black", cex = 1.5, pch = 21, add = TRUE)
+dev.off()
+```
+
+View global and focal site distributions of climate data
+```{r}
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/Fig1_ClimateDensityDistributions.jpg", width = 3, height = 3, units = "in", res = 1000)
+par(mfrow = c(3,1), mar = c(2.5,0.5,0.1,0.5), mgp = c(1.5,0.5,0), xpd = TRUE)
+
+dens <- density(df_legend$Im)
+plot(dens, type = "n", xlab = "Aridity", ylab = "", main = "", bty = "n", xlim = c(-1, 1), axes = FALSE)
+polygon(dens, col = "grey70", border = NA)
+lines(dens, bty = "n")
+polygon(x = c(-10, -1, -1, -10), y = c(-10, -10, 10, 10), border = NA, col = "white")
+polygon(x = c(10, 1, 1, 10), y = c(-10, -10, 10, 10), border = NA, col = "white")
+axis(1)
+points(x = jitter(extracted_vals2$Im, factor = 20), y = rep(0, times = dim(extracted_vals2)[1]), pch = 21, bg = extracted_vals2$color, cex = 1.5)
+
+
+dens <- density(df_legend$Imr)
+plot(dens, type = "n", xlab = "Seasonality", ylab = "", main = "", bty = "n", xlim = c(0, 2), axes = FALSE)
+polygon(dens, col = "grey70", border = NA)
+lines(dens, bty = "n")
+polygon(x = c(-10, 0, 0, -10), y = c(-10, -10, 10, 10), border = NA, col = "white")
+polygon(x = c(10, 2, 2, 10), y = c(-10, -10, 10, 10), border = NA, col = "white")
+axis(1)
+points(x = jitter(extracted_vals2$Imr, factor = 20), y = rep(0, times = dim(extracted_vals2)[1]), pch = 21, bg = extracted_vals2$color, cex = 1.5)
+
+dens <- density(df_legend$fs)
+plot(dens, type = "n", xlab = "Precipitation as snow", ylab = "", main = "", bty = "n", xlim = c(0, 1), axes = FALSE)
+polygon(dens, col = "grey70", border = NA)
+lines(dens, bty = "n")
+polygon(x = c(-10, 0, 0, -10), y = c(-10, -10, 10, 10), border = NA, col = "white")
+polygon(x = c(10, 1, 1, 10), y = c(-10, -10, 10, 10), border = NA, col = "white")
+axis(1)
+points(x = jitter(extracted_vals2$fs, factor = 20), y = rep(0, times = dim(extracted_vals2)[1]), pch = 21, bg = extracted_vals2$color, cex = 1.5)
+
+dev.off()
+
+
+
+# df_legend_gath <- df_legend %>% select(Im, Imr, fs) %>% gather(key = "type", value = "value")
+# ggplot() +
+#   geom_density(data = df_legend_gath %>% filter(type == "Im"), aes(x = value), fill = "grey70") +
+#   geom_point(data = extracted_vals2, aes(x = jitter(Im, factor = 10), y = 0), shape = 21, fill = extracted_vals2$color, size = 5) +
+#   #geom_vline(data = extracted_vals2, aes(xintercept = jitter(Im, factor = 20)), color = extracted_vals2$color) +
+#   theme_bw() + theme(panel.grid = element_blank(), 
+#                      axis.text.y = element_blank(), 
+#                      axis.ticks.y = element_blank()) +
+#   opts(panel.border = theme_L_border()) +
+#   xlab("Aridity") + ylab("Density")
+# 
+# p2 <- ggplot() +
+#   geom_density(data = df_legend_gath %>% filter(type == "Imr"), aes(x = value), fill = "grey") +
+#   geom_point(data = extracted_vals2, aes(x = jitter(Imr, factor = 10), y = 0), shape = 21, fill = extracted_vals2$color, size = 5) +
+#   theme_bw() + theme(panel.grid = element_blank()) +
+#   xlab("Seasonality") + ylab("Density")
+# 
+# p3 <- ggplot() +
+#   geom_density(data = df_legend_gath %>% filter(type == "fs"), aes(x = value), fill = "grey") +
+#   geom_point(data = extracted_vals2, aes(x = jitter(fs, factor = 10), y = 0), shape = 21, fill = extracted_vals2$color, size = 5) +
+#   theme_bw() + theme(panel.grid = element_blank()) +
+#   xlab("Precipition as snow") + ylab("Density")
+# 
+# egg
+```
+
+
+### Repeatability by climate
+
+Plot monthly estimates of repeatability by climate indices
+```{r}
+mysites <- as_tibble(focalsites) %>%
+  mutate(Im = extracted_vals$Im, 
+         Imr = extracted_vals$Imr,
+         fs = extracted_vals$fs) %>% 
+  group_by(basin) %>%
+  summarize(Im = mean(Im), Imr = mean(Imr), fs = mean(fs)) %>%
+  ungroup() %>%
+  filter(basin != "Donner Blitzen") %>%
+  mutate(basin = ifelse(basin == "Paine Run", "Paine",
+                        ifelse(basin == "Staunton River", "Staunton", 
+                               ifelse(basin == "Snake River", "Snake", 
+                                      ifelse(basin == "Shields River", "Yellowstone", basin))))) %>%
+  mutate(basin = factor(basin, levels = rev(c("West Brook", "Staunton", "Paine", "Flathead", "Yellowstone", "Snake")))) %>%
+  mutate(R = c(0.55, 0.56, 0.71, 0.94, 0.44, 0.47))
+ggpairs(mysites)
+```
+
+
+```{r}
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/Repeatability_Aridity.jpg", width = 4, height = 3.5, units = "in", res = 1000)
+myr <- cor(mysites$Im, mysites$R)
+mysites %>% ggplot(aes(x = Im, y = R)) +
+  geom_point(aes(fill = basin), shape = 21, size = 3) +
+  annotate("text", x = Inf, y = Inf, hjust = 1.1, vjust = 1.5, 
+           label = paste("Pearson's r = ", round(myr, digits = 2))) +
+  scale_fill_manual(values = rev(brewer.pal(6, "Set2"))) +
+  theme_bw() + theme(legend.position = "none", panel.grid = element_blank(), 
+                     axis.text = element_text(color = "black")) +
+  xlab("Aridity") + ylab("Median repeatability (R)")
+dev.off()
+
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/Repeatability_Seasonality.jpg", width = 4, height = 3.5, units = "in", res = 1000)
+myr <- cor(mysites$Imr, mysites$R)
+mysites %>% ggplot(aes(x = Imr, y = R)) +
+  geom_point(aes(fill = basin), shape = 21, size = 3) +
+    annotate("text", x = -Inf, y = Inf, hjust = -0.1, vjust = 1.5, 
+           label = paste("Pearson's r = ", round(myr, digits = 2))) +
+  scale_fill_manual(values = rev(brewer.pal(6, "Set2"))) +
+  theme_bw() + theme(legend.position = "none", panel.grid = element_blank(), 
+                     axis.text = element_text(color = "black")) +
+  xlab("Seasonality") + ylab("Median repeatability (R)")
+dev.off()
+
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/Repeatability_SnowFraction.jpg", width = 4, height = 3.5, units = "in", res = 1000)
+myr <- cor(mysites$fs, mysites$R)
+mysites %>% ggplot(aes(x = fs, y = R)) +
+  geom_point(aes(fill = basin), shape = 21, size = 3) +
+    annotate("text", x = -Inf, y = Inf, hjust = -0.1, vjust = 1.5, 
+           label = paste("Pearson's r = ", round(myr, digits = 2))) +
+  scale_fill_manual(values = rev(brewer.pal(6, "Set2"))) +
+  theme_bw() + theme(legend.position = "none", panel.grid = element_blank(), 
+                     axis.text = element_text(color = "black")) +
+  xlab("Precipitation as snow") + ylab("Median repeatability (R)")
+dev.off()
+```
 
