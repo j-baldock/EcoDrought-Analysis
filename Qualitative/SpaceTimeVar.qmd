@@ -39,6 +39,7 @@ library(ggspatial)
 library(lme4)
 library(MuMIn)
 library(lmerTest)
+library(ggfx)
 ```
 
 
@@ -516,11 +517,12 @@ pwb1 <- ggplot() +
   geom_line(data = tempdat_big, aes(x = date, y = logYield), color = "grey40") +
   scale_color_manual(values = cet_pal(nsites, name = "i1")) +
   ylim(-3,2) +
-  annotate("text", x = min(c(tempdat_big$date, tempdat$date), na.rm = TRUE), y = max(c(tempdat_big$logYield, tempdat$logYield), na.rm = TRUE), label = "West Brook, MA", hjust = 0, vjust = 1) +
+  with_outer_glow(annotate("text", x = min(c(tempdat_big$date, tempdat$date), na.rm = TRUE), y = max(c(tempdat_big$logYield, tempdat$logYield), na.rm = TRUE), label = "West Brook, MA", hjust = 0, vjust = 1), colour = "white", expand = 10) +
   scale_x_date(expand = c(0.02,0.02)) + #scale_y_continuous(expand = c(0,0)) +
   theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
                      axis.title = element_blank(), plot.margin = margin(t = 1, r = 5, b = 2, l = 2), 
-                     axis.text = element_text(color = "black"), panel.border = element_rect(colour = mycols[1], fill = NA, linewidth = 1.5))
+                     axis.text = element_text(color = "black")#, panel.border = element_rect(colour = mycols[1], fill = NA, linewidth = 1.5)
+                     )
 # greyscale
 pwb2 <- ggplot() +
   geom_line(data = tempdat, aes(x = date, y = logYield, group = site_name), color = "grey") +
@@ -548,11 +550,12 @@ pst1 <- ggplot() +
   geom_line(data = tempdat, aes(x = date, y = logYield, color = factor(site_name, levels = stauntorder))) +
   geom_line(data = tempdat_big, aes(x = date, y = logYield), color = "grey40") +
   scale_color_manual(values = cet_pal(nsites, name = "i1")) +
-  annotate("text", x = min(c(tempdat_big$date, tempdat$date), na.rm = TRUE), y = max(c(tempdat_big$logYield, tempdat$logYield), na.rm = TRUE), label = "Staunton River, VA", hjust = 0, vjust = 1) +
+  with_outer_glow(annotate("text", x = min(c(tempdat_big$date, tempdat$date), na.rm = TRUE), y = max(c(tempdat_big$logYield, tempdat$logYield), na.rm = TRUE), label = "Staunton River, VA", hjust = 0, vjust = 1), colour = "white", expand = 10) +
   scale_x_date(expand = c(0.02,0.02)) + #scale_y_continuous(expand = c(0,0)) +
   theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
                      axis.title = element_blank(), plot.margin = margin(t = 1, r = 5, b = 2, l = 2), 
-                     axis.text = element_text(color = "black"), panel.border = element_rect(colour = mycols[2], fill = NA, linewidth = 1.5))
+                     axis.text = element_text(color = "black")#, panel.border = element_rect(colour = mycols[2], fill = NA, linewidth = 1.5)
+                     )
 # greyscale
 pst2 <- ggplot() +
   geom_line(data = tempdat, aes(x = date, y = logYield, group = site_name), color = "grey") +
@@ -580,11 +583,12 @@ ppa1 <- ggplot() +
   geom_line(data = tempdat, aes(x = date, y = logYield, color = factor(site_name, levels = paineorder))) +
   geom_line(data = tempdat_big, aes(x = date, y = logYield), color = "grey40") +
   scale_color_manual(values = cet_pal(nsites, name = "i1")) +
-  annotate("text", x = min(c(tempdat_big$date, tempdat$date), na.rm = TRUE), y = max(c(tempdat_big$logYield, tempdat$logYield), na.rm = TRUE), label = "Paine Run, VA", hjust = 0, vjust = 1) +
+  with_outer_glow(annotate("text", x = min(c(tempdat_big$date, tempdat$date), na.rm = TRUE), y = max(c(tempdat_big$logYield, tempdat$logYield), na.rm = TRUE), label = "Paine Run, VA", hjust = 0, vjust = 1), colour = "white", expand = 10) +
   scale_x_date(expand = c(0.02,0.02)) + #scale_y_continuous(expand = c(0,0)) +
   theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
                      axis.title = element_blank(), plot.margin = margin(t = 1, r = 5, b = 2, l = 2), 
-                     axis.text = element_text(color = "black"), panel.border = element_rect(colour = mycols[3], fill = NA, linewidth = 1.5))
+                     axis.text = element_text(color = "black")#, panel.border = element_rect(colour = mycols[3], fill = NA, linewidth = 1.5)
+                     )
 # greyscale
 ppa2 <- ggplot() +
   geom_line(data = tempdat, aes(x = date, y = logYield, group = site_name), color = "grey") +
@@ -613,11 +617,12 @@ pfl1 <- ggplot() +
   geom_line(data = tempdat, aes(x = date, y = logYield, color = factor(site_name, levels = flatorder))) +
   geom_line(data = tempdat_big, aes(x = date, y = logYield), color = "grey40") +
   scale_color_manual(values = cet_pal(nsites, name = "i1")) +
-  annotate("text", x = min(c(tempdat_big$date, tempdat$date), na.rm = TRUE), y = max(c(tempdat_big$logYield, tempdat$logYield), na.rm = TRUE), label = "Flathead River, MT", hjust = 0, vjust = 1) +
+  with_outer_glow(annotate("text", x = min(c(tempdat_big$date, tempdat$date), na.rm = TRUE), y = max(c(tempdat_big$logYield, tempdat$logYield), na.rm = TRUE), label = "Flathead River, MT", hjust = 0, vjust = 1), colour = "white", expand = 10) +
   scale_x_date(expand = c(0.02,0.02)) + #scale_y_continuous(expand = c(0,0)) +
   theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
                      axis.title = element_blank(), plot.margin = margin(t = 1, r = 5, b = 2, l = 2), 
-                     axis.text = element_text(color = "black"), panel.border = element_rect(colour = mycols[4], fill = NA, linewidth = 1.5))
+                     axis.text = element_text(color = "black")#, panel.border = element_rect(colour = mycols[4], fill = NA, linewidth = 1.5)
+                     )
 # greyscale
 pfl2 <- ggplot() +
   geom_line(data = tempdat, aes(x = date, y = logYield, group = site_name), color = "grey") +
@@ -648,11 +653,12 @@ pye1 <- ggplot() +
   geom_line(data = tempdat, aes(x = date, y = logYield, color = factor(site_name, levels = yellorder))) +
   geom_line(data = tempdat_big, aes(x = date, y = logYield), color = "grey40") +
   scale_color_manual(values = cet_pal(nsites, name = "i1")) +
-  annotate("text", x = min(c(tempdat_big$date, tempdat$date), na.rm = TRUE), y = max(c(tempdat_big$logYield, tempdat$logYield), na.rm = TRUE), label = "Yellowstone River, MT", hjust = 0, vjust = 1) +
+  with_outer_glow(annotate("text", x = min(c(tempdat_big$date, tempdat$date), na.rm = TRUE), y = max(c(tempdat_big$logYield, tempdat$logYield), na.rm = TRUE), label = "Yellowstone River, MT", hjust = 0, vjust = 1), colour = "white", expand = 10) +
   scale_x_date(expand = c(0.02,0.02)) + #scale_y_continuous(expand = c(0,0)) +
   theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
                      axis.title = element_blank(), plot.margin = margin(t = 1, r = 5, b = 2, l = 2), 
-                     axis.text = element_text(color = "black"), panel.border = element_rect(colour = mycols[5], fill = NA, linewidth = 1.5))
+                     axis.text = element_text(color = "black")#, panel.border = element_rect(colour = mycols[5], fill = NA, linewidth = 1.5)
+                     )
 # greyscale
 pye2 <- ggplot() +
   geom_line(data = tempdat, aes(x = date, y = logYield, group = site_name), color = "grey") +
@@ -683,11 +689,12 @@ psn1 <- ggplot() +
   geom_line(data = tempdat, aes(x = date, y = logYield, color = factor(site_name, levels = snakeorder))) +
   geom_line(data = tempdat_big, aes(x = date, y = logYield), color = "grey40") +
   scale_color_manual(values = cet_pal(nsites, name = "i1")) +
-  annotate("text", x = min(c(tempdat_big$date, tempdat$date), na.rm = TRUE), y = max(c(tempdat_big$logYield, tempdat$logYield), na.rm = TRUE), label = "Snake River, WY", hjust = 0, vjust = 1) +
+  with_outer_glow(annotate("text", x = min(c(tempdat_big$date, tempdat$date), na.rm = TRUE), y = max(c(tempdat_big$logYield, tempdat$logYield), na.rm = TRUE), label = "Snake River, WY", hjust = 0, vjust = 1), colour = "white", expand = 10) +
   scale_x_date(expand = c(0.02,0.02)) + #scale_y_continuous(expand = c(0,0)) +
   theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
                      axis.title = element_blank(), plot.margin = margin(t = 1, r = 5, b = 2, l = 2), 
-                     axis.text = element_text(color = "black"), panel.border = element_rect(colour = mycols[6], fill = NA, linewidth = 1.5))
+                     axis.text = element_text(color = "black")#, panel.border = element_rect(colour = mycols[6], fill = NA, linewidth = 1.5)
+                     )
 # greyscale
 psn2 <- ggplot() +
   geom_line(data = tempdat, aes(x = date, y = logYield, group = site_name), color = "grey") +
@@ -714,11 +721,12 @@ pdb1 <- ggplot() +
   geom_line(data = tempdat, aes(x = date, y = logYield, color = factor(site_name, levels = donnerorder))) +
   geom_line(data = tempdat_big, aes(x = date, y = logYield), color = "grey40") +
   scale_color_manual(values = cet_pal(nsites, name = "i1")) +
-  annotate("text", x = min(c(tempdat_big$date, tempdat$date), na.rm = TRUE), y = max(c(tempdat_big$logYield, tempdat$logYield), na.rm = TRUE), label = "Donner-Blitzen River, OR", hjust = 0, vjust = 1) +
+  with_outer_glow(annotate("text", x = min(c(tempdat_big$date, tempdat$date), na.rm = TRUE), y = max(c(tempdat_big$logYield, tempdat$logYield), na.rm = TRUE), label = "Donner und Blitzen River, OR", hjust = 0, vjust = 1), colour = "white", expand = 10) +
   scale_x_date(expand = c(0.02,0.02)) + #scale_y_continuous(expand = c(0,0)) +
   theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
                      axis.title = element_blank(), plot.margin = margin(t = 1, r = 5, b = 2, l = 2), 
-                     axis.text = element_text(color = "black"), panel.border = element_rect(colour = mycols[7], fill = NA, linewidth = 1.5))
+                     axis.text = element_text(color = "black")#, panel.border = element_rect(colour = mycols[7], fill = NA, linewidth = 1.5)
+                     )
 # greyscale
 pdb2 <- ggplot() +
   geom_line(data = tempdat, aes(x = date, y = logYield, group = site_name), color = "grey") +
@@ -729,6 +737,24 @@ pdb2 <- ggplot() +
                      axis.title = element_blank(), plot.margin = margin(t = 1, r = 5, b = 2, l = 2), axis.text = element_text(color = "black"))
 ```
 
+```{r}
+ggplot() +
+  geom_rect(aes(xmin = ymd("2019-07-15"), xmax = ymd("2019-09-30"), ymin = -Inf, ymax = Inf), fill = polycol, color = NA) +
+  geom_rect(aes(xmin = ymd("2020-07-01"), xmax = ymd("2020-09-30"), ymin = -Inf, ymax = Inf), fill = polycol, color = NA) +
+  geom_rect(aes(xmin = ymd("2021-07-01"), xmax = ymd("2021-09-30"), ymin = -Inf, ymax = Inf), fill = polycol, color = NA) +
+  geom_rect(aes(xmin = ymd("2022-07-01"), xmax = ymd("2022-09-30"), ymin = -Inf, ymax = Inf), fill = polycol, color = NA) +
+  geom_line(data = tempdat, aes(x = date, y = logYield, color = factor(site_name, levels = donnerorder))) +
+  geom_line(data = tempdat_big, aes(x = date, y = logYield), color = "grey40") +
+  scale_color_manual(values = cet_pal(nsites, name = "i1")) +
+  with_outer_glow(annotate("text", x = min(c(tempdat_big$date, tempdat$date), na.rm = TRUE), y = max(c(tempdat_big$logYield, tempdat$logYield), na.rm = TRUE), label = "Donner und Blitzen River, OR", hjust = 0, vjust = 1), colour = "white", expand = 10) +
+  scale_x_date(expand = c(0.02,0.02)) + #scale_y_continuous(expand = c(0,0)) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
+                     axis.title = element_blank(), plot.margin = margin(t = 1, r = 5, b = 2, l = 2), 
+                     axis.text = element_text(color = "black")#, panel.border = element_rect(colour = mycols[7], fill = NA, linewidth = 1.5)
+                     )
+```
+
+
 Generate plot
 ```{r fig.width=7, fig.height=11}
 annotate_figure(egg::ggarrange(pwb1, pst1, ppa1, pfl1, pye1, psn1, pdb1, ncol = 1), left = "log(Yield, mm/day)")
@@ -736,8 +762,147 @@ annotate_figure(egg::ggarrange(pwb1, pst1, ppa1, pfl1, pye1, psn1, pdb1, ncol = 
 
 Write to file
 ```{r}
-jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/EcoD_timeseries_new.jpg", width = 6, height = 11, units = "in", res = 1000)
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/EcoD_timeseries_new_noborder.jpg", width = 5, height = 11, units = "in", res = 1000)
 annotate_figure(egg::ggarrange(pwb1, pst1, ppa1, pfl1, pye1, psn1, pdb1, ncol = 1), left = "log(Yield, mm/day)")
+dev.off()
+```
+
+Plot time series just for summer 2020, for more detailed view
+```{r}
+polycol <- "grey90"
+mycols <- brewer.pal(7, "Set2")
+
+### WEST BROOK
+tempdat <- dat_clean %>% 
+  filter(basin == "West Brook", date >= date("2020-07-01"), date <= date("2020-09-30")) %>%
+  mutate(site_name = factor(site_name, levels = wborder))
+tempdat <- fill_missing_dates(tempdat, dates = date, groups = site_name, pad_ends = FALSE)  
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == "West Brook", date >= date("2020-07-01"), date <= date("2020-09-30"))
+# same yaxis scale as main time series
+pwb1 <- ggplot() +
+  geom_line(data = tempdat, aes(x = date, y = logYield, color = factor(site_name, levels = wborder))) +
+  geom_line(data = tempdat_big, aes(x = date, y = logYield), color = "grey40") +
+  scale_color_manual(values = cet_pal(nsites, name = "i1")) +
+  scale_x_date(expand = c(0.02,0.02)) + #scale_y_continuous(expand = c(0,0)) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
+                     axis.title = element_blank(), plot.margin = margin(t = 1, r = 7, b = 2, l = 2), 
+                     axis.text = element_text(color = "black")#, panel.border = element_rect(colour = mycols[1], fill = NA, linewidth = 1.5)
+                     )
+
+### STAUNTON RIVER
+tempdat <- dat_clean %>% 
+  filter(basin == "Staunton River", date >= date("2020-07-01"), date <= date("2020-09-30")) %>%
+  mutate(site_name = factor(site_name, levels = stauntorder))
+tempdat <- fill_missing_dates(tempdat, dates = date, groups = site_name, pad_ends = FALSE)  
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == "Staunton River", , date >= date("2020-07-01"), date <= date("2020-09-30"))
+# color
+pst1 <- ggplot() +
+  geom_line(data = tempdat, aes(x = date, y = logYield, color = factor(site_name, levels = stauntorder))) +
+  geom_line(data = tempdat_big, aes(x = date, y = logYield), color = "grey40") +
+  scale_color_manual(values = cet_pal(nsites, name = "i1")) +
+  scale_x_date(expand = c(0.02,0.02)) + #scale_y_continuous(expand = c(0,0)) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
+                     axis.title = element_blank(), plot.margin = margin(t = 1, r = 7, b = 2, l = 2), 
+                     axis.text = element_text(color = "black")#, panel.border = element_rect(colour = mycols[2], fill = NA, linewidth = 1.5)
+                     )
+
+### PAINE RUN
+tempdat <- dat_clean %>% 
+  filter(basin == "Paine Run", date >= date("2020-07-01"), date <= date("2020-09-30")) %>%
+  mutate(site_name = factor(site_name, levels = paineorder))
+tempdat <- fill_missing_dates(tempdat, dates = date, groups = site_name, pad_ends = FALSE)  
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == "Paine Run", date >= date("2020-07-01"), date <= date("2020-09-30"))
+# color
+ppa1 <- ggplot() +
+  geom_line(data = tempdat, aes(x = date, y = logYield, color = factor(site_name, levels = paineorder))) +
+  geom_line(data = tempdat_big, aes(x = date, y = logYield), color = "grey40") +
+  scale_color_manual(values = cet_pal(nsites, name = "i1")) +
+  scale_x_date(expand = c(0.02,0.02)) + #scale_y_continuous(expand = c(0,0)) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
+                     axis.title = element_blank(), plot.margin = margin(t = 1, r = 7, b = 2, l = 2), 
+                     axis.text = element_text(color = "black")#, panel.border = element_rect(colour = mycols[3], fill = NA, linewidth = 1.5)
+                     )
+
+### FLATHEAD
+tempdat <- dat_clean %>% 
+  filter(basin == "Flathead", date >= date("2020-07-01"), date <= date("2020-09-30")) %>%
+  mutate(site_name = factor(site_name, levels = flatorder))
+tempdat <- fill_missing_dates(tempdat, dates = date, groups = site_name, pad_ends = FALSE)  
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == "Flathead", date >= date("2020-07-01"), date <= date("2020-09-30"))
+# color
+pfl1 <- ggplot() +
+  geom_line(data = tempdat, aes(x = date, y = logYield, color = factor(site_name, levels = flatorder))) +
+  geom_line(data = tempdat_big, aes(x = date, y = logYield), color = "grey40") +
+  scale_color_manual(values = cet_pal(nsites, name = "i1")) +
+  scale_x_date(expand = c(0.02,0.02)) + #scale_y_continuous(expand = c(0,0)) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
+                     axis.title = element_blank(), plot.margin = margin(t = 1, r = 7, b = 2, l = 2), 
+                     axis.text = element_text(color = "black")#, panel.border = element_rect(colour = mycols[4], fill = NA, linewidth = 1.5)
+                     )
+
+### YELLOWSTONE
+tempdat <- dat_clean %>% 
+  filter(basin == "Shields River", date >= date("2020-07-01"), date <= date("2020-09-30")) %>%
+  mutate(site_name = factor(site_name, levels = yellorder))
+tempdat <- fill_missing_dates(tempdat, dates = date, groups = site_name, pad_ends = FALSE)  
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == "Shields River", date >= date("2020-07-01"), date <= date("2020-09-30"))
+# color
+pye1 <- ggplot() +
+  geom_line(data = tempdat, aes(x = date, y = logYield, color = factor(site_name, levels = yellorder))) +
+  geom_line(data = tempdat_big, aes(x = date, y = logYield), color = "grey40") +
+  scale_color_manual(values = cet_pal(nsites, name = "i1")) +
+  scale_x_date(expand = c(0.02,0.02)) + #scale_y_continuous(expand = c(0,0)) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
+                     axis.title = element_blank(), plot.margin = margin(t = 1, r = 7, b = 2, l = 2), 
+                     axis.text = element_text(color = "black")#, panel.border = element_rect(colour = mycols[5], fill = NA, linewidth = 1.5)
+                     )
+
+### SNAKE
+tempdat <- dat_clean %>% 
+  filter(basin == "Snake River", date >= date("2020-07-01"), date <= date("2020-09-30")) %>%
+  mutate(site_name = factor(site_name, levels = snakeorder))
+tempdat <- fill_missing_dates(tempdat, dates = date, groups = site_name, pad_ends = FALSE)  
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == "Snake River", date >= date("2020-07-01"), date <= date("2020-09-30"))
+# color
+psn1 <- ggplot() +
+  geom_line(data = tempdat, aes(x = date, y = logYield, color = factor(site_name, levels = snakeorder))) +
+  geom_line(data = tempdat_big, aes(x = date, y = logYield), color = "grey40") +
+  scale_color_manual(values = cet_pal(nsites, name = "i1")) +
+  scale_x_date(expand = c(0.02,0.02)) + #scale_y_continuous(expand = c(0,0)) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
+                     axis.title = element_blank(), plot.margin = margin(t = 1, r = 7, b = 2, l = 2), 
+                     axis.text = element_text(color = "black")#, panel.border = element_rect(colour = mycols[6], fill = NA, linewidth = 1.5)
+                     )
+
+### DONNER BLITZEN
+tempdat <- dat_clean %>% 
+  filter(basin == "Donner Blitzen", date >= date("2020-07-01"), date <= date("2020-09-30")) %>%
+  mutate(site_name = factor(site_name, levels = donnerorder))
+tempdat <- fill_missing_dates(tempdat, dates = date, groups = site_name, pad_ends = FALSE)  
+nsites <- length(unique(tempdat$site_name))
+tempdat_big <- dat_clean_big %>% filter(basin == "Donner Blitzen", date >= date("2020-07-01"), date <= date("2020-09-30"))
+# color
+pdb1 <- ggplot() +
+  geom_line(data = tempdat, aes(x = date, y = logYield, color = factor(site_name, levels = donnerorder))) +
+  geom_line(data = tempdat_big, aes(x = date, y = logYield), color = "grey40") +
+  scale_color_manual(values = cet_pal(nsites, name = "i1")) +
+  scale_x_date(expand = c(0.02,0.02)) + #scale_y_continuous(expand = c(0,0)) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
+                     axis.title = element_blank(), plot.margin = margin(t = 1, r = 7, b = 2, l = 2), 
+                     axis.text = element_text(color = "black")#, panel.border = element_rect(colour = mycols[7], fill = NA, linewidth = 1.5)
+                     )
+```
+
+Write to file
+```{r}
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/EcoD_timeseries_2020only.jpg", width = 2, height = 11, units = "in", res = 1000)
+annotate_figure(egg::ggarrange(pwb1, pst1, ppa1, pfl1, pye1, psn1, pdb1, ncol = 1))
 dev.off()
 ```
 
@@ -1053,10 +1218,42 @@ p <- egg::ggarrange(
           plot.margin = margin(t = 1, r = 1, b = 2, l = 1), panel.border = element_rect(colour = mycols[7], fill = NA, linewidth = 1.5)),
   nrow = 7)
 
+# no borders
+p1 <- egg::ggarrange(
+  # West Brook
+  portfolioplot(bas = "West Brook", orderr = wborder, type = "interannual", wtryrs = c(2020:2024)) + 
+    theme(axis.title = element_blank(), axis.ticks.y = element_blank(), axis.text.y = element_blank(), 
+          plot.margin = margin(t = 1, r = 7, b = 2, l = 1)),
+  # Staunton
+  portfolioplot(bas = "Staunton River", orderr = stauntorder, type = "interannual", wtryrs = c(2019:2022)) + 
+    theme(axis.title = element_blank(), axis.ticks.y = element_blank(), axis.text.y = element_blank(), 
+          plot.margin = margin(t = 1, r = 7, b = 2, l = 1)),
+  # Paine
+  portfolioplot(bas = "Paine Run", orderr = paineorder, type = "interannual", wtryrs = c(2019:2022)) + 
+    theme(axis.title = element_blank(), axis.ticks.y = element_blank(), axis.text.y = element_blank(), 
+          plot.margin = margin(t = 1, r = 7, b = 2, l = 1)),
+  # Flathead
+  portfolioplot(bas = "Flathead", orderr = flatorder, type = "interannual", wtryrs = c(2018:2024)) + 
+    theme(axis.title = element_blank(), axis.ticks.y = element_blank(), axis.text.y = element_blank(), 
+          plot.margin = margin(t = 1, r = 7, b = 2, l = 1)),
+  # Yellowstone
+  portfolioplot(bas = "Shields River", orderr = yellorder, type = "interannual", wtryrs = c(2016:2020,2022:2024)) + 
+    theme(axis.title = element_blank(), axis.ticks.y = element_blank(), axis.text.y = element_blank(), 
+          plot.margin = margin(t = 1, r = 7, b = 2, l = 1)),
+  # Snake
+  portfolioplot(bas = "Snake River", orderr = snakeorder, type = "interannual", wtryrs = c(2016:2024)) + 
+    theme(axis.title = element_blank(), axis.ticks.y = element_blank(), axis.text.y = element_blank(), 
+          plot.margin = margin(t = 1, r = 7, b = 2, l = 1)),
+  # Donner Blitzen
+  portfolioplot(bas = "Donner Blitzen", orderr = donnerorder, type = "interannual", wtryrs = c(2016:2024)) + 
+    theme(axis.title = element_blank(), axis.ticks.y = element_blank(), axis.text.y = element_blank(), 
+          plot.margin = margin(t = 1, r = 7, b = 2, l = 1)),
+  nrow = 7)
+
 #annotate_figure(p, left = "Density")
 
-jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/EcoD_summerdensity_all.jpg", width = 2.25, height = 11, units = "in", res = 1000)
-annotate_figure(p, left = "Density")
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/EcoD_summerdensity_all_noborder_wide.jpg", width = 2.5, height = 11, units = "in", res = 1000)
+annotate_figure(p1, left = "Density")
 dev.off()
 ```
 
@@ -1110,7 +1307,7 @@ mydat <- dat_clean %>%
               group_by(basin, WaterYear) %>% 
               summarize(bigrange = range(logYield)[2]-range(logYield)[1]) %>%
               ungroup()) %>%
-  mutate(pe_range = ((littlerange-bigrange)/bigrange)) %>%
+  mutate(pe_range = ((littlerange-bigrange)/bigrange)*100) %>%
   left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
   left_join(keepyears) %>% filter(keep == "yes") %>%
   mutate(basin = ifelse(basin == "Shields River", "Yellowstone River",
@@ -1168,18 +1365,18 @@ mydat_labs <- bind_rows(mydat %>% filter(basin == "West Brook", WaterYear %in% c
 # plot 
 randiffplot <- ggplot() + 
   geom_ribbon(data = x_tyz, aes(x = tyz_sum_perc, ymin = lower, ymax = upper), fill = "grey80") +
-  geom_line(data = x_tyz, aes(x = tyz_sum_perc, y = fit), color = "black", size = 1.25) +
+  geom_line(data = x_tyz, aes(x = tyz_sum_perc, y = fit), color = "black", size = 1.25, lineend = "round") +
   geom_point(data = mydat, aes(x = tyz_sum_perc, y = pe_range, fill = basin, size = nsites), shape = 21) + 
   scale_fill_brewer(palette = "Set2") +
   geom_text(data = mydat_labs, aes(x = tyz_sum_perc, y = pe_range, label = labs), size = 3) +
   theme_bw() + theme(panel.grid = element_blank(), axis.text = element_text(color = "black")) +
-  ylab("Spatial streamflow heterogeneity") + xlab("Regional water availability (%)") +
+  ylab("Spatial streamflow heterogeneity (percent difference)") + xlab("Water availability (percentile)") +
   guides(fill = guide_legend(title = "Basin", override.aes = list(size = 5), order = 1), size = guide_legend(title = "Number of sites", order = 2)) +
   geom_abline(intercept = 0, slope = 0, linetype = "dashed")
 randiffplot
 
 # write to file
-jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/EcoD_RangeDiff_allsites.jpg", width = 4.75, height = 5, units = "in", res = 1000)
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/EcoD_RangeDiff_allsites2.jpg", width = 4.75, height = 5, units = "in", res = 1000)
 randiffplot
 dev.off()
 ```
@@ -1197,6 +1394,106 @@ The strong effect of basin is largely driven by Staunton and Donner-Blitzen Rive
 ```{r message=FALSE}
 rmod <- rptGaussian(pe_range ~ z_tyz_sum_perc + (1 + z_tyz_sum_perc | basin), data = mydat %>% filter(!basin %in% c("Staunton River", "Donner-Blitzen River")), grname = c("basin", "Fixed"), ratio = TRUE, adjusted = FALSE, nboot = 1000)
 print(rmod)
+```
+
+
+#### Sensitivity analysis
+
+How sensitive are these results to the choice of data (log) transformation, sensu comment from John Hammond during internal review?
+
+Summary: While the among-network mean effect of water availability on heterogeneity was less significant using un-logged discharge data (p > 0.05), this appeared to be driven by the highly non-normal distribution of raw discharge values, as the reviewer indicated. Importantly, the magnitude of the effect is similar and the qualitative results are unchanged (negative slope). 
+
+Data manipulation: use un-logged/raw Yield data to calculation spatial heterogeneity, also use CV rather than ranges
+```{r}
+mydat2 <- dat_clean %>% 
+  filter(Month %in% c(7:9)) %>%
+  group_by(basin, WaterYear) %>% 
+  summarize(nsites = length(unique(site_name)),
+            littlerange = range(Yield_mm)[2]-range(Yield_mm)[1],
+            littlecv = sd(Yield_mm)/mean(Yield_mm)) %>% 
+  ungroup() %>% 
+  left_join(dat_clean_big %>% 
+              filter(Month %in% c(7:9)) %>% 
+              group_by(basin, WaterYear) %>% 
+              summarize(bigrange = range(Yield_mm)[2]-range(Yield_mm)[1],
+                        bigcv = sd(Yield_mm)/mean(Yield_mm)) %>%
+              ungroup()) %>%
+  mutate(pe_range = ((littlerange-bigrange)/bigrange)*100,
+         pe_cv = ((littlecv-bigcv)/bigcv)*100) %>%
+  left_join(wateravail %>% select(basin, WaterYear, totalyield:tyz_sum_perc)) %>%
+  left_join(keepyears) %>% filter(keep == "yes") %>%
+  mutate(basin = ifelse(basin == "Shields River", "Yellowstone River",
+                        ifelse(basin == "Flathead", "Flathead River", 
+                               ifelse(basin == "Donner Blitzen", "Donner-Blitzen River", basin)))) %>%
+  mutate(basin = factor(basin, levels = c("West Brook", "Staunton River", "Paine Run", 
+                                          "Flathead River", "Yellowstone River", "Snake River", "Donner-Blitzen River"))) 
+```
+
+
+##### Range, un-logged
+
+Fig the mmixed effects model
+```{r}
+mydat2 <- mydat2 %>% mutate(z_tyz_sum_perc = scale(tyz_sum_perc))
+lmod <- lmer(pe_range ~ z_tyz_sum_perc + (1 + z_tyz_sum_perc | basin), data = mydat2)
+summary(lmod)
+```
+
+Plot
+```{r}
+# get predicted values and 95% credible interval
+effects_tyz <- effects::effect(term = "z_tyz_sum_perc", mod = as_lmerModLmerTest(lmod), xlevels = list(z_tyz_sum_perc = seq(min(mydat2$z_tyz_sum_perc), max(mydat2$z_tyz_sum_perc), length.out = 1000)), se = list(level = 0.95))
+x_tyz <- as_tibble(effects_tyz) %>% mutate(tyz_sum_perc = (z_tyz_sum_perc * attr(mydat2$z_tyz_sum_perc, "scaled:scale")) + attr(mydat2$z_tyz_sum_perc, "scaled:center"))
+
+# trim data for panel labesl
+mydat_labs <- bind_rows(mydat2 %>% filter(basin == "West Brook", WaterYear %in% c(2020,2021)),
+                        mydat2 %>% filter(basin == "Snake River", WaterYear %in% c(2021,2022))) %>%
+  mutate(labs = c("b", "c", "d", "e"))
+
+# plot 
+ggplot() + 
+  geom_ribbon(data = x_tyz, aes(x = tyz_sum_perc, ymin = lower, ymax = upper), fill = "grey80") +
+  geom_line(data = x_tyz, aes(x = tyz_sum_perc, y = fit), color = "black", size = 1.25, lineend = "round") +
+  geom_point(data = mydat2, aes(x = tyz_sum_perc, y = pe_range, fill = basin, size = nsites), shape = 21) + 
+  scale_fill_brewer(palette = "Set2") +
+  theme_bw() + theme(panel.grid = element_blank(), axis.text = element_text(color = "black")) +
+  ylab("Spatial streamflow heterogeneity (percent difference)") + xlab("Water availability (percentile)") +
+  guides(fill = guide_legend(title = "Basin", override.aes = list(size = 5), order = 1), size = guide_legend(title = "Number of sites", order = 2)) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed")
+```
+
+
+##### CV
+
+Fig the mmixed effects model
+```{r}
+mydat2 <- mydat2 %>% mutate(z_tyz_sum_perc = scale(tyz_sum_perc))
+lmod <- lmer(pe_cv ~ z_tyz_sum_perc + (1 + z_tyz_sum_perc | basin), data = mydat2)
+summary(lmod)
+```
+
+Plot
+```{r}
+# get predicted values and 95% credible interval
+effects_tyz <- effects::effect(term = "z_tyz_sum_perc", mod = as_lmerModLmerTest(lmod), xlevels = list(z_tyz_sum_perc = seq(min(mydat2$z_tyz_sum_perc), max(mydat2$z_tyz_sum_perc), length.out = 1000)), se = list(level = 0.95))
+x_tyz <- as_tibble(effects_tyz) %>% mutate(tyz_sum_perc = (z_tyz_sum_perc * attr(mydat2$z_tyz_sum_perc, "scaled:scale")) + attr(mydat2$z_tyz_sum_perc, "scaled:center"))
+
+# trim data for panel labesl
+mydat_labs <- bind_rows(mydat2 %>% filter(basin == "West Brook", WaterYear %in% c(2020,2021)),
+                        mydat2 %>% filter(basin == "Snake River", WaterYear %in% c(2021,2022))) %>%
+  mutate(labs = c("b", "c", "d", "e"))
+
+# plot 
+ggplot() + 
+  geom_ribbon(data = x_tyz, aes(x = tyz_sum_perc, ymin = lower, ymax = upper), fill = "grey80") +
+  geom_line(data = x_tyz, aes(x = tyz_sum_perc, y = fit), color = "black", size = 1.25, lineend = "round") +
+  geom_point(data = mydat2, aes(x = tyz_sum_perc, y = pe_cv, fill = basin, size = nsites), shape = 21) + 
+  scale_fill_brewer(palette = "Set2") +
+  theme_bw() + theme(panel.grid = element_blank(), axis.text = element_text(color = "black")) +
+  ylab("Spatial streamflow heterogeneity (percent difference)") + xlab("Water availability (percentile)") +
+  guides(fill = guide_legend(title = "Basin", override.aes = list(size = 5), order = 1), size = guide_legend(title = "Number of sites", order = 2)) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed")
+
 ```
 
 
