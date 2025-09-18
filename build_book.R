@@ -52,7 +52,7 @@ quarto::quarto_render("Covariates/PASTA.qmd",
                       output_format = "html")
 
 quarto::quarto_render("Qualitative/Overview.qmd", 
-                      #cache_refresh = TRUE, # default is FALSE
+                      cache_refresh = TRUE, # default is FALSE
                       output_format = "html")
 
 quarto::quarto_render("Qualitative/SpaceTimeVar.qmd", 
@@ -74,6 +74,10 @@ quarto::quarto_render("Qualitative/LowFlow.qmd",
 
 quarto::quarto_render("Qualitative/Boxes.qmd", 
                       #cache_refresh = TRUE, # default is FALSE
+                      output_format = "html")
+
+quarto::quarto_render("FluvialSynch/FluvialSynch.qmd", 
+                      cache_refresh = TRUE, # default is FALSE
                       output_format = "html")
 
 

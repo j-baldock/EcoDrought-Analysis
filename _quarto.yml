@@ -42,6 +42,7 @@ book:
         - Qualitative/Overview.qmd
         - Qualitative/SpaceTimeVar.qmd
         - Qualitative/LowFlow.qmd
+        - FluvialSynch/FluvialSynch.qmd
         - Qualitative/Boxes.qmd
     - part: "DEPRECATED"   
       chapters:

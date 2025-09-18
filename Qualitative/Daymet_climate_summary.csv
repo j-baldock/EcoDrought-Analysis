@@ -1,345 +1,353 @@
 site_name,basin,subbasin,region,WaterYear,precip_total,sampsize,precip_total_z
-Battle Run NWIS,Piney River,Piney River,Shen,1981,872.97,364,-0.8639588909191747
-Battle Run NWIS,Piney River,Piney River,Shen,1982,996.79,365,-0.39306031496306987
-Battle Run NWIS,Piney River,Piney River,Shen,1983,1029.39,365,-0.2690795882939608
-Battle Run NWIS,Piney River,Piney River,Shen,1984,1586.61,366,1.8500780962017647
-Battle Run NWIS,Piney River,Piney River,Shen,1985,795.86,364,-1.157215143479143
-Battle Run NWIS,Piney River,Piney River,Shen,1986,969.33,365,-0.49749316018803036
-Battle Run NWIS,Piney River,Piney River,Shen,1987,1017.22,365,-0.31536319085724485
-Battle Run NWIS,Piney River,Piney River,Shen,1988,841.34,366,-0.9842506205064109
-Battle Run NWIS,Piney River,Piney River,Shen,1989,1121.8,364,0.0823639378254351
-Battle Run NWIS,Piney River,Piney River,Shen,1990,971.3,365,-0.4900010733310324
-Battle Run NWIS,Piney River,Piney River,Shen,1991,947.15,365,-0.5818456914003259
-Battle Run NWIS,Piney River,Piney River,Shen,1992,1035.94,366,-0.24416935026688544
-Battle Run NWIS,Piney River,Piney River,Shen,1993,1169.94,364,0.26544467960000256
-Battle Run NWIS,Piney River,Piney River,Shen,1994,1380.99,365,1.068086776640351
-Battle Run NWIS,Piney River,Piney River,Shen,1995,950.8100000000001,365,-0.5679263828233644
-Battle Run NWIS,Piney River,Piney River,Shen,1996,1572.54,366,1.7965686230657418
-Battle Run NWIS,Piney River,Piney River,Shen,1997,989.91,364,-0.4192255726159369
-Battle Run NWIS,Piney River,Piney River,Shen,1998,1418.6,365,1.2111209830828404
-Battle Run NWIS,Piney River,Piney River,Shen,1999,948.82,365,-0.5754945314758652
-Battle Run NWIS,Piney River,Piney River,Shen,2000,1050.9,366,-0.1872751272309999
-Battle Run NWIS,Piney River,Piney River,Shen,2001,941.22,364,-0.6043980137668231
-Battle Run NWIS,Piney River,Piney River,Shen,2002,789.34,365,-1.1820112888129646
-Battle Run NWIS,Piney River,Piney River,Shen,2003,1702.6,365,2.291198479218633
-Battle Run NWIS,Piney River,Piney River,Shen,2004,1246.46,366,0.5564571091926462
-Battle Run NWIS,Piney River,Piney River,Shen,2005,897.38,364,-0.7711254695083484
-Battle Run NWIS,Piney River,Piney River,Shen,2006,1091.24,365,-0.033858485702416175
-Battle Run NWIS,Piney River,Piney River,Shen,2007,948.49,365,-0.5767495511016569
-Battle Run NWIS,Piney River,Piney River,Shen,2008,1171.32,366,0.270692943489676
-Battle Run NWIS,Piney River,Piney River,Shen,2009,954.4399999999999,364,-0.5541211669396573
-Battle Run NWIS,Piney River,Piney River,Shen,2010,1273.12,365,0.6578474825975057
-Battle Run NWIS,Piney River,Piney River,Shen,2011,1132.41,365,0.12271472033952274
-Battle Run NWIS,Piney River,Piney River,Shen,2012,1030.34,366,-0.26546665300759176
-Battle Run NWIS,Piney River,Piney River,Shen,2013,1147,364,0.1782018001586112
-Battle Run NWIS,Piney River,Piney River,Shen,2014,1344,365,0.9274104858584391
-Battle Run NWIS,Piney River,Piney River,Shen,2015,1279.17,365,0.6808561757370188
-Battle Run NWIS,Piney River,Piney River,Shen,2016,1260.83,366,0.6111075092612069
-Battle Run NWIS,Piney River,Piney River,Shen,2017,1003.68,364,-0.36685702641245155
-Battle Run NWIS,Piney River,Piney River,Shen,2018,1656.27,365,2.1150013299370443
-Battle Run NWIS,Piney River,Piney River,Shen,2019,1282.32,365,0.6928359085286653
-Battle Run NWIS,Piney River,Piney River,Shen,2020,1360.98,366,0.9919869502400791
-Battle Run NWIS,Piney River,Piney River,Shen,2021,1250.32,364,0.5711370357246324
-Battle Run NWIS,Piney River,Piney River,Shen,2022,1071.01,365,-0.11079499185321583
-Battle Run NWIS,Piney River,Piney River,Shen,2023,931.9,365,-0.6398428104709979
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1981,346.39,364,-0.490278975894538
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1982,444.94,365,0.36032572038512634
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1983,615.27,365,1.8304779062533678
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1984,565.04,366,1.3969327627310182
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1985,311.12,364,-0.7947013770897053
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1986,434.48,365,0.27004337514834026
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1987,321.42,365,-0.7058000237494664
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1988,298.93,366,-0.8999156972079104
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1989,495.75,364,0.7988769595324601
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1990,250.16,365,-1.3208592896742648
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1991,339.19,365,-0.5524236112391709
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1992,307.88,366,-0.8226664629947903
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1993,509.01,364,0.9133266629588258
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1994,293.45,365,-0.9472146696646591
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1995,441.97,365,0.33469105830546547
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1996,493.34,366,0.7780757690907146
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1997,516.83,364,0.9808226419025804
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1998,535.5,365,1.141967133830955
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1999,433.88,365,0.2648646555362873
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2000,310.94,366,-0.7962549929733213
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2001,381.04,364,-0.1912079182984914
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2002,355.72,365,-0.4097498859271174
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2003,450.61,365,0.409264620719025
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2004,379.29,366,-0.20631251716697857
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2005,489.87,364,0.7481255073343432
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2006,635.35,365,2.003792389270067
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2007,426.92,365,0.20479150803647556
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2008,454.06,366,0.4390422584883282
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2009,612.2,364,1.803980124238365
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2010,414.25,365,0.09543421222862818
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2011,673.21,365,2.3305695967905957
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2012,349.48,366,-0.46360856989246607
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2013,453.67,364,0.435676090740494
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2014,259.51,365,-1.2401575757197763
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2015,334.84,365,-0.5899693284265536
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2016,357.71,366,-0.3925737992138095
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2017,383,364,-0.1742907675657859
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2018,310.17,365,-0.8029010164754555
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2019,460.6,365,0.49549030225970336
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2020,284.96,366,-1.0204935521752054
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2021,260.13,364,-1.234806232120655
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2022,315.1,365,-0.7603492036630887
-Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2023,439.96,365,0.31734234760508834
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,1981,860.77,364,0.8009809415912724
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,1982,829.42,365,0.5942328314698219
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,1983,777.77,365,0.2536095495631901
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,1984,694.12,366,-0.29804848589643723
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,1985,683.38,364,-0.36887702505766146
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,1986,729.29,365,-0.06610810206959832
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,1987,701.83,365,-0.24720229996226215
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,1988,568.73,366,-1.1249749780217533
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,1989,745.26,364,0.039211429625443724
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,1990,849.28,365,0.7252062753936499
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,1991,818.96,365,0.525250846402187
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,1992,632.05,366,-0.7073899594287637
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,1993,845.06,364,0.6973760672688484
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,1994,496.25,365,-1.6029686948192883
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,1995,858.94,365,0.788912391622461
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,1996,1048.7,366,2.0403484801917244
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,1997,961.72,364,1.4667296406904884
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,1998,707.2,365,-0.21178803038165003
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,1999,698.52,365,-0.26903120728290053
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2000,694.28,366,-0.29699331212867247
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2001,476.51,364,-1.7331507584172925
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2002,768.9,365,0.1951133538127191
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2003,516.37,365,-1.4702805935228425
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2004,753.08,366,0.09078304752495735
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2005,804.48,364,0.42975762041945637
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2006,765.31,365,0.17143789239849222
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2007,706.86,365,-0.21403027463815083
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2008,712.4,366,-0.1774948829292887
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2009,647.19,364,-0.607544141654002
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2010,752.04,365,0.08392441803448447
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2011,970.21,365,1.5227197987425176
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2012,858,366,0.7827132457368413
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2013,903.95,364,1.0857459621668462
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2014,833.52,365,0.6212716592687996
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2015,676.41,365,-0.41484303231592345
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2016,871.1,366,0.869105597972599
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2017,925.31,364,1.22661166016347
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2018,727.7,365,-0.07659389138676224
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2019,722.8,365,-0.1089085880245653
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2020,704.53,366,-0.22939624263122857
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2021,670.15,364,-0.45612670597972815
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2022,927.1899999999999,365,1.2390099519347086
-North Fork Flathead River NWIS,Flathead,Flathead,Flat,2023,563.21,365,-1.1613784730096448
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1981,498.29,364,-1.0152575787380833
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1982,958.26,365,1.6063331160476721
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1983,702.35,365,0.14777870010180036
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1984,827.72,366,0.8623227473337725
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1985,625.17,364,-0.2921073138199006
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1986,858.63,365,1.0384937332150856
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1987,468.59,365,-1.1845321915066054
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1988,408.86,366,-1.5249622460744099
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1989,771.69,364,0.5429807758381405
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1990,535.02,365,-0.8059156081324336
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1991,666.13,365,-0.05865653472903675
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1992,505.76,366,-0.9726824488599402
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1993,725.68,364,0.2807476130947162
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1994,415.24,365,-1.4885995514796906
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1995,804.82,365,0.7318046115627574
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1996,874.44,366,1.128602542234289
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1997,1046.15,364,2.107260581240446
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1998,769.08,365,0.5281051280493916
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1999,814.42,365,0.7865196379121782
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2000,627.97,366,-0.2761487644679857
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2001,463.89,364,-1.211319756490176
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2002,663.21,365,-0.07529902191031879
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2003,622.54,365,-0.3070969512468774
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2004,666.58,366,-0.05609176786890737
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2005,525.93,364,-0.857723898707042
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2006,710.66,365,0.19514139478551773
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2007,548.26,365,-0.7304544676255236
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2008,758.59,366,0.4683175627988261
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2009,729.86,364,0.3045714474843603
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2010,583.99,365,-0.5268119789312715
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2011,915.83,365,1.3645040985470536
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2012,648.54,366,-0.15891042155052842
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2013,669.83,364,-0.03756845165686375
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2014,875.32,365,1.1336180863163192
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2015,652.88,365,-0.13417467005506076
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2016,643.51,366,-0.1875788155648604
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2017,1136.87,364,2.624317580242475
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2018,704.11,365,0.15780978826586084
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2019,753.89,365,0.44152999781525504
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2020,609.45,366,-0.3817031694670773
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2021,596.03,364,-0.45819021671803933
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2022,650.4,365,-0.148309385195328
-Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2023,714.32,365,0.21600149858123502
-Rapidan River NWIS,Staunton River,Staunton River,Shen,1981,860.24,364,-1.0221825615781306
-Rapidan River NWIS,Staunton River,Staunton River,Shen,1982,1076.16,365,-0.1671790413958213
-Rapidan River NWIS,Staunton River,Staunton River,Shen,1983,993.01,365,-0.49643776084357544
-Rapidan River NWIS,Staunton River,Staunton River,Shen,1984,1561.39,366,1.7542425874392187
-Rapidan River NWIS,Staunton River,Staunton River,Shen,1985,915.42,364,-0.8036799020576612
-Rapidan River NWIS,Staunton River,Staunton River,Shen,1986,1013.5,365,-0.4153011263097874
-Rapidan River NWIS,Staunton River,Staunton River,Shen,1987,1215.87,365,0.3860468839685277
-Rapidan River NWIS,Staunton River,Staunton River,Shen,1988,890.75,366,-0.9013685684289909
-Rapidan River NWIS,Staunton River,Staunton River,Shen,1989,1192.32,364,0.29279321177376416
-Rapidan River NWIS,Staunton River,Staunton River,Shen,1990,946.79,365,-0.6794604669515152
-Rapidan River NWIS,Staunton River,Staunton River,Shen,1991,1129.46,365,0.04387916361398342
-Rapidan River NWIS,Staunton River,Staunton River,Shen,1992,1057.99,366,-0.23912890227815095
-Rapidan River NWIS,Staunton River,Staunton River,Shen,1993,1216.76,364,0.38957112041240666
-Rapidan River NWIS,Staunton River,Staunton River,Shen,1994,1347.94,365,0.9090198133427297
-Rapidan River NWIS,Staunton River,Staunton River,Shen,1995,1048.94,365,-0.2749652391512977
-Rapidan River NWIS,Staunton River,Staunton River,Shen,1996,1524.17,366,1.6068582273929721
-Rapidan River NWIS,Staunton River,Staunton River,Shen,1997,1065.09,364,-0.21101420705170448
-Rapidan River NWIS,Staunton River,Staunton River,Shen,1998,1349.91,365,0.9168206513140115
-Rapidan River NWIS,Staunton River,Staunton River,Shen,1999,1013.16,365,-0.4166474638276737
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2000,1034.05,366,-0.3339269028022549
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2001,844.76,364,-1.083480516804243
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2002,707.1,365,-1.6285888188989845
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2003,1769.44,365,2.5780823538986914
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2004,1276.39,366,0.6256949621522695
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2005,907.19,364,-0.8362691896229646
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2006,1127.38,365,0.035642745857503516
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2007,1013.26,365,-0.4162514822047659
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2008,1228.91,366,0.43768288759569274
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2009,1097.36,364,-0.0832309373393893
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2010,1297.65,365,0.7098806551824468
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2011,1226,365,0.4261598223690783
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2012,1136.52,366,0.07183546619126693
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2013,1204.89,364,0.3425681017732629
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2014,1238.3,365,0.4748655619867254
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2015,1237.22,365,0.4705889604593225
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2016,1140.97,366,0.08945664841065983
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2017,941.58,364,-0.7000911095050061
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2018,1498.81,365,1.5064372878235786
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2019,1211.15,365,0.36735655136728496
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2020,1418.92,366,1.1900875692826163
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2021,1320.23,364,0.7992933056350054
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2022,1068.33,365,-0.19818440246949492
-Rapidan River NWIS,Staunton River,Staunton River,Shen,2023,941.71,365,-0.6995763333952261
-South River Conway NWIS,West Brook,West Brook,Mass,1981,974.55,364,-1.1023774745782946
-South River Conway NWIS,West Brook,West Brook,Mass,1982,1208.58,365,-0.22635300699440877
-South River Conway NWIS,West Brook,West Brook,Mass,1983,1253.21,365,-0.05929334802646055
-South River Conway NWIS,West Brook,West Brook,Mass,1984,1541.05,366,1.0181534867782467
-South River Conway NWIS,West Brook,West Brook,Mass,1985,978.05,364,-1.0892762241550855
-South River Conway NWIS,West Brook,West Brook,Mass,1986,1212.17,365,-0.21291486727460243
-South River Conway NWIS,West Brook,West Brook,Mass,1987,1354.5,365,0.3198568392212076
-South River Conway NWIS,West Brook,West Brook,Mass,1988,1105.17,366,-0.6134388087841345
-South River Conway NWIS,West Brook,West Brook,Mass,1989,1330.86,364,0.23136725064844704
-South River Conway NWIS,West Brook,West Brook,Mass,1990,1335.41,365,0.24839887619861942
-South River Conway NWIS,West Brook,West Brook,Mass,1991,1334.74,365,0.24589092254617628
-South River Conway NWIS,West Brook,West Brook,Mass,1992,1127.15,366,-0.531162956126382
-South River Conway NWIS,West Brook,West Brook,Mass,1993,1039.88,364,-0.8578332773930816
-South River Conway NWIS,West Brook,West Brook,Mass,1994,1279.88,365,0.040538180198392254
-South River Conway NWIS,West Brook,West Brook,Mass,1995,905.4399999999999,365,-1.3610710222205729
-South River Conway NWIS,West Brook,West Brook,Mass,1996,1623.98,366,1.3285782575201674
-South River Conway NWIS,West Brook,West Brook,Mass,1997,1230.57,364,-0.14403972219258995
-South River Conway NWIS,West Brook,West Brook,Mass,1998,1253.36,365,-0.05873186586546639
-South River Conway NWIS,West Brook,West Brook,Mass,1999,1362.45,365,0.3496153937539253
-South River Conway NWIS,West Brook,West Brook,Mass,2000,1423.57,366,0.5784006582872202
-South River Conway NWIS,West Brook,West Brook,Mass,2001,1161.45,364,-0.402770701978934
-South River Conway NWIS,West Brook,West Brook,Mass,2002,980.78,365,-1.0790572488249826
-South River Conway NWIS,West Brook,West Brook,Mass,2003,1445.96,365,0.6622112288516919
-South River Conway NWIS,West Brook,West Brook,Mass,2004,1308.88,366,0.14909139799069535
-South River Conway NWIS,West Brook,West Brook,Mass,2005,1111.91,364,-0.5882095436834406
-South River Conway NWIS,West Brook,West Brook,Mass,2006,1530.06,365,0.9770155604493705
-South River Conway NWIS,West Brook,West Brook,Mass,2007,1269.8700000000001,365,0.003068603988014567
-South River Conway NWIS,West Brook,West Brook,Mass,2008,1591.29,366,1.2062125785673954
-South River Conway NWIS,West Brook,West Brook,Mass,2009,1314.2,364,0.16900529863397276
-South River Conway NWIS,West Brook,West Brook,Mass,2010,1162.78,365,-0.3977922268181149
-South River Conway NWIS,West Brook,West Brook,Mass,2011,1829.28,365,2.0970601752015408
-South River Conway NWIS,West Brook,West Brook,Mass,2012,1234.34,366,-0.12992780387959063
-South River Conway NWIS,West Brook,West Brook,Mass,2013,1383.9,364,0.4299073427761635
-South River Conway NWIS,West Brook,West Brook,Mass,2014,1253.68,365,-0.05753403725534381
-South River Conway NWIS,West Brook,West Brook,Mass,2015,1444,365,0.6548745286146948
-South River Conway NWIS,West Brook,West Brook,Mass,2016,1019.94,366,-0.9324729726613067
-South River Conway NWIS,West Brook,West Brook,Mass,2017,1277.16,364,0.03035663701235545
-South River Conway NWIS,West Brook,West Brook,Mass,2018,1644.39,365,1.4049772635595095
-South River Conway NWIS,West Brook,West Brook,Mass,2019,1356.81,365,0.3285036645005253
-South River Conway NWIS,West Brook,West Brook,Mass,2020,1280.95,366,0.04454341961348734
-South River Conway NWIS,West Brook,West Brook,Mass,2021,1551.77,364,1.0582807452173326
-South River Conway NWIS,West Brook,West Brook,Mass,2022,1131.26,365,-0.5157783449151283
-South River Conway NWIS,West Brook,West Brook,Mass,2023,1866.76,365,2.237355851162076
-South River Harriston NWIS,Paine Run,Paine Run,Shen,1981,846.08,364,-0.9942324685680015
-South River Harriston NWIS,Paine Run,Paine Run,Shen,1982,1105.69,365,0.031339217034371675
-South River Harriston NWIS,Paine Run,Paine Run,Shen,1983,1067.54,365,-0.11936976877407418
-South River Harriston NWIS,Paine Run,Paine Run,Shen,1984,1491.46,366,1.555297420319405
-South River Harriston NWIS,Paine Run,Paine Run,Shen,1985,884.62,364,-0.8419828142283559
-South River Harriston NWIS,Paine Run,Paine Run,Shen,1986,1050.28,365,-0.18755422736001828
-South River Harriston NWIS,Paine Run,Paine Run,Shen,1987,1299.36,365,0.7964194078999448
-South River Harriston NWIS,Paine Run,Paine Run,Shen,1988,897.08,366,-0.7927604298725698
-South River Harriston NWIS,Paine Run,Paine Run,Shen,1989,1220.07,364,0.4831896442105179
-South River Harriston NWIS,Paine Run,Paine Run,Shen,1990,981.9399999999999,365,-0.45752675921189695
-South River Harriston NWIS,Paine Run,Paine Run,Shen,1991,1212,365,0.45130965691106456
-South River Harriston NWIS,Paine Run,Paine Run,Shen,1992,1125.51,366,0.1096367818764
-South River Harriston NWIS,Paine Run,Paine Run,Shen,1993,1120.06,364,0.0881069267609076
-South River Harriston NWIS,Paine Run,Paine Run,Shen,1994,1198.39,365,0.39754427560430367
-South River Harriston NWIS,Paine Run,Paine Run,Shen,1995,1133.48,365,0.1411217259627254
-South River Harriston NWIS,Paine Run,Paine Run,Shen,1996,1549.8700000000001,366,1.7860421611076438
-South River Harriston NWIS,Paine Run,Paine Run,Shen,1997,1023.07,364,-0.29504548565222777
-South River Harriston NWIS,Paine Run,Paine Run,Shen,1998,1384.68,365,1.133470277341009
-South River Harriston NWIS,Paine Run,Paine Run,Shen,1999,1041.29,365,-0.2230686122202523
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2000,1079.41,366,-0.0724781393757448
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2001,803.42,364,-1.1627579032885336
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2002,690.3,365,-1.6096307859792638
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2003,1770.18,365,2.656361863950596
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2004,1373.16,366,1.0879612991886292
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2005,874.81,364,-0.880736553436242
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2006,1162.16,365,0.25442011948792137
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2007,1057.37,365,-0.15954566354922234
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2008,982.48,366,-0.45539352586100385
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2009,912.98,364,-0.7299485589851706
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2010,1248.05,365,0.5937227352438156
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2011,1198.14,365,0.3965566675714829
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2012,1141.82,366,0.1740683299376251
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2013,1144.35,364,0.18406292322977091
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2014,1145.18,365,0.1873417818987364
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2015,1196.73,365,0.3909865582663736
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2016,1223.89,366,0.49828029495201953
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2017,971.83,364,-0.49746562805916744
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2018,1479.49,365,1.5080107477079476
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2019,1215.52,365,0.4652151780131805
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2020,1210.78,366,0.4464901297108992
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2021,1013.41,364,-0.3332066600404216
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2022,1034.52,365,-0.24981303774903796
-South River Harriston NWIS,Paine Run,Paine Run,Shen,2023,848.26,365,-0.9856205265218049
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1981,434.05,364,-0.09830749507732942
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1982,507.83,365,0.637751667375012
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1983,432.72,365,-0.11157611375531264
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1984,464.89,366,0.20936483577154832
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1985,352.02,364,-0.9166719989532526
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1986,487.19,365,0.4318386677407436
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1987,373.76,365,-0.6997849537958398
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1988,356.88,366,-0.8681866705509973
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1989,439.98,364,-0.0391474133025613
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1990,394.24,365,-0.4954681789649375
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1991,387.68,365,-0.5609133959029609
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1992,574.75,366,1.3053726913830184
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1993,676.97,364,2.325160812633742
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1994,356.19,365,-0.875070390015515
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1995,476.90999999999997,365,0.32928122412445066
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1996,422.16,366,-0.21692695077749657
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1997,575.28,364,1.3106601860441696
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1998,365.53,365,-0.7818907671190003
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1999,382.41,365,-0.6134890503638423
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2000,332.15,366,-1.1149031667213203
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2001,375.4,364,-0.6834236495613341
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2002,436.89,365,-0.06997450481757565
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2003,319.98,365,-1.2363160158273783
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2004,441.62,366,-0.0227861090680556
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2005,437.87,364,-0.06019762789695614
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2006,370.68,365,-0.7305122812606433
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2007,495.77,365,0.5174362228212679
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2008,501.15,366,0.5711092818344637
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2009,507.6,364,0.6354570942201732
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2010,517.19,365,0.7311308183719485
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2011,529.32,365,0.8521446112771653
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2012,302.57,366,-1.4100052272436874
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2013,400.06,364,-0.43740550174248394
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2014,534.79,365,0.9067155467422541
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2015,447.69,365,0.037770669409657995
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2016,432.87,366,-0.11007965300215684
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2017,550.3100000000001,364,1.061549352668798
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2018,602.03,365,1.5775290203569934
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2019,593.24,365,1.4898364202220509
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2020,362.09,366,-0.8162096003913784
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2021,420.52,364,-0.23328825501200282
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2022,472.43,365,0.2845869296301912
-Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2023,570.78,365,1.265766363449489
+Battle Run NWIS,Piney River,Piney River,Shen,1981,872.97,364,-0.8410979838975178
+Battle Run NWIS,Piney River,Piney River,Shen,1982,996.79,365,-0.380772878696005
+Battle Run NWIS,Piney River,Piney River,Shen,1983,1029.39,365,-0.25957599265522496
+Battle Run NWIS,Piney River,Piney River,Shen,1984,1586.61,366,1.8119985116283075
+Battle Run NWIS,Piney River,Piney River,Shen,1985,795.86,364,-1.1277695140387605
+Battle Run NWIS,Piney River,Piney River,Shen,1986,969.33,365,-0.482860807857962
+Battle Run NWIS,Piney River,Piney River,Shen,1987,1017.22,365,-0.3048203516465224
+Battle Run NWIS,Piney River,Piney River,Shen,1988,841.34,366,-0.9586887049242006
+Battle Run NWIS,Piney River,Piney River,Shen,1989,1121.8,364,0.0839762846155855
+Battle Run NWIS,Piney River,Piney River,Shen,1990,971.3,365,-0.47553694695304405
+Battle Run NWIS,Piney River,Piney River,Shen,1991,947.15,365,-0.5653193027163822
+Battle Run NWIS,Piney River,Piney River,Shen,1992,1035.94,366,-0.23522508457034458
+Battle Run NWIS,Piney River,Piney River,Shen,1993,1169.94,364,0.2629461647997309
+Battle Run NWIS,Piney River,Piney River,Shen,1994,1380.99,365,1.0475658825575995
+Battle Run NWIS,Piney River,Piney River,Shen,1995,950.8100000000001,365,-0.5517125357559753
+Battle Run NWIS,Piney River,Piney River,Shen,1996,1572.54,366,1.75969053044445
+Battle Run NWIS,Piney River,Piney River,Shen,1997,989.91,364,-0.40635062642485664
+Battle Run NWIS,Piney River,Piney River,Shen,1998,1418.6,365,1.1873884250113944
+Battle Run NWIS,Piney River,Piney River,Shen,1999,948.82,365,-0.5591107505787101
+Battle Run NWIS,Piney River,Piney River,Shen,2000,1050.9,366,-0.1796083540436554
+Battle Run NWIS,Piney River,Piney River,Shen,2001,941.22,364,-0.5873652393489532
+Battle Run NWIS,Piney River,Piney River,Shen,2002,789.34,365,-1.1520088912469164
+Battle Run NWIS,Piney River,Piney River,Shen,2003,1702.6,365,2.2432140580046886
+Battle Run NWIS,Piney River,Piney River,Shen,2004,1246.46,366,0.5474242543653889
+Battle Run NWIS,Piney River,Piney River,Shen,2005,897.38,364,-0.7503490272025661
+Battle Run NWIS,Piney River,Piney River,Shen,2006,1091.24,365,-0.02963650180791808
+Battle Run NWIS,Piney River,Piney River,Shen,2007,948.49,365,-0.5603375902226814
+Battle Run NWIS,Piney River,Piney River,Shen,2008,1171.32,366,0.26807658512906407
+Battle Run NWIS,Piney River,Piney River,Shen,2009,954.4399999999999,364,-0.5382172996722939
+Battle Run NWIS,Piney River,Piney River,Shen,2010,1273.12,365,0.6465380268146884
+Battle Run NWIS,Piney River,Piney River,Shen,2011,1132.41,365,0.12342103801720165
+Battle Run NWIS,Piney River,Piney River,Shen,2012,1030.34,366,-0.25604418155894526
+Battle Run NWIS,Piney River,Piney River,Shen,2013,1147,364,0.17766222106428642
+Battle Run NWIS,Piney River,Piney River,Shen,2014,1344,365,0.9100483115561138
+Battle Run NWIS,Piney River,Piney River,Shen,2015,1279.17,365,0.6690300869541589
+Battle Run NWIS,Piney River,Piney River,Shen,2016,1260.83,366,0.6008475443164928
+Battle Run NWIS,Piney River,Piney River,Shen,2017,1003.68,364,-0.35515795400824524
+Battle Run NWIS,Piney River,Piney River,Shen,2018,1656.27,365,2.070973207382931
+Battle Run NWIS,Piney River,Piney River,Shen,2019,1282.32,365,0.680740829010246
+Battle Run NWIS,Piney River,Piney River,Shen,2020,1360.98,366,0.9731747877822623
+Battle Run NWIS,Piney River,Piney River,Shen,2021,1250.32,364,0.5617745605039594
+Battle Run NWIS,Piney River,Piney River,Shen,2022,1071.01,365,-0.10484548967923626
+Battle Run NWIS,Piney River,Piney River,Shen,2023,931.9,365,-0.6220141650514095
+Battle Run NWIS,Piney River,Piney River,Shen,2024,1170.49,366,0.2649908975396825
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1981,346.39,364,-0.5265558901456624
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1982,444.94,365,0.349790390595689
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1983,615.27,365,1.8644333332509335
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1984,565.04,366,1.4177679483535404
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1985,311.12,364,-0.840190931462227
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1986,434.48,365,0.2567758589208588
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1987,321.42,365,-0.7485991842107208
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1988,298.93,366,-0.948589319714252
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1989,495.75,364,0.8016133690276328
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1990,250.16,365,-1.3822717967488103
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1991,339.19,365,-0.5905811891952587
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1992,307.88,366,-0.8690023160345455
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1993,509.01,364,0.9195266281106395
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1994,293.45,365,-0.9973196862131117
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1995,441.97,365,0.32337995473773073
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1996,493.34,366,0.7801826786513093
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1997,516.83,364,0.9890652168006183
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1998,535.5,365,1.1550863741972799
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,1999,433.88,365,0.25144041733339223
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2000,310.94,366,-0.8417915639384669
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2001,381.04,364,-0.21843413846947918
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2002,355.72,365,-0.44358977346055994
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2003,450.61,365,0.40021031359724635
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2004,379.29,366,-0.23399584309958943
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2005,489.87,364,0.7493260414704624
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2006,635.35,365,2.042992778378142
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2007,426.92,365,0.18954929491878253
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2008,454.06,366,0.4308891027251779
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2009,612.2,364,1.8371336571283978
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2010,414.25,365,0.07688255339678421
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2011,673.21,365,2.3796591425472697
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2012,349.48,366,-0.49907836597021027
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2013,453.67,364,0.42742106569332483
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2014,259.51,365,-1.2991278320107926
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2015,334.84,365,-0.62926314070439
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2016,357.71,366,-0.4258938921954636
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2017,383,364,-0.20100502928375588
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2018,310.17,365,-0.8486387139757153
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2019,460.6,365,0.4890454160285615
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2020,284.96,366,-1.072816184675761
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2021,260.13,364,-1.2936145423704106
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2022,315.1,365,-0.8047991689320332
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2023,439.96,365,0.30550622541971795
+Donner Blitzen River nr Frenchglen NWIS,Donner Blitzen,Donner Blitzen,Oreg,2024,464.24,366,0.5214137616591906
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,1981,860.77,364,0.817603251523625
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,1982,829.42,365,0.6088340801756035
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,1983,777.77,365,0.26488104348899116
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,1984,694.12,366,-0.29216971195796204
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,1985,683.38,364,-0.3636906338169015
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,1986,729.29,365,-0.057962000432925265
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,1987,701.83,365,-0.2408264803441422
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,1988,568.73,366,-1.1271798043129349
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,1989,745.26,364,0.04838707983590749
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,1990,849.28,365,0.7410878518812402
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,1991,818.96,365,0.5391777633558177
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,1992,632.05,366,-0.7055126933159108
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,1993,845.06,364,0.71298559021972
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,1994,496.25,365,-1.6098461373051067
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,1995,858.94,365,0.8054167257320185
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,1996,1048.7,366,2.0690861979808393
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,1997,961.72,364,1.489859961175388
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,1998,707.2,365,-0.20506601941467248
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,1999,698.52,365,-0.2628687756284153
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2000,694.28,366,-0.29110422336416053
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2001,476.51,364,-1.741300792565392
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2002,768.9,365,0.20581301957010914
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2003,516.37,365,-1.4758609466345425
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2004,753.08,366,0.1004628348579661
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2005,804.48,364,0.4427510456167633
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2006,765.31,365,0.1819061192466832
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2007,706.86,365,-0.2073301826765013
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2008,712.4,366,-0.17043764011611753
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2009,647.19,364,-0.6046908351274239
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2010,752.04,365,0.0935371589982545
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2011,970.21,365,1.546397449683991
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2012,858,366,0.7991569802434332
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2013,903.95,364,1.1051519857758603
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2014,833.52,365,0.6361372253917723
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2015,676.41,365,-0.41010598068438836
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2016,871.1,366,0.8863938588609478
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2017,925.31,364,1.2473947130483871
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2018,727.7,365,-0.06855029333382916
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2019,722.8,365,-0.10118088151900693
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2020,704.53,366,-0.2228463603237389
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2021,670.15,364,-0.45179322191688
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2022,927.1899999999999,365,1.259914204025557
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2023,563.21,365,-1.1639391607990934
+North Fork Flathead River NWIS,Flathead,Flathead,Flat,2024,678.02,366,-0.39938450170925865
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1981,498.29,364,-1.0142733444267518
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1982,958.26,365,1.6163821270615917
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1983,702.35,365,0.1527844104527217
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1984,827.72,366,0.8697991645899342
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1985,625.17,364,-0.2886226145477577
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1986,858.63,365,1.0465793037809785
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1987,468.59,365,-1.1841332646459048
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1988,408.86,366,-1.5257404375310901
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1989,771.69,364,0.5493529918667309
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1990,535.02,365,-0.8042075238998331
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1991,666.13,365,-0.05436462356538354
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1992,505.76,366,-0.97155100085648
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1993,725.68,364,0.2862130952578674
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1994,415.24,365,-1.4892520102247537
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1995,804.82,365,0.7388297311549645
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1996,874.44,366,1.1369996855542046
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1997,1046.15,364,2.1190416687471596
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1998,769.08,365,0.534425907968684
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,1999,814.42,365,0.7937339477914579
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2000,627.97,366,-0.2726088846954466
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2001,463.89,364,-1.211013454040855
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2002,663.21,365,-0.0710646561256502
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2003,622.54,365,-0.3036640822304638
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2004,666.58,366,-0.05179098841054763
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2005,525.93,364,-0.8561949540275134
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2006,710.66,365,0.20031087297868644
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2007,548.26,365,-0.7284854584553352
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2008,758.59,366,0.47443161291484853
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2009,729.86,364,0.3101193062516745
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2010,583.99,365,-0.5241388271613844
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2011,915.83,365,1.373716927906755
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2012,648.54,366,-0.15496516217329284
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2013,669.83,364,-0.03320362340340126
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2014,875.32,365,1.1420325720792166
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2015,652.88,365,-0.13014388090221105
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2016,643.51,366,-0.1837326840151223
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2017,1136.87,364,2.637886515962026
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2018,704.11,365,0.16285018350274555
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2019,753.89,365,0.44755142351989813
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2020,609.45,366,-0.378528269290016
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2021,596.03,364,-0.4552797887964485
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2022,650.4,365,-0.14432747019997208
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2023,714.32,365,0.22124310557135018
+Pacific Creek at Moran NWIS,Snake River,Snake River,Snake,2024,660.68,366,-0.08553420488506001
+Rapidan River NWIS,Staunton River,Staunton River,Shen,1981,860.24,364,-0.9880396624452437
+Rapidan River NWIS,Staunton River,Staunton River,Shen,1982,1076.16,365,-0.16081058377054802
+Rapidan River NWIS,Staunton River,Staunton River,Shen,1983,993.01,365,-0.47937346767107136
+Rapidan River NWIS,Staunton River,Staunton River,Shen,1984,1561.39,366,1.6981944451536946
+Rapidan River NWIS,Staunton River,Staunton River,Shen,1985,915.42,364,-0.7766349729247285
+Rapidan River NWIS,Staunton River,Staunton River,Shen,1986,1013.5,365,-0.4008725237008763
+Rapidan River NWIS,Staunton River,Staunton River,Shen,1987,1215.87,365,0.37444402248010744
+Rapidan River NWIS,Staunton River,Staunton River,Shen,1988,890.75,366,-0.8711502627121714
+Rapidan River NWIS,Staunton River,Staunton River,Shen,1989,1192.32,364,0.2842196578877166
+Rapidan River NWIS,Staunton River,Staunton River,Shen,1990,946.79,365,-0.6564507556311697
+Rapidan River NWIS,Staunton River,Staunton River,Shen,1991,1129.46,365,0.043391481315415405
+Rapidan River NWIS,Staunton River,Staunton River,Shen,1992,1057.99,366,-0.2304231826938496
+Rapidan River NWIS,Staunton River,Staunton River,Shen,1993,1216.76,364,0.3778537755368903
+Rapidan River NWIS,Staunton River,Staunton River,Shen,1994,1347.94,365,0.8804283890073729
+Rapidan River NWIS,Staunton River,Staunton River,Shen,1995,1048.94,365,-0.2650953907431547
+Rapidan River NWIS,Staunton River,Staunton River,Shen,1996,1524.17,366,1.555597806082408
+Rapidan River NWIS,Staunton River,Staunton River,Shen,1997,1065.09,364,-0.20322178190378726
+Rapidan River NWIS,Staunton River,Staunton River,Shen,1998,1349.91,365,0.8879758199308129
+Rapidan River NWIS,Staunton River,Staunton River,Shen,1999,1013.16,365,-0.40217512599223154
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2000,1034.05,366,-0.3221417087380894
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2001,844.76,364,-1.0473463785340003
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2002,707.1,365,-1.5747470592044268
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2003,1769.44,365,2.4952721119667287
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2004,1276.39,366,0.6063072303413187
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2005,907.19,364,-0.8081656107419416
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2006,1127.38,365,0.03542262023889027
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2007,1013.26,365,-0.4017920076712446
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2008,1228.91,366,0.4244026515367867
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2009,1097.36,364,-0.07958949972134745
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2010,1297.65,365,0.6877581853831121
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2011,1226,365,0.41325390839607057
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2012,1136.52,366,0.07043963477708318
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2013,1204.89,364,0.3323776308357578
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2014,1238.3,365,0.4603774618774466
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2015,1237.22,365,0.45623978401078946
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2016,1140.97,366,0.08748840006099588
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2017,941.58,364,-0.6764112201545817
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2018,1498.81,365,1.4584389998801555
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2019,1211.15,365,0.3563608377295313
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2020,1418.92,366,1.1523657732438026
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2021,1320.23,364,0.7742663022619308
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2022,1068.33,365,-0.19080874830381495
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2023,941.71,365,-0.6759131663372988
+Rapidan River NWIS,Staunton River,Staunton River,Shen,2024,1238.39,366,0.4607222683663353
+South River Conway NWIS,West Brook,West Brook,Mass,1981,974.55,364,-1.066421221017642
+South River Conway NWIS,West Brook,West Brook,Mass,1982,1208.58,365,-0.22929766209824218
+South River Conway NWIS,West Brook,West Brook,Mass,1983,1253.21,365,-0.06965648603289622
+South River Conway NWIS,West Brook,West Brook,Mass,1984,1541.05,366,0.9599450402644162
+South River Conway NWIS,West Brook,West Brook,Mass,1985,978.05,364,-1.053901747205661
+South River Conway NWIS,West Brook,West Brook,Mass,1986,1212.17,365,-0.21645625895966691
+South River Conway NWIS,West Brook,West Brook,Mass,1987,1354.5,365,0.29265708608583213
+South River Conway NWIS,West Brook,West Brook,Mass,1988,1105.17,366,-0.5991944583545129
+South River Conway NWIS,West Brook,West Brook,Mass,1989,1330.86,364,0.20809698296719478
+South River Conway NWIS,West Brook,West Brook,Mass,1990,1335.41,365,0.22437229892277066
+South River Conway NWIS,West Brook,West Brook,Mass,1991,1334.74,365,0.22197571393590548
+South River Conway NWIS,West Brook,West Brook,Mass,1992,1127.15,366,-0.5205721628152725
+South River Conway NWIS,West Brook,West Brook,Mass,1993,1039.88,364,-0.832736299835723
+South River Conway NWIS,West Brook,West Brook,Mass,1994,1279.88,365,0.025741904414398824
+South River Conway NWIS,West Brook,West Brook,Mass,1995,905.4399999999999,365,-1.3136271739165002
+South River Conway NWIS,West Brook,West Brook,Mass,1996,1623.98,366,1.2565850297580106
+South River Conway NWIS,West Brook,West Brook,Mass,1997,1230.57,364,-0.15063959663382473
+South River Conway NWIS,West Brook,West Brook,Mass,1998,1253.36,365,-0.06911993715524038
+South River Conway NWIS,West Brook,West Brook,Mass,1999,1362.45,365,0.3210941766016176
+South River Conway NWIS,West Brook,West Brook,Mass,2000,1423.57,366,0.5397199592839815
+South River Conway NWIS,West Brook,West Brook,Mass,2001,1161.45,364,-0.39788131945785943
+South River Conway NWIS,West Brook,West Brook,Mass,2002,980.78,365,-1.044136557632316
+South River Conway NWIS,West Brook,West Brook,Mass,2003,1445.96,365,0.6198088217554828
+South River Conway NWIS,West Brook,West Brook,Mass,2004,1308.88,366,0.1294746874279552
+South River Conway NWIS,West Brook,West Brook,Mass,2005,1111.91,364,-0.5750855287851553
+South River Conway NWIS,West Brook,West Brook,Mass,2006,1530.06,365,0.920633892494796
+South River Conway NWIS,West Brook,West Brook,Mass,2007,1269.8700000000001,365,-0.01006379068786664
+South River Conway NWIS,West Brook,West Brook,Mass,2008,1591.29,366,1.1396531443541085
+South River Conway NWIS,West Brook,West Brook,Mass,2009,1314.2,364,0.14850428762216603
+South River Conway NWIS,West Brook,West Brook,Mass,2010,1162.78,365,-0.3931239194093069
+South River Conway NWIS,West Brook,West Brook,Mass,2011,1829.28,365,1.9909415936436354
+South River Conway NWIS,West Brook,West Brook,Mass,2012,1234.34,366,-0.13715433484206246
+South River Conway NWIS,West Brook,West Brook,Mass,2013,1383.9,364,0.3978206661064724
+South River Conway NWIS,West Brook,West Brook,Mass,2014,1253.68,365,-0.06797529954957297
+South River Conway NWIS,West Brook,West Brook,Mass,2015,1444,365,0.6127979164207734
+South River Conway NWIS,West Brook,West Brook,Mass,2016,1019.94,366,-0.9040615306388374
+South River Conway NWIS,West Brook,West Brook,Mass,2017,1277.16,364,0.01601248476623068
+South River Conway NWIS,West Brook,West Brook,Mass,2018,1644.39,365,1.3295914470444483
+South River Conway NWIS,West Brook,West Brook,Mass,2019,1356.81,365,0.30091993880173934
+South River Conway NWIS,West Brook,West Brook,Mass,2020,1280.95,366,0.029569286408347058
+South River Conway NWIS,West Brook,West Brook,Mass,2021,1551.77,364,0.9982904000542551
+South River Conway NWIS,West Brook,West Brook,Mass,2022,1131.26,365,-0.5058707235674895
+South River Conway NWIS,West Brook,West Brook,Mass,2023,1866.76,365,2.125007273207363
+South River Conway NWIS,West Brook,West Brook,Mass,2024,1581.72,366,1.105421325959635
+South River Harriston NWIS,Paine Run,Paine Run,Shen,1981,846.08,364,-0.9778112485100589
+South River Harriston NWIS,Paine Run,Paine Run,Shen,1982,1105.69,365,0.030445973028007542
+South River Harriston NWIS,Paine Run,Paine Run,Shen,1983,1067.54,365,-0.1177186315776599
+South River Harriston NWIS,Paine Run,Paine Run,Shen,1984,1491.46,366,1.5286755803341199
+South River Harriston NWIS,Paine Run,Paine Run,Shen,1985,884.62,364,-0.8281319860853563
+South River Harriston NWIS,Paine Run,Paine Run,Shen,1986,1050.28,365,-0.18475194941498133
+South River Harriston NWIS,Paine Run,Paine Run,Shen,1987,1299.36,365,0.7826095110091221
+South River Harriston NWIS,Paine Run,Paine Run,Shen,1988,897.08,366,-0.7797406106361658
+South River Harriston NWIS,Paine Run,Paine Run,Shen,1989,1220.07,364,0.4746679251851814
+South River Harriston NWIS,Paine Run,Paine Run,Shen,1990,981.9399999999999,365,-0.4501666041659982
+South River Harriston NWIS,Paine Run,Paine Run,Shen,1991,1212,365,0.4433261595451362
+South River Harriston NWIS,Paine Run,Paine Run,Shen,1992,1125.51,366,0.10742166013899869
+South River Harriston NWIS,Paine Run,Paine Run,Shen,1993,1120.06,364,0.08625528805247464
+South River Harriston NWIS,Paine Run,Paine Run,Shen,1994,1198.39,365,0.39046848539878987
+South River Harriston NWIS,Paine Run,Paine Run,Shen,1995,1133.48,365,0.1383750519792915
+South River Harriston NWIS,Paine Run,Paine Run,Shen,1996,1549.8700000000001,366,1.7555247167696908
+South River Harriston NWIS,Paine Run,Paine Run,Shen,1997,1023.07,364,-0.29042846032769926
+South River Harriston NWIS,Paine Run,Paine Run,Shen,1998,1384.68,365,1.1139700369581533
+South River Harriston NWIS,Paine Run,Paine Run,Shen,1999,1041.29,365,-0.21966675401275193
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2000,1079.41,366,-0.0716186615470102
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2001,803.42,364,-1.1434915114845745
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2002,690.3,365,-1.5828199537648644
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2003,1770.18,365,2.6111510350049336
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2004,1373.16,366,1.0692293752266386
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2005,874.81,364,-0.8662314558410995
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2006,1162.16,365,0.24976065774837516
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2007,1057.37,365,-0.15721624701251297
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2008,982.48,366,-0.4480693856473331
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2009,912.98,364,-0.7179891764754815
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2010,1248.05,365,0.5833349143559958
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2011,1198.14,365,0.389497550899408
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2012,1141.82,366,0.170765426878669
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2013,1144.35,364,0.180591284012413
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2014,1145.18,365,0.18381478655036126
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2015,1196.73,365,0.3840214803228942
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2016,1223.89,366,0.4895038043357364
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2017,971.83,364,-0.48943119532099894
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2018,1479.49,365,1.4821872365037179
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2019,1215.52,365,0.4569969172964323
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2020,1210.78,366,0.43858799918815283
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2021,1013.41,364,-0.32794536938381347
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2022,1034.52,365,-0.2459596602560118
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2023,848.26,365,-0.9693446996754496
+South River Harriston NWIS,Paine Run,Paine Run,Shen,2024,1184.62,366,0.3369894131728379
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1981,434.05,364,-0.11023589928637506
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1982,507.83,365,0.6123386296937566
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1983,432.72,365,-0.12326143633630139
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1984,464.89,366,0.19179986208184469
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1985,352.02,364,-0.9136079325235701
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1986,487.19,365,0.4101979644979053
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1987,373.76,365,-0.7006942667601102
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1988,356.88,366,-0.8660108572885002
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1989,439.98,364,-0.05215963259008627
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1990,394.24,365,-0.5001205834650014
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1991,387.68,365,-0.5643668413954659
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1992,574.75,366,1.2677288096795312
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1993,676.97,364,2.268834371516738
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1994,356.19,365,-0.8727684667354546
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1995,476.90999999999997,365,0.309519377375165
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1996,422.16,366,-0.22668224178534171
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1997,575.28,364,1.2729194372257422
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1998,365.53,365,-0.7812958982795802
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,1999,382.41,365,-0.6159793077511895
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2000,332.15,366,-1.108207497322096
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2001,375.4,364,-0.6846327022774942
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2002,436.89,365,-0.08242197054818644
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2003,319.98,365,-1.2273960581473624
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2004,441.62,366,-0.036098068107470294
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2005,437.87,364,-0.07282420640613517
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2006,370.68,365,-0.7308586683494134
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2007,495.77,365,0.4942273689252504
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2008,501.15,366,0.5469171353377349
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2009,507.6,364,0.6100860932114389
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2010,517.19,365,0.7040070708872249
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2011,529.32,365,0.8228038862373063
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2012,302.57,366,-1.3979032762219643
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2013,400.06,364,-0.44312161682547363
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2014,534.79,365,0.8763750799689579
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2015,447.69,365,0.023349307751968532
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2016,432.87,366,-0.12179239080435501
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2017,550.3100000000001,364,1.0283723243410332
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2018,602.03,365,1.5348992237562185
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2019,593.24,365,1.4488131555841484
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2020,362.09,366,-0.8149860091455554
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2021,420.52,364,-0.24274380626795825
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2022,472.43,365,0.2656438841543604
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2023,570.78,365,1.2288480712673444
+Yellowstone River Livingston NWIS,Shields River,Shields River,Shields,2024,534.19,366,0.8704988978411724

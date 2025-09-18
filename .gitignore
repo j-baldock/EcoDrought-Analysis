@@ -17,3 +17,5 @@
 /Covariates/pasta_predicted_temp.csv
 /CompareModeledQ/*
 /Qualitative/LowFlow_cache
+/FluvialSynch/Spatial/*
+nhd_hr.gpkg
