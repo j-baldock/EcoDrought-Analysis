@@ -69,6 +69,17 @@ Water availability
 wateravail <- read_csv("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/EcoDrought-Analysis/Qualitative/BigG_wateravailability_annual.csv")
 ```
 
+Order sites: for colors, order sites from downstream to upstream (roughly) and by subbasin (if appropriate)
+```{r}
+wborder <- c("West Brook NWIS", "West Brook Lower", "Mitchell Brook", "Jimmy Brook", "Obear Brook Lower", "West Brook Upper", "West Brook Reservoir", "Sanderson Brook", "Avery Brook", "West Whately Brook")
+paineorder <- c("Paine Run 10", "Paine Run 08", "Paine Run 07", "Paine Run 06", "Paine Run 02", "Paine Run 01")
+stauntorder <- c("Staunton River 10", "Staunton River 09", "Staunton River 07", "Staunton River 06", "Staunton River 03", "Staunton River 02")
+flatorder <- c("BigCreekLower", "LangfordCreekLower", "LangfordCreekUpper", "Big Creek NWIS", "BigCreekUpper", "HallowattCreekLower", "NicolaCreek", "WernerCreek", "Hallowat Creek NWIS", "CoalCreekLower", "CycloneCreekLower", "CycloneCreekMiddle", "CycloneCreekUpper", "CoalCreekMiddle", "CoalCreekNorth", "CoalCreekHeadwaters", "McGeeCreekLower", "McGeeCreekTrib", "McGeeCreekUpper")
+yellorder <- c("Shields River Valley Ranch", "Deep Creek", "Crandall Creek", "Buck Creek", "Dugout Creek", "Shields River ab Dugout", "Lodgepole Creek", "EF Duck Creek be HF", "EF Duck Creek ab HF", "Henrys Fork")
+snakeorder <- c("Spread Creek Dam", "Rock Creek", "NF Spread Creek Lower", "NF Spread Creek Upper", "Grizzly Creek", "SF Spread Creek Lower", "Grouse Creek", "SF Spread Creek Upper", "Leidy Creek Mouth")
+donnerorder <- c("Fish Creek NWIS", "Donner Blitzen ab Fish NWIS", "Donner Blitzen nr Burnt Car NWIS", "Donner Blitzen ab Indian NWIS")
+```
+
 
 ## Stream Stats
 
@@ -215,7 +226,7 @@ myplotfun_ex("West Brook NWIS")
 ```{r}
 # set up
 vars <- unique(massach$StatName)[grep("Duration", unique(massach$StatName))][-1]
-sites <- c("Avery Brook", "Sanderson Brook", "Mitchell Brook", "Obear Brook Lower", "West Brook NWIS", "West Brook Upper")
+sites <- c("West Brook NWIS", "Mitchell Brook", "Obear Brook Lower", "West Brook Upper", "Sanderson Brook", "Avery Brook")
 preds <- list()
 exceed <- list()
 joined <- list()
@@ -254,9 +265,9 @@ for (i in 1:length(sites)) {
   joined[[i]] <- j %>% filter(!is.na(error_abs))
   joined_full[[i]] <- j
 }
-preds <- do.call(rbind, preds) 
-exceed <- do.call(rbind, exceed)
-joined <- do.call(rbind, joined)
+preds <- do.call(rbind, preds) %>% mutate(site_name = factor(site_name, levels = wborder))
+exceed <- do.call(rbind, exceed) %>% mutate(site_name = factor(site_name, levels = wborder))
+joined <- do.call(rbind, joined) %>% mutate(site_name = factor(site_name, levels = wborder))
 joined_full <- do.call(rbind, joined_full)
 joined_mean <- joined %>% group_by(exceedance) %>% summarize(error_abs = mean(error_abs, na.rm = TRUE))
 
@@ -269,33 +280,37 @@ vardat_ss <- joined %>% group_by(exceedance) %>% summarize(exdsd = sd(logYield_s
 vardat_obs <- joined_full %>% group_by(exceedance) %>% summarize(exdsd = sd(logYield))
 
 # tibble for site labels
-siteslabs <- tibble(site_name = sites)
+siteslabs <- tibble(site_name = factor(sites, levels = sites), site_lab = c("WB0", "Mitchell", "Obear Lower", "WB Upper", "Sanderson", "Avery"))
 ```
 
 ::: panel-tabset
 #### Color
 ```{r}
+mypal <- cet_pal(length(wborder), name = "i1")[c(1,3,5,6,8,9)]
+
 ### Colored by site
 # exceedance curves
 p1 <- ggplot() +
   geom_line(data = exceed, aes(x = exceedance, y = logYield, color = site_name), size = 1) +
   geom_line(data = preds, aes(x = exceedance, y = logYield), color = "black") + 
   geom_point(data = preds, aes(x = exceedance, y = logYield), color = "black") +
-  geom_text(data = siteslabs, aes(x = Inf, y = Inf, label = site_name), vjust = 1.5, hjust = 1.05, size = 3) +
+  geom_text(data = siteslabs, aes(x = Inf, y = Inf, label = site_lab), vjust = 1.5, hjust = 1.05, size = 3) +
   facet_wrap(~site_name, nrow = 3) +
-  xlab("Exceedance probability") + ylab("log(Yield, mm)") +
+  scale_color_manual(values = mypal) +
+  xlab("Exceedance probability") + ylab(expression(paste("log(specific discharge, mm day"^-1, ")", sep = ""))) +
   theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
                      panel.grid = element_blank(), strip.text.x = element_blank(), strip.background = element_blank(),
-                     legend.position = "none")
+                     legend.position = "none", axis.text = element_text(color = "black"))
 # absolute error
 p2 <- ggplot(data = joined) +
   geom_line(aes(x = exceedance, y = error_abs, group = site_name, color = site_name)) +
   geom_point(aes(x = exceedance, y = error_abs, group = site_name, color = site_name)) +
   geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
   geom_line(data = joined_mean, aes(x = exceedance, y = error_abs), size = 1) +
-  xlab("Exceedance probability") + ylab("Absolute error") + ylim(-2.1,0) +
+  scale_color_manual(values = mypal) +
+  xlab("Exceedance probability") + ylab("Error (modeled - observed)") + ylim(-2.1,0) +
   theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-                     legend.position = "none")
+                     legend.position = "none", axis.text = element_text(color = "black"))
 # combine
 annotate_figure(ggarrange(p1, p2, ncol = 2, labels = "auto"), top = text_grob("The West Brook, Massachusetts"))
 ```
@@ -348,6 +363,41 @@ p2 <- vardat_obs %>%
 
 annotate_figure(ggarrange(p1, p2, ncol = 2, labels = "auto"), top = text_grob("The West Brook, Massachusetts"))
 ```
+
+Write to file
+```{r, results='hide'}
+mypal <- cet_pal(length(wborder), name = "i1")[c(1,3,5,6,8,9)]
+
+### Colored by site
+# exceedance curves
+p1 <- ggplot() +
+  geom_line(data = exceed, aes(x = exceedance, y = logYield, color = site_name), size = 1) +
+  geom_line(data = preds, aes(x = exceedance, y = logYield), color = "black") + 
+  geom_point(data = preds, aes(x = exceedance, y = logYield), color = "black") +
+  geom_text(data = siteslabs, aes(x = Inf, y = Inf, label = site_lab), vjust = 1.5, hjust = 1.05, size = 3) +
+  facet_wrap(~site_name, nrow = 3) +
+  scale_color_manual(values = mypal) +
+  xlab("Exceedance probability") + ylab(expression(paste("log(specific discharge, mm day"^-1, ")", sep = ""))) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                     panel.grid = element_blank(), strip.text.x = element_blank(), strip.background = element_blank(),
+                     legend.position = "none", axis.text = element_text(color = "black"))
+# absolute error
+p2 <- ggplot(data = joined) +
+  geom_line(aes(x = exceedance, y = error_abs, group = site_name, color = site_name)) +
+  geom_point(aes(x = exceedance, y = error_abs, group = site_name, color = site_name)) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  geom_line(data = joined_mean, aes(x = exceedance, y = error_abs), size = 1) +
+  scale_color_manual(values = mypal) +
+  xlab("Exceedance probability") + ylab("Error (modeled - observed)") + ylim(-2.1,0) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                     legend.position = "none", axis.text = element_text(color = "black"))
+# combine
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/StreamStats_WestBrook.jpg", width = 6, height = 4, units = "in", res = 1000)
+annotate_figure(ggarrange(p1, p2, ncol = 2, labels = "auto"), top = text_grob("The West Brook, Massachusetts"))
+dev.off()
+```
+
+
 
 
 ### Flathead mean monthly yield
@@ -414,7 +464,7 @@ myplotfun_mon("HallowattCreekLower")
 ```{r}
 # set up
 vars <- unique(montana$StatName)[grep("Mean Flow", unique(montana$StatName))]
-sites <- c("Hallowat Creek NWIS", "HallowattCreekLower", "WernerCreek", "LangfordCreekUpper", "Big Creek NWIS", "McGeeCreekLower")
+sites <- c("LangfordCreekUpper", "Big Creek NWIS", "HallowattCreekLower", "WernerCreek", "Hallowat Creek NWIS",   "McGeeCreekLower")
 preds_list <- list()
 obs_list <- list()
 hull_list <- list()
@@ -459,14 +509,14 @@ for (i in 1:length(sites)) {
   obs_list[[i]] <- obs_mon
   hull_list[[i]] <- hull
 }
-preds <- do.call(rbind, preds_list) 
-obs_mon <- do.call(rbind, obs_list)
-hull <- do.call(rbind, hull_list)
-joined <- do.call(rbind, join_list)
+preds <- do.call(rbind, preds_list) %>% mutate(site_name = factor(site_name, levels = flatorder))
+obs_mon <- do.call(rbind, obs_list) %>% mutate(site_name = factor(site_name, levels = flatorder))
+hull <- do.call(rbind, hull_list) %>% mutate(site_name = factor(site_name, levels = flatorder))
+joined <- do.call(rbind, join_list) %>% mutate(site_name = factor(site_name, levels = flatorder))
 joined_mean <- joined %>% group_by(MonthName) %>% summarise(error_abs = mean(error_abs, na.rm = TRUE))
 
 # tibble for site labels
-siteslabs <- tibble(site_name = sites, site_lab = c("Hallowatt Upper", "Hallowatt Lower", "Werner", "Langford Upper", "Big NWIS", "McGee Lower"))
+siteslabs <- tibble(site_name = factor(sites, levels = flatorder), site_lab = c("Langford", "Big", "Hallowatt Lower", "Werner", "Hallowatt Upper", "McGee"))
 
 # calculate among site variation for StreamStats and observed mean monthly flow (mean across years) 
 vardat <- preds %>% 
@@ -487,6 +537,8 @@ vardat <- preds %>%
 ::: panel-tabset
 #### Color
 ```{r}
+mypal <- cet_pal(length(flatorder), name = "i1")[c(3,4,6,8,9,17)]
+
 ### Colored by site
 # observed and StreamStats monthly flow
 p1 <- ggplot() +
@@ -497,9 +549,11 @@ p1 <- ggplot() +
   geom_point(data = preds, aes(y = logYield, x = as.numeric(MonthName)), color = "black") +
   geom_text(data = siteslabs, aes(x = -Inf, y = Inf, label = site_lab), vjust = 1.5, hjust = -0.05, size = 3) +
   facet_wrap(~site_name, ncol = 2) +
+  scale_color_manual(values = mypal) +
+  scale_fill_manual(values = mypal) +
   theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
                      strip.text.x = element_blank(), strip.background = element_blank()) +  
-  ylab("Monthly mean log(Yield)") + xlab("Month") +
+  ylab(expression(paste("Monthly mean log(specific discharge, mm day"^-1, ")", sep = ""))) + xlab("Month") +
   scale_x_continuous(breaks = 1:12, labels = c("O", "N", "D", "J", "F", "M", "A", "M", "J", "J", "A", "S"))
 # absolute error by month
 p2 <- ggplot() +
@@ -507,7 +561,8 @@ p2 <- ggplot() +
   geom_point(data = joined, aes(x = as.numeric(MonthName), y = error_abs, shape = WaterYear, color = site_name)) +
   geom_line(data = joined_mean, aes(x = as.numeric(MonthName), y = error_abs), size = 1) +
   geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
-  xlab("Month") + ylab("Absolute error") +
+  scale_color_manual(values = mypal) +
+  xlab("Month") + ylab("Error (modeled - observed)") +
   scale_x_continuous(breaks = 1:12, labels = c("O", "N", "D", "J", "F", "M", "A", "M", "J", "J", "A", "S")) +
   theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
                      legend.position = "none")
@@ -528,7 +583,7 @@ p1 <- ggplot() +
   facet_wrap(~site_name, ncol = 2) +
   theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
                      strip.text.x = element_blank(), strip.background = element_blank()) +  
-  ylab("Monthly mean log(Yield)") + xlab("Month") +
+  ylab(expression(paste("Monthly mean log(specific discharge, mm day"^-1, ")", sep = ""))) + xlab("Month") +
   scale_x_continuous(breaks = 1:12, labels = c("O", "N", "D", "J", "F", "M", "A", "M", "J", "J", "A", "S"))
 # absolute error by month
 p2 <- ggplot() +
@@ -567,6 +622,46 @@ p2 <- vardat %>%
 
 annotate_figure(ggarrange(p1, p2, ncol = 2, labels = "auto"), top = text_grob("North Fork Flathead River, Montana"))
 ```
+
+
+
+Write to file
+```{r, results='hide'}
+mypal <- cet_pal(length(flatorder), name = "i1")[c(3,4,6,8,9,17)]
+
+### Colored by site
+# observed and StreamStats monthly flow
+p1 <- ggplot() +
+  geom_ribbon(data = hull, aes(ymin = min_logYield, ymax = max_logYield, x = as.numeric(MonthName), fill = site_name), alpha = 0.3) +
+  geom_line(data = obs_mon, aes(y = logYield, x = as.numeric(MonthName), group = WaterYear, color = site_name)) +
+  geom_point(data = obs_mon, aes(y = logYield, x = as.numeric(MonthName), group = WaterYear, shape = WaterYear, color = site_name)) +
+  geom_line(data = preds, aes(y = logYield, x = as.numeric(MonthName), group = site_name), color = "black") +
+  geom_point(data = preds, aes(y = logYield, x = as.numeric(MonthName)), color = "black") +
+  geom_text(data = siteslabs, aes(x = -Inf, y = Inf, label = site_lab), vjust = 1.5, hjust = -0.05, size = 3) +
+  facet_wrap(~site_name, ncol = 2) +
+  scale_color_manual(values = mypal) +
+  scale_fill_manual(values = mypal) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = "none", 
+                     strip.text.x = element_blank(), strip.background = element_blank()) +  
+  ylab(expression(paste("Monthly mean log(specific discharge, mm day"^-1, ")", sep = ""))) + xlab("Month") +
+  scale_x_continuous(breaks = 1:12, labels = c("O", "N", "D", "J", "F", "M", "A", "M", "J", "J", "A", "S"))
+# absolute error by month
+p2 <- ggplot() +
+  geom_line(data = joined, aes(x = as.numeric(MonthName), y = error_abs, shape = WaterYear, color = site_name)) +
+  geom_point(data = joined, aes(x = as.numeric(MonthName), y = error_abs, shape = WaterYear, color = site_name)) +
+  geom_line(data = joined_mean, aes(x = as.numeric(MonthName), y = error_abs), size = 1) +
+  geom_abline(intercept = 0, slope = 0, linetype = "dashed") +
+  scale_color_manual(values = mypal) +
+  xlab("Month") + ylab("Error (modeled - observed)") +
+  scale_x_continuous(breaks = 1:12, labels = c("O", "N", "D", "J", "F", "M", "A", "M", "J", "J", "A", "S")) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                     legend.position = "none")
+# combine
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/StreamStats_Flathead.jpg", width = 6, height = 4, units = "in", res = 1000)
+annotate_figure(ggarrange(p1, p2, ncol = 2), top = text_grob("North Fork Flathead River, Montana"))
+dev.off()
+```
+
 
 ## PRMS
 
