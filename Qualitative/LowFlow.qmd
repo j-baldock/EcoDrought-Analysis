@@ -2685,13 +2685,42 @@ dd_dry <- dat_clean_sub %>% filter(basin == bas, month %in% months, WaterYear ==
 mysites <- unlist(unique(dd_wet$site_name))
 # dd <- dd %>% filter(site_name %in% mysites)
 
+# DROUGHT HYDROGRAPHS
+hydroplot_dry <- ggplot() +
+  geom_line(data = dd_dry, aes(x = date, y = logYield, group = site_name), color = "grey50") +
+  geom_point(data = dd_dry, aes(x = date, y = logYield, group = site_name, color = drought_fix), size = 0.75) +
+  geom_line(data = dd_dry %>% filter(site_name == "South River Conway NWIS"), 
+            aes(x = date, y = logYield, group = site_name), color = "black") +
+  geom_point(data = dd_dry %>% filter(site_name == "South River Conway NWIS"), 
+             aes(x = date, y = logYield, group = site_name, fill = drought_fix), shape = 21, size = 1.5) +
+  scale_color_viridis(option = "A", direction = -1, discrete = TRUE, limits = mydroughtlevels) +
+  scale_fill_viridis(option = "A", direction = -1, discrete = TRUE, limits = mydroughtlevels) +
+  xlab("Date") + ylab(expression(paste("log(Specific discharge, mm day"^-1,")", sep = ""))) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.text = element_text(color = "black"), 
+                     legend.position = "none", panel.background = element_rect(fill = 'grey80')) +
+  ylim(min(dd_dry$logYield), max(dd_wet$logYield))
+
+hydroplot_wet <- ggplot() +
+  geom_line(data = dd_wet, aes(x = date, y = logYield, group = site_name), color = "grey50") +
+  geom_point(data = dd_wet, aes(x = date, y = logYield, group = site_name, color = drought_fix), size = 0.75) +
+  geom_line(data = dd_wet %>% filter(site_name == "South River Conway NWIS"), 
+            aes(x = date, y = logYield, group = site_name), color = "black") +
+  geom_point(data = dd_wet %>% filter(site_name == "South River Conway NWIS"), 
+             aes(x = date, y = logYield, group = site_name, fill = drought_fix), shape = 21, size = 1.5) +
+  scale_color_viridis(option = "A", direction = -1, discrete = TRUE, limits = mydroughtlevels) +
+  scale_fill_viridis(option = "A", direction = -1, discrete = TRUE, limits = mydroughtlevels) +
+  xlab("Date") + ylab(expression(paste("log(Specific discharge, mm day"^-1,")", sep = ""))) +
+  theme_bw() + theme(panel.grid = element_blank(), axis.text = element_text(color = "black"), 
+                     legend.position = "none", panel.background = element_rect(fill = 'grey80')) +
+  ylim(min(dd_dry$logYield), max(dd_wet$logYield))
+
 # HEAT MAPS
 heat1 <- dd_dry %>%
   ggplot() +
   geom_tile(aes(x = date, y = site_name, fill = drought_fix)) +
   scale_fill_viridis(option = "A", direction = -1, discrete = TRUE, limits = mydroughtlevels) +
   xlab("Date") + ylab("Site") +
-  theme_bw() + theme(axis.title = element_blank(), panel.background = element_rect(fill = 'grey90'),
+  theme_bw() + theme(axis.title.y = element_blank(), panel.background = element_rect(fill = 'grey90'),
                      panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
                      axis.text = element_text(color = "black"), legend.position = "none") +
   geom_line(data = data.frame(x = c(min(dd_dry$date)-days(10), max(dd_dry$date)+days(10)), 
@@ -2708,7 +2737,7 @@ heat2 <- dd_wet %>%
   geom_tile(aes(x = date, y = site_name, fill = drought_fix)) +
   scale_fill_viridis(option = "A", direction = -1, discrete = TRUE, limits = mydroughtlevels) +
   xlab("Date") + ylab("Site") +
-  theme_bw() + theme(axis.title = element_blank(), panel.background = element_rect(fill = 'grey90'),
+  theme_bw() + theme(axis.title.y = element_blank(), panel.background = element_rect(fill = 'grey90'),
                      panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
                      axis.text = element_text(color = "black"), legend.position = "none") +
   geom_line(data = data.frame(x = c(min(dd_wet$date)-days(10), max(dd_wet$date)+days(10)), 
@@ -2839,6 +2868,18 @@ dev.off()
 jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/DroughtDuration_sitelevel_WestBrook_2020-2021_updatebasinnoci_wide.jpg", width = 8.75, height = 5.5, units = "in", res = 1000)
 egg::ggarrange(heat1, heat2, ggplot() + theme_void(), 
                scatter_basinnocis, sigmaplot, effectplot, nrow = 2, ncol = 3)
+dev.off()
+
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/DroughtDuration_sitelevel_WestBrook_2020-2021_updatebasinnoci_wide_withHydro.jpg", width = 8.75, height = 5.5, units = "in", res = 1000)
+egg::ggarrange(hydroplot, heat1, heat2, 
+               scatter_basinnocis, sigmaplot, effectplot, nrow = 2, ncol = 3)
+dev.off()
+
+
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/DroughtDuration_sitelevel_WestBrook_2020-2021_HydroAndHeat.jpg", width = 5.5, height = 5.5, units = "in", res = 1000)
+egg::ggarrange(hydroplot_dry + theme(axis.title.x = element_blank()), 
+               hydroplot_wet + theme(axis.title.x = element_blank(), axis.title.y = element_blank()), 
+               heat1, heat2, nrow = 2, ncol = 2)
 dev.off()
 ```
 
