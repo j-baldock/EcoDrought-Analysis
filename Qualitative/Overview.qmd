@@ -2,6 +2,9 @@
 title: "Overview"
 ---
 
+This section contains the code for reproducing the analysis described in Baldock et al., *Headwater streamflow variability is amplified by drought*. This page/chapter organizes all the streamflow data, previously collated into a single file (see Chapter 2 - Collate Data), and conducts the hydroclimate analysis (data pulled from Knoben et al. 2018, Water Resources Research).
+
+## Introduction
 
 **Significance:** Headwater streams account for a majority of river networks worldwide and have a disproportionately large influence on the functioning of aquatic ecosystems. Headwater streams also support critical habitat for many species, including cold-water fishes, many of which are declining or at risk of extinction. 
 
@@ -9,10 +12,14 @@ title: "Overview"
 **Problem:** Headwater streams are largely underrepresented in streamflow monitoring networks, which place greater emphasis on mainstem rivers. As a result, less is known about how headwaters respond to changing water availability. Headwater streams therefore represent a blind spot in understanding flow regime variability and assessing the vulnerability of cold-water fish to changing climatic conditions, including the increasing frequency and severity of drought.
 
 
-**Existential question:** How do streamflow regimes vary spatially in headwater stream networks and what does this imply about the sensitivity of these systems (and the species they support) to changing climatic conditions (i.e., drought)?
+**Questions:** 
+
+1. How do streamflow regimes vary spatially in headwater stream networks?
+2. How does this spatial variability change among years with climatic conditions indicative of drought?
+3. What is the value of reference gages for understanding drought-driven low flow conditions in headwaters?
 
 
-**Objectives:**
+**Approach:**
 
 1. Describe the extent and magnitude of spatiotemporal variation in headwater streamflow.
     + Using time series and density/distribution plots to show differences in streamflow regimes between reference and headwater gages, particularly during summer.
@@ -23,28 +30,6 @@ title: "Overview"
     + Derive reference ("fixed" thresholds from reference/Big G gages) and site-specific low flow thresholds from contemporary data (*sensu* Hammond *et al.* 2022) and use heatmaps to show how the duration and severity of low flow conditions varies among headwater locations and relative to big G.
     + Pool data across basins and years and use regression to quantify the effect of regional water availability on spatial heterogeneity in drought-related low flow conditions. 
     + Explore how the strength of the relationship changes depending on the magnitude of the low flow threshold used.
-
-
-**Conceptual Model:** Based on our findings, develop a conceptual framework synthesizing the linkages between climate, catchment characteristics, and spatial heterogeneity in headwater streamflow regimes, and expected changes in these relationships under future drought conditions 
-* Extending "The Natural Flow Regime" - understanding and quantifying flow regime diversity in headwater stream networks
-
-
-**Boxes:** Use boxes to highlight additional details of the data, vignettes, and case studies that demonstrate spatiotemporal streamflow heterogeneity (and how this changes with prevailing climate). All optional...TBD. 
-
-1. High temporal resolution data reveals network diverse in streamflow response to individual storms and during low flow
-    + Show sub-daily/hourly flow data for selected storms and baseflow periods (diurnal cycles during very low flows) to show heterogeneity at very fine temporal resolutions
-2. The Wedge Hypothesis/model for rain-dominated basins (West Brook)
-    + Fit the basic wedge model for the West Brook...and develop hypotheses for how this would play out in snow-dominated basins (bowtie hypothesis)
-    + What does this this tell us about how diversity in flow regimes is driven by climate regime, antecedent conditions, and catchment storage capacity? See Dralle *et al.* (2023)
-3. Synoptic surveys reveal super fine-scale spatial variation in flow at a single point in time. (perhaps separate boxes for DB and Shen)
-    + Donner-Blitzen: longitudinal temperature and flow surveys and aerial thermal imagery show how localized groundwater inflow from geologic faults drives abrupt changes in stream conditions. (Christian Torgersen, Brandon Overstreet)
-    + Shanandoah: dewatering surveys show how longitudinal flow variability can affect habitat connectivity within headwater streams, but this is mediated by catchment characteristics and changing regional water availability among years. See Hitt *et al.* (2024). (Karli Rogers, Than Hitt). Could show relationship between size of largest patch (or number of patches, distribution of patch sizes) and regional annual water availability (or flow at big G/UVA gages).
-4. Effects of groundwater on (relative?) median summer flow within basins. 
-    + Show the effect of groundwater availability (derived from PASTA and/or Snake groundwater model) on mean summer flow (or distribution of summer values).
-    + Explore how the strength of the relationship changes among years with regional water availability (Hyp: weakens during wet years at local controls become less important to flow dynamics).
-5. Quantify the suitability of existing modeling techniques for predicting streamflow in headwater systems.
-    + Use NSE (Nash-Sutcliffe efficiency) to compare the performance of Stream Stats, PRMS (in the Donner-Blitzen only), and Hoyleman's neural net model to understand the utility of existing tools for modeling headwater streamflow. (How well do these tools perform when applied to catchments smaller than those used paramertize each tool?)
-    + Maybe this is a box or a discussion point?
 
 
 
@@ -78,6 +63,7 @@ library(hydroGOF)
 library(terra)
 library(plotly)
 library(geometry)
+library(plot3D)
 ```
 
 
@@ -417,7 +403,7 @@ dat_clean_big %>% ggplot() + geom_line(aes(x = date, y = logYield)) + facet_wrap
 ```
 
 
-## Climate data
+## Water availability
 
 Download Daymet precip data and summarize by water year
 ```{r}
@@ -695,6 +681,7 @@ centroid <- colMeans(hull_vertices[,-1])
 ```
 
 
+
 ### Hydroclimatic envelope
 
 Test pit: develop code to expand and estimate convex hulls, subset global points, and plot in 3d
@@ -787,8 +774,19 @@ for (i in 1:length(scale_factor)) {
 }
 ```
 
-
 Draw the map
+```{r fig.width=8, fig.height=4}
+mypal <- hcl.colors(length(scale_factor), palette = "Emrld")
+maps::map("world", col="grey", fill=TRUE, lwd = 0.2, mar = c(0,0,0,5))
+# box()
+for (i in rev(1:length(scale_factor))) {
+  plot(new_layer_list[[i]], add = TRUE, col = mypal[i], legend = FALSE)
+}
+maps::map("world", col = NA, fill=TRUE, add = TRUE, lwd = 0.2, mar = c(0,0,0,5))
+legend("right", legend = scale_factor, fill = mypal, title = "Hydroclimatic\nenvelope\n(exp. factor)", bty = "n", xpd = TRUE, inset = c(-0.05,0), cex = 0.8)
+```
+
+Write to file
 ```{r}
 # color palette
 mypal <- hcl.colors(length(scale_factor), palette = "Emrld")
@@ -890,9 +888,33 @@ p <- plot_ly() %>%
 p
 ```
 
+Static 3d scatterplot
+```{r fig.width=5, fig.height=5}
+par(mar = c(2,2,2,2), mgp = c(5,1,0))
+scatter3D(x = df_legend$Im, y = df_legend$Imr, z = df_legend$fs, 
+          col = alpha("grey", 0.2), cex = 0.15, pch = 16, bty = "b2",
+          xlab = "", ylab = "", zlab = "",
+          phi = 25, theta = -50, expand = 0.75, ticktype = "detailed")
+scatter3D(x = extracted_vals2$Im, y = extracted_vals2$Imr, z = extracted_vals2$fs-0.03, 
+          col = "black", type = "h", add = TRUE, pch = NA)
+scatter3D(x = extracted_vals2$Im, y = extracted_vals2$Imr, z = extracted_vals2$fs, 
+          bg = extracted_vals2$color, col = "black", cex = 1.5, pch = 21, add = TRUE)
+```
+
+
 Write 3d scatterplots to file
-```{r}
-library(plot3D)
+```{r eval=FALSE}
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/Fig1_3Dscatter_NoHull.jpg", width = 5, height = 5, units = "in", res = 1000)
+par(mar = c(2,2,2,2), mgp = c(5,1,0))
+scatter3D(x = df_legend$Im, y = df_legend$Imr, z = df_legend$fs, 
+          col = alpha("grey", 0.2), cex = 0.15, pch = 16, bty = "b2",
+          xlab = "", ylab = "", zlab = "",
+          phi = 25, theta = -50, expand = 0.75, ticktype = "detailed")
+scatter3D(x = extracted_vals2$Im, y = extracted_vals2$Imr, z = extracted_vals2$fs-0.03, 
+          col = "black", type = "h", add = TRUE, pch = NA)
+scatter3D(x = extracted_vals2$Im, y = extracted_vals2$Imr, z = extracted_vals2$fs, 
+          bg = extracted_vals2$color, col = "black", cex = 1.5, pch = 21, add = TRUE)
+dev.off()
 
 jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/Fig1_3Dscatter_basehull.jpg", width = 5, height = 5, units = "in", res = 1000)
 par(mar = c(2,2,2,2), mgp = c(5,1,0))
@@ -920,8 +942,7 @@ dev.off()
 ```
 
 View global and focal site distributions of climate data
-```{r}
-jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/Fig1_ClimateDensityDistributions.jpg", width = 3, height = 3, units = "in", res = 1000)
+```{r fig.width=3, fig.height=3}
 par(mfrow = c(3,1), mar = c(2.5,0.5,0.1,0.5), mgp = c(1.5,0.5,0), xpd = TRUE)
 
 dens <- density(df_legend$Im)
@@ -931,7 +952,7 @@ lines(dens, bty = "n")
 polygon(x = c(-10, -1, -1, -10), y = c(-10, -10, 10, 10), border = NA, col = "white")
 polygon(x = c(10, 1, 1, 10), y = c(-10, -10, 10, 10), border = NA, col = "white")
 axis(1)
-points(x = jitter(extracted_vals2$Im, factor = 20), y = rep(0, times = dim(extracted_vals2)[1]), pch = 21, bg = extracted_vals2$color, cex = 1.5)
+points(x = jitter(extracted_vals2$Im, factor = 20), y = rep(0, times = dim(extracted_vals2)[1]), pch = 21, bg = extracted_vals2$color, cex = 2)
 
 
 dens <- density(df_legend$Imr)
@@ -941,7 +962,7 @@ lines(dens, bty = "n")
 polygon(x = c(-10, 0, 0, -10), y = c(-10, -10, 10, 10), border = NA, col = "white")
 polygon(x = c(10, 2, 2, 10), y = c(-10, -10, 10, 10), border = NA, col = "white")
 axis(1)
-points(x = jitter(extracted_vals2$Imr, factor = 20), y = rep(0, times = dim(extracted_vals2)[1]), pch = 21, bg = extracted_vals2$color, cex = 1.5)
+points(x = jitter(extracted_vals2$Imr, factor = 20), y = rep(0, times = dim(extracted_vals2)[1]), pch = 21, bg = extracted_vals2$color, cex = 2)
 
 dens <- density(df_legend$fs)
 plot(dens, type = "n", xlab = "Precipitation as snow", ylab = "", main = "", bty = "n", xlim = c(0, 1), axes = FALSE)
@@ -950,38 +971,46 @@ lines(dens, bty = "n")
 polygon(x = c(-10, 0, 0, -10), y = c(-10, -10, 10, 10), border = NA, col = "white")
 polygon(x = c(10, 1, 1, 10), y = c(-10, -10, 10, 10), border = NA, col = "white")
 axis(1)
-points(x = jitter(extracted_vals2$fs, factor = 20), y = rep(0, times = dim(extracted_vals2)[1]), pch = 21, bg = extracted_vals2$color, cex = 1.5)
-
-dev.off()
-
-
-
-# df_legend_gath <- df_legend %>% select(Im, Imr, fs) %>% gather(key = "type", value = "value")
-# ggplot() +
-#   geom_density(data = df_legend_gath %>% filter(type == "Im"), aes(x = value), fill = "grey70") +
-#   geom_point(data = extracted_vals2, aes(x = jitter(Im, factor = 10), y = 0), shape = 21, fill = extracted_vals2$color, size = 5) +
-#   #geom_vline(data = extracted_vals2, aes(xintercept = jitter(Im, factor = 20)), color = extracted_vals2$color) +
-#   theme_bw() + theme(panel.grid = element_blank(), 
-#                      axis.text.y = element_blank(), 
-#                      axis.ticks.y = element_blank()) +
-#   opts(panel.border = theme_L_border()) +
-#   xlab("Aridity") + ylab("Density")
-# 
-# p2 <- ggplot() +
-#   geom_density(data = df_legend_gath %>% filter(type == "Imr"), aes(x = value), fill = "grey") +
-#   geom_point(data = extracted_vals2, aes(x = jitter(Imr, factor = 10), y = 0), shape = 21, fill = extracted_vals2$color, size = 5) +
-#   theme_bw() + theme(panel.grid = element_blank()) +
-#   xlab("Seasonality") + ylab("Density")
-# 
-# p3 <- ggplot() +
-#   geom_density(data = df_legend_gath %>% filter(type == "fs"), aes(x = value), fill = "grey") +
-#   geom_point(data = extracted_vals2, aes(x = jitter(fs, factor = 10), y = 0), shape = 21, fill = extracted_vals2$color, size = 5) +
-#   theme_bw() + theme(panel.grid = element_blank()) +
-#   xlab("Precipition as snow") + ylab("Density")
-# 
-# egg
+points(x = jitter(extracted_vals2$fs, factor = 20), y = rep(0, times = dim(extracted_vals2)[1]), pch = 21, bg = extracted_vals2$color, cex = 2)
 ```
 
+
+
+Write to file
+```{r eval=FALSE}
+jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/Fig1_ClimateDensityDistributions2.jpg", width = 3, height = 3, units = "in", res = 1000)
+par(mfrow = c(3,1), mar = c(2.5,0.5,0.1,0.5), mgp = c(1.5,0.5,0), xpd = TRUE)
+
+dens <- density(df_legend$Im)
+plot(dens, type = "n", xlab = "Aridity", ylab = "", main = "", bty = "n", xlim = c(-1, 1), axes = FALSE)
+polygon(dens, col = "grey70", border = NA)
+lines(dens, bty = "n")
+polygon(x = c(-10, -1, -1, -10), y = c(-10, -10, 10, 10), border = NA, col = "white")
+polygon(x = c(10, 1, 1, 10), y = c(-10, -10, 10, 10), border = NA, col = "white")
+axis(1)
+points(x = jitter(extracted_vals2$Im, factor = 20), y = rep(0, times = dim(extracted_vals2)[1]), pch = 21, bg = extracted_vals2$color, cex = 2)
+
+
+dens <- density(df_legend$Imr)
+plot(dens, type = "n", xlab = "Seasonality", ylab = "", main = "", bty = "n", xlim = c(0, 2), axes = FALSE)
+polygon(dens, col = "grey70", border = NA)
+lines(dens, bty = "n")
+polygon(x = c(-10, 0, 0, -10), y = c(-10, -10, 10, 10), border = NA, col = "white")
+polygon(x = c(10, 2, 2, 10), y = c(-10, -10, 10, 10), border = NA, col = "white")
+axis(1)
+points(x = jitter(extracted_vals2$Imr, factor = 20), y = rep(0, times = dim(extracted_vals2)[1]), pch = 21, bg = extracted_vals2$color, cex = 2)
+
+dens <- density(df_legend$fs)
+plot(dens, type = "n", xlab = "Precipitation as snow", ylab = "", main = "", bty = "n", xlim = c(0, 1), axes = FALSE)
+polygon(dens, col = "grey70", border = NA)
+lines(dens, bty = "n")
+polygon(x = c(-10, 0, 0, -10), y = c(-10, -10, 10, 10), border = NA, col = "white")
+polygon(x = c(10, 1, 1, 10), y = c(-10, -10, 10, 10), border = NA, col = "white")
+axis(1)
+points(x = jitter(extracted_vals2$fs, factor = 20), y = rep(0, times = dim(extracted_vals2)[1]), pch = 21, bg = extracted_vals2$color, cex = 2)
+
+dev.off()
+```
 
 ### Repeatability by climate
 
@@ -1004,7 +1033,42 @@ mysites <- as_tibble(focalsites) %>%
 ggpairs(mysites)
 ```
 
+Plot
+```{r fig.width=4, fig.height=3.5}
+myr <- cor(mysites$Im, mysites$R)
+mysites %>% ggplot(aes(x = Im, y = R)) +
+  geom_point(aes(fill = basin), shape = 21, size = 3) +
+  annotate("text", x = Inf, y = Inf, hjust = 1.1, vjust = 1.5, 
+           label = paste("Pearson's r = ", round(myr, digits = 2))) +
+  scale_fill_manual(values = rev(brewer.pal(6, "Set2"))) +
+  theme_bw() + theme(legend.position = "none", panel.grid = element_blank(), 
+                     axis.text = element_text(color = "black")) +
+  xlab("Aridity") + ylab("Median repeatability (R)")
 
+
+myr <- cor(mysites$Imr, mysites$R)
+mysites %>% ggplot(aes(x = Imr, y = R)) +
+  geom_point(aes(fill = basin), shape = 21, size = 3) +
+    annotate("text", x = -Inf, y = Inf, hjust = -0.1, vjust = 1.5, 
+           label = paste("Pearson's r = ", round(myr, digits = 2))) +
+  scale_fill_manual(values = rev(brewer.pal(6, "Set2"))) +
+  theme_bw() + theme(legend.position = "none", panel.grid = element_blank(), 
+                     axis.text = element_text(color = "black")) +
+  xlab("Seasonality") + ylab("Median repeatability (R)")
+
+
+myr <- cor(mysites$fs, mysites$R)
+mysites %>% ggplot(aes(x = fs, y = R)) +
+  geom_point(aes(fill = basin), shape = 21, size = 3) +
+    annotate("text", x = -Inf, y = Inf, hjust = -0.1, vjust = 1.5, 
+           label = paste("Pearson's r = ", round(myr, digits = 2))) +
+  scale_fill_manual(values = rev(brewer.pal(6, "Set2"))) +
+  theme_bw() + theme(legend.position = "none", panel.grid = element_blank(), 
+                     axis.text = element_text(color = "black")) +
+  xlab("Precipitation as snow") + ylab("Median repeatability (R)")
+```
+
+Write to file
 ```{r}
 jpeg("C:/Users/jbaldock/OneDrive - DOI/Documents/USGS/EcoDrought/EcoDrought Working/Presentation figs/Repeatability_Aridity.jpg", width = 4, height = 3.5, units = "in", res = 1000)
 myr <- cor(mysites$Im, mysites$R)
